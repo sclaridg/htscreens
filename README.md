@@ -25,3 +25,19 @@ All annotation files (copy number, mutation status, and gene expression) (Consor
 	- `sample_info_18Q3_shrna.csv`: shRNA screen sample metadata
 - **`plots`**: Plots created in the Rmd
 - `lineages_18Q3.Rmd`: Code to use and generate files in `data_munging` and figures in `plots`
+
+## References
+
+Barretina, J., Caponigro, G., Stransky, N., Venkatesan, K., Margolin, A. A., Kim, S., … Garraway, L. A. (2012). The Cancer Cell Line Encyclopedia enables predictive modelling of anticancer drug sensitivity. Nature, 483(7391), 603–607. https://doi.org/10.1038/nature11003
+
+Broad Institute Cancer Dependency Map; Cancer Data Science (2018): Cancer Dependency Map, CRISPR Avana dataset 18Q3 (Avana_public_18Q3). figshare. Fileset. doi:10.6084/m9.figshare.6931364.v1
+
+Consortium, T. C. C. L. E., & Consortium, T. G. of D. S. in C. (2015). Pharmacogenomic agreement between two cancer cell line data sets. Nature, 528(7580), 84–87. https://doi.org/10.1038/nature15736
+
+Data Science, Cancer (2018): DEMETER2 data. figshare. Fileset. doi:10.6084/m9.figshare.6025238.v2
+
+Doench, J. G., Fusi, N., Sullender, M., Hegde, M., Vaimberg, E. W., Donovan, K. F., … Root, D. E. (2016). Optimized sgRNA design to maximize activity and minimize off-target effects of CRISPR-Cas9. Nature Biotechnology, 34(2), 184–191. https://doi.org/10.1038/nbt.3437
+
+Meyers, R. M., Bryan, J. G., McFarland, J. M., Weir, B. A., Sizemore, A. E., Xu, H., … Tsherniak, A. (2017). Computational correction of copy-number effect improves specificity of CRISPR-Cas9 essentiality screens in cancer cells. Nature Genetics, 49(12), 1779–1784. https://doi.org/10.1038/ng.3984
+
+McFarland, J. M., Ho, Z. V., Kugener, G., Dempster, J. M., Montgomery, P. G., Bryan, J. G., … Tsherniak, A. (2018). Improved estimation of cancer dependencies from large-scale RNAi screens using model-based normalization and data integration. https://doi.org/10.1101/305656
