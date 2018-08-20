@@ -187,7 +187,7 @@ make_CRISPRlinplot <- function(g) {
 
 This comprehensive cancer cell line information curated by Daniel Charytonowicz.
 ```{r}
-ccl_converter <- read.delim("./../data_munging/danielc_cell_line_database_completed_extra_SE.tsv", sep = "\t", row.names = NULL, header = TRUE)
+ccl_converter <- read.delim("./data_munging/danielc_cell_line_database_completed_extra_SE.tsv", sep = "\t", row.names = NULL, header = TRUE)
 colnames(ccl_converter)[4] <- "CCLE_Name"
 colnames(ccl_converter)[10] <- "Broad_ID"
 ```
@@ -280,18 +280,18 @@ ge_melt <- with(ge_melt, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", na
 ## Remove parentheses around Broad IDs
 ge_melt$Broad_ID <- gsub("\\(|\\)", "", ge_melt$Broad_ID)
 
-saveRDS(ge_melt, "./data_munging/rds/ge_melt_18Q3.rds", compress = "xz")
+saveRDS(ge_melt, "./../ge_melt_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-ge_melt <- readRDS("./data_munging/rds/ge_melt_18Q3.rds")
+ge_melt <- readRDS("./../ge_melt_18Q3.rds")
 ```
 
 ## CRISPR data and annotations
 
 The latest CRISPR CERES score data (18Q3, August 2018) was pulled from the [DepMap Data Portal](https://depmap.org/portal/download/) (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017).
 ```{r, eval=TRUE}
-crispr <- read.delim("././data_munging/gene_effect_18Q3.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
+crispr <- read.delim("./data_munging/gene_effect_18Q3.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr) <- gsub(" .*", "", colnames(crispr))
 ```
@@ -391,16 +391,16 @@ shrna_data <- merge(shrna_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.
 ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(shrna_data$Hugo_Symbol))
 shrna_data <- merge(shrna_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
 
-saveRDS(shrna_data, "./data_munging/rds/shrna_data_18Q3.rds", compress = "xz")
+saveRDS(shrna_data, "./../shrna_data_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-shrna_data <- readRDS("./data_munging/rds/shrna_data_18Q3.rds")
+shrna_data <- readRDS("./../shrna_data_18Q3.rds")
 shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
 ```
 
 ```{r, eval=FALSE}
-write(union(as.character(distinct(crispr_data[which(is.na(crispr_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name), as.character(distinct(shrna_data[which(is.na(shrna_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name)), file = "./../../../Desktop/na_ccl_in_converter.txt")
+write(union(as.character(distinct(crispr_data[which(is.na(crispr_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name), as.character(distinct(shrna_data[which(is.na(shrna_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name)), file = "./data_munging//na_ccl_in_converter.txt")
 ```
 
 # Wilcoxon tests
@@ -460,11 +460,11 @@ knitr::kable(shrna_signif[, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilc
 shrna_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
 shrna_signif_lineage <- adj_signif(shrna_signif_lineage)
 shrna_signif_lineage <- mutate(shrna_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
-saveRDS(shrna_signif_lineage, "./data_munging/rds/shrna_signif_lineage.rds")
+saveRDS(shrna_signif_lineage, "./../shrna_signif_lineage.rds")
 ```
 
 ```{r, eval=FALSE}
-shrna_signif_lineage <- readRDS("./data_munging/rds/shrna_signif_lineage.rds")
+shrna_signif_lineage <- readRDS("./../shrna_signif_lineage.rds")
 ```
 
 
