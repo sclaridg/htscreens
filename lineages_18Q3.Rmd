@@ -1,0 +1,634 @@
+---
+title: "Lineage Analysis of CRISPR and shRNA Screens"
+author: "Sally Claridge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+    code_folding: hide
+---
+
+Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017) and the Broad and Dana-Farber Cancer Institite's Achilles shRNA (MacFarland et al. 2018, Data Science 2018).
+
+The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meyers et al. 2017) ([GitHub](https://github.com/cancerdatasci/ceres)), which generates gene dependency scores from sgRNA depletion scores from gene essentiality screens and eliminates bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes.
+
+In a previous version of the shRNA screen, DEMETER ([GitHub](https://github.com/cancerdatasci/demeter)) was used to compute a dependency score for each gene by using the depletion values from each shRNA to infer the effect of target knockdown (on-target) and of expressing a given miRNA seed (off-target) in each cell line. More negative values indicate increased dependency, while more positive values indicate lower dependency. Zero represents the avergae dependency across all cell lines.
+
+In the new data release, [DEMETER2](https://depmap.org/R2-D2/) ([GitHub repository](https://github.com/cancerdatasci/demeter2)), developed by McFarland et al. (2018) was used to analyze the Achilles screen. DEMETER2 expands on DEMETER by including parameters for cell-line-specific screen effects and noisy data, correcting for global differences in shRNA levels across cell lines, pooling data acorss cell lines via hierarchical modeling, and using Bayesian inference to compute uncertainty estimates. Now, a score of zero represents no dependency.
+
+All annotation files (copy number, mutation status, and gene expression) (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/).
+
+# Set up
+
+--------------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+set.seed(1234)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+num_cores <- parallel::detectCores()
+options(mc.cores = num_cores)
+```
+
+Load libraries.
+```{r}
+library(NMF)
+library(ggsignif)
+library(ggpubr)
+library(rowr)
+library(data.table)
+library(CePa)
+library(plyr)
+library(tidyverse)
+library(magrittr)
+library(ggrepel)
+library(matrixStats)
+library(parallel)
+library(kableExtra)
+library(gridExtra)
+library(broom)
+library(glmnet)
+library(devtools)
+library(reshape2)
+library(caret)
+library(bsselectR)
+library(ComplexHeatmap)
+library(circlize)
+```
+
+## Functions {.tabset .tabset-fade .tabset-pills}
+
+### Significance thresholding
+
+```{r}
+adj_signif <- function(df) {
+  # Takes df from compare_means and creates a signif code column for adjusted p-vals
+  df$p.signif <- ifelse(df$p.signif == "ns", NA, df$p.signif)
+  df$p.signif.adj <- ifelse(df$p.adj <= 0.0001, "****",
+                     ifelse(df$p.adj <= 0.001, "***",
+                     ifelse(df$p.adj <= 0.01, "**",
+                     ifelse(df$p.adj <= 0.05, "*", NA))))
+  df$p.short <- formatC(df$p, format = "g", digits =  2)
+  df$p.adj.short <- formatC(df$p.adj, format = "g", digits =  2)
+  
+  return(df)
+}
+```
+
+### Make CRISPR grobs
+
+```{r}
+make_CRISPRgrob <- function(g) {
+  
+  gene <- filter(crispr_data, Hugo_Symbol == g)
+  
+  # Mutation status
+  crispr_color <- as.character(gene$Color)
+  names(crispr_color) <- gene$Mutation_Status
+  sig <- filter(crispr_signif, Hugo_Symbol == g)
+  plot_mut <- ggplot(data = gene, aes(x = Mutation_Status, y = Score, color = Mutation_Status)) +
+    geom_boxplot(outlier.shape = NA) +
+    geom_jitter(alpha = 0.3, size = 0.7, position = position_jitter(w = 0.05)) +
+    scale_color_manual(values = crispr_color) +
+    geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
+    theme_light() +
+    theme(legend.position = "none") +
+    labs(x = paste0(g, " Mutation Status"), y = "CERES Score",
+         title = "Mutation Status",
+         subtitle = paste0("Wilcoxon test:\n\tBH-corrected p-value: ", sig$p.adj.short, "\n\tUncorrected p-value: ", sig$p.short))
+  
+  # Copy number
+  lo_cn <- range(gene$Copy_Number[!is.na(gene$Copy_Number)])[1]
+  hi_cn <- range(gene$Copy_Number[!is.na(gene$Copy_Number)])[2]
+  mid_cn <- (hi_cn - lo_cn) / 2
+  plot_cn <- ggplot(data = gene, aes(x = Copy_Number, y = Score, color = Mutation_Status)) +
+    geom_point(size = 0.5, alpha = 0.5) +
+    geom_smooth(method = "lm", size = 0.5) +
+    geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
+    scale_color_manual(values = crispr_color) +
+    stat_cor(method = "pearson", show.legend = FALSE, label.x = c((lo_cn + mid_cn) / 2, (hi_cn - mid_cn) / 2 + mid_cn), label.y = max(gene$Score)) +
+    theme(legend.position = "none") +
+    labs(y = "CERES Score", color = "Mutation Status",
+         x = paste0(g, " Copy number"), title = "Copy Number",
+         subtitle = "r: Pearson correlation coeffcient")
+  
+  # Gene expression
+  lo_ge <- range(gene$RPKM[!is.na(gene$RPKM)])[1]
+  hi_ge <- range(gene$RPKM[!is.na(gene$RPKM)])[2]
+  mid_ge <- (hi_ge - lo_ge) / 2
+  plot_ge <- ggplot(data = gene, aes(x = RPKM, y = Score, color = Mutation_Status)) +
+    geom_point(size = 0.5, alpha = 0.5) +
+    geom_smooth(method = "lm", size = 0.5) +
+    geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
+    scale_color_manual(values = crispr_color) +
+    stat_cor(method = "pearson", show.legend = FALSE, label.x = c((lo_ge + mid_ge) / 2, (hi_ge - mid_ge) / 2 + mid_ge), label.y = max(gene$Score)) +
+    theme(legend.position = "none") +
+    labs(y = "CERES Score", color = "Mutation Status",
+         x = paste0(g, " Gene Expression (RPKM)"),
+         title = "Gene Expression",
+         subtitle = "r: Pearson correlation coeffcient")
+  
+  # Cell line lineage
+  plot_lin <- ggplot(data = gene, aes(x = lineage_name, y = Score, color = Mutation_Status)) +
+    geom_point(alpha = 0.5) +
+    scale_color_manual(values = crispr_color) +
+    geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
+    scale_y_continuous(sec.axis = sec_axis(~ .)) +
+    coord_flip() +
+    theme(legend.position = "none") +
+    labs(y = "CERES Score", x = "Cell Line Lineage",
+         color = "Mutation Status", title = g)
+  
+  # Arrange plots
+  plot <- ggarrange(ggarrange(plot_lin, nrow = 1, labels = c("A")),
+                    ggarrange(plot_mut, plot_cn, plot_ge, nrow = 3,
+                              labels = c("B", "C", "D"), heights = c(2, 3, 3)),
+                    font.label = list(size = 30, face = "bold"),
+                    nrow = 1, ncol = 2, widths = c(3, 2))
+  return(plot)
+}
+```
+
+### Make lineage plot
+
+```{r}
+make_CRISPRlinplot <- function(g) {
+  gene <- filter(crispr_data, Hugo_Symbol == g)
+  sig <- filter(crispr_signif_lineage, Hugo_Symbol == g)
+  gene <- merge(gene, sig, by = c("Hugo_Symbol", "lineage_name"))
+  gene <- mutate(gene, lineage_name = reorder(lineage_name, p, mean))
+  crispr_color <- as.character(gene$Color)
+  names(crispr_color) <- gene$Mutation_Status
+  score_range <- abs(range(gene$Score)[2] - range(gene$Score)[1])
+  round_accuracy <- ifelse(score_range <= 2, 0.25,
+                           ifelse(score_range <= 3, 0.5, 1.0))
+  
+  plot <- ggplot(data = gene, aes(x = lineage_name, y = Score)) +
+    geom_point(alpha = 0.5, mapping = aes(color = Mutation_Status)) +
+    scale_color_manual(values = crispr_color) +
+    coord_cartesian(y = c(min(gene$Score), round_any(x = max(gene$Score), accuracy = round_accuracy, f = ceiling))) +
+    geom_signif(data = gene, mapping = aes(xmin = lineage_name, xmax = lineage_name, annotations = paste(p.short, "\n", p.adj.short), y_position = max(gene$Score)), manual = TRUE, tip_length   = 0, size = 0, textsize = 3) +
+    theme(legend.position = "top", axis.text.x = element_text(angle = 70, hjust = 1, size = 10)) +
+    labs(y = "CERES Score",
+         x = "Lineage",
+         color = "Mutation Status",
+         title = paste0(g, ": CERES score by cell line lineage"),
+         subtitle = "Lineages sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.")
+  return(plot)
+}
+```
+
+## Cell line converter
+
+This comprehensive cancer cell line information curated by Daniel Charytonowicz.
+```{r}
+ccl_converter <- read.delim("./../data_munging/danielc_cell_line_database_completed_extra_SE.tsv", sep = "\t", row.names = NULL, header = TRUE)
+colnames(ccl_converter)[4] <- "CCLE_Name"
+colnames(ccl_converter)[10] <- "Broad_ID"
+```
+
+## Cell line metadata
+
+```{r}
+ccl_info <- read.delim("./data_munging/DepMap-2018q3-celllines.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+ccl_info$Primary.Disease <- gsub("\\\\", "", ccl_info$Primary.Disease)
+ccl_info$Primary.Disease <- gsub("Ewings", "Ewing's", ccl_info$Primary.Disease)
+
+crispr_meta <- read.delim("./data_munging/sample_info_18Q3_crispr.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+colnames(crispr_meta)[7] <- "CCLE_Name"
+
+shrna_meta <- read.delim("./data_munging/sample_info_18Q3_shrna.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+colnames(shrna_meta)[1] <- "CCLE_Name"
+```
+
+```{r}
+dan_test <- select(ccl_converter, CCLE_Name, Broad_ID, cell_line_name)
+dan_test <- dan_test[-which(dan_test$CCLE_Name == ""), ]
+ccl_test <- select(ccl_info, CCLE_Name, Broad_ID)
+
+test <- merge(ccl_test, dan_test, by = "CCLE_Name", all = TRUE, suffixes = c("_DepMap", "_Daniel"))
+test$BroadIDs_match <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
+```
+
+
+## MAF file
+
+For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
+```{r}
+maf_raw <- read.delim("./data_munging/CCLE_DepMap_18q3_maf_20180718.txt.gz", header = TRUE, sep = "\t")
+
+# Remove silent mutations
+maf_df <- maf_raw[maf_raw$Variant_Classification != "Silent",]
+
+# Select columns
+maf_df <- unique(subset(maf_raw, select = c("Hugo_Symbol", "Tumor_Sample_Barcode", "Broad_ID")))
+colnames(maf_df)[2] <- "CCLE_Name"
+# Add Mutation_Status column
+maf_df$Mutation_Status <- "Mutant"
+
+# MAF summary table
+maf_summ <- maf_raw[, c("Variant_Classification", "isDeleterious")] %>% group_by(Variant_Classification, isDeleterious) %>% tally()
+maf_summ$percent <- maf_summ$n / sum(maf_summ$n) * 100
+knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+## Copy number file
+
+```{r, eval=FALSE}
+cn <- read.delim("./data_munging/public_18Q3_gene_cn.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
+
+# Convert log2 ratios (log2(CN/2)) to CN
+cn[2:ncol(cn)] <- lapply(cn[2:ncol(cn)], function(x) 2 * (2 ^ x))
+
+# Remove Entrez gene IDs from colnames
+colnames(cn) <- gsub(" .*", "", colnames(cn))
+colnames(cn)[1] <- "Broad_ID"
+
+# Melt
+cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]))
+colnames(cn_melt) <- c("Broad_ID", "Hugo_Symbol", "Copy_Number")
+
+saveRDS(cn_melt, "./data_munging/rds/cn_melt_18Q3.rds", compress = "xz")
+```
+
+```{r}
+cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q3.rds")
+```
+
+## Gene expression file
+
+Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
+```{r}
+ge <- read.delim("./../CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
+```
+
+```{r, eval=FALSE}
+# Edit columns
+ge$Name <- NULL
+colnames(ge)[1] <- "Hugo_Symbol"
+
+# Melt
+ge_melt <- melt(data = ge, id.vars = "Hugo_Symbol", measure.vars = colnames(ge[2:ncol(ge)]))
+colnames(ge_melt)[3] <- "RPKM"
+## Split variable column
+ge_melt <- with(ge_melt, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "Broad_ID")), RPKM))
+## Remove parentheses around Broad IDs
+ge_melt$Broad_ID <- gsub("\\(|\\)", "", ge_melt$Broad_ID)
+
+saveRDS(ge_melt, "./data_munging/rds/ge_melt_18Q3.rds", compress = "xz")
+```
+
+```{r}
+ge_melt <- readRDS("./data_munging/rds/ge_melt_18Q3.rds")
+```
+
+## CRISPR data and annotations
+
+The latest CRISPR CERES score data (18Q3, August 2018) was pulled from the [DepMap Data Portal](https://depmap.org/portal/download/) (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017).
+```{r, eval=TRUE}
+crispr <- read.delim("././data_munging/gene_effect_18Q3.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
+# Remove Entrez gene IDs from colnames
+colnames(crispr) <- gsub(" .*", "", colnames(crispr))
+```
+
+Merge annotation data:
+```{r, eval=FALSE}
+# Melt CRISPR dataset for merging
+crispr_melt <- melt(crispr, id.vars = "Broad_ID", measure.vars = colnames(crispr)[2:ncol(crispr)])
+colnames(crispr_melt) <- c("Broad_ID", "Hugo_Symbol", "Score")
+
+# Merge cell line metadata
+crispr_melt <- merge(crispr_melt, ccl_info, by = "Broad_ID", all.x = TRUE)
+crispr_melt <- merge(crispr_melt, crispr_meta, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
+
+# Merge mutation annotations
+crispr_muts <- merge(crispr_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+crispr_muts <- crispr_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Wildtype", Mutation_Status))
+crispr_muts$Hugo_Symbol <- factor(crispr_muts$Hugo_Symbol)
+
+# Summarize number of mutant and wildtype cell lines
+crispr_muts_summ <- crispr_muts %>% group_by(Hugo_Symbol) %>%
+  summarize(N_Wildtype = sum(Mutation_Status == "Wildtype"),
+            N_Mutant = sum(Mutation_Status == "Mutant"))
+
+# Merge test results back into full dataset, which restores information lost in the summarization
+crispr_data <- merge(crispr_muts_summ, crispr_muts, by = "Hugo_Symbol")
+
+# Add Color column
+crispr_data$Color <- ifelse(crispr_data$Mutation_Status == "Wildtype", "cyan3", "darkorchid")
+crispr_data$Color <- factor(crispr_data$Color)
+
+# Cell line lineages
+crispr_data <- merge(crispr_data, ccl_converter, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
+levels(crispr_data$lineage_name) <- sort(levels(crispr_data$lineage_name), decreasing = TRUE)
+
+# Copy number
+crispr_data <- merge(crispr_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
+
+# Gene expression (RPKM)
+ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
+crispr_data <- merge(crispr_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
+
+saveRDS(crispr_data, "./data_munging/rds/crispr_data_18Q3.rds", compress = "xz")
+```
+
+```{r}
+crispr_data <- readRDS("./data_munging/rds/crispr_data_18Q3.rds")
+crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
+```
+
+## shRNA data and annotations
+
+The Achilles shRNA DEMETER score data was pulled from the [CTD^2^ Data Portal](https://ocg.cancer.gov/programs/ctd2/data-portal) (Tsherniak et al 2017).
+```{r, eval=FALSE}
+shrna <- read.table("./data_munging/D2_combined_gene_dep_scores.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(shrna)[1] <- "Hugo_Symbol"
+# Remove Entrez gene IDs from gene names
+shrna$Hugo_Symbol <- gsub(" .*", "", shrna$Hugo_Symbol)
+
+# Melt shRNA dataset for merging
+shrna_melt <- melt(shrna , id.vars = "Hugo_Symbol", measure.vars = colnames(shrna)[2:ncol(shrna)])
+colnames(shrna_melt) <- c("Hugo_Symbol", "CCLE_Name", "Score")
+shrna_melt <- drop_na(shrna_melt)
+```
+
+Merge annotation data:
+```{r, eval=FALSE}
+# Merge cell line metadata
+shrna_melt <- merge(shrna_melt, ccl_info, by = "CCLE_Name", all.x = TRUE)
+shrna_melt <- merge(shrna_melt, shrna_meta, by = "CCLE_Name", all.x = TRUE)
+
+# Merge mutation annotations
+shrna_muts <- merge(shrna_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+shrna_muts <- shrna_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Wildtype", Mutation_Status))
+shrna_muts$Hugo_Symbol <- factor(shrna_muts$Hugo_Symbol)
+
+# Summarize number of mutant and wildtype cell lines
+shrna_muts_summ <- shrna_muts %>% group_by(Hugo_Symbol) %>%
+  summarize(N_Wildtype = sum(Mutation_Status == "Wildtype"),
+            N_Mutant = sum(Mutation_Status == "Mutant"))
+
+# Merge test results back into full dataset, which restores information lost in the summarization
+shrna_data <- merge(shrna_muts_summ, shrna_muts, by = "Hugo_Symbol")
+
+# Add Color column
+shrna_data$Color <- ifelse(shrna_data$Mutation_Status == "Wildtype", "cyan3", "darkorchid")
+shrna_data$Color <- factor(shrna_data$Color)
+
+# Cell line lineages
+shrna_data <- merge(shrna_data, ccl_converter, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
+levels(shrna_data$lineage_name) <- sort(levels(shrna_data$lineage_name), decreasing = TRUE)
+
+# Copy number
+shrna_data <- merge(shrna_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
+
+# Gene expression (RPKM)
+ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(shrna_data$Hugo_Symbol))
+shrna_data <- merge(shrna_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
+
+saveRDS(shrna_data, "./data_munging/rds/shrna_data_18Q3.rds", compress = "xz")
+```
+
+```{r}
+shrna_data <- readRDS("./data_munging/rds/shrna_data_18Q3.rds")
+shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
+```
+
+```{r, eval=FALSE}
+write(union(as.character(distinct(crispr_data[which(is.na(crispr_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name), as.character(distinct(shrna_data[which(is.na(shrna_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name)), file = "./../../../Desktop/na_ccl_in_converter.txt")
+```
+
+# Wilcoxon tests
+
+--------------------------------------------------------------------------------
+
+## CRISPR
+
+### Grouped by gene
+
+```{r, eval=FALSE}
+crispr_signif <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif <- adj_signif(crispr_signif)
+crispr_signif <- crispr_signif[order(crispr_signif$p),]
+saveRDS(crispr_signif, "./data_munging/rds/crispr_signif.rds")
+```
+
+```{r}
+crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
+
+knitr::kable(crispr_signif[, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+```
+
+### Grouped by gene and lineage
+
+```{r, eval=FALSE}
+crispr_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif_lineage <- adj_signif(crispr_signif_lineage)
+crispr_signif_lineage <- mutate(crispr_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
+saveRDS(crispr_signif_lineage, "./data_munging/rds/crispr_signif_lineage.rds")
+```
+
+```{r}
+crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_lineage.rds")
+```
+
+## shRNA
+
+### Grouped by gene
+
+```{r, eval=FALSE}
+shrna_signif <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
+shrna_signif <- adj_signif(shrna_signif)
+shrna_signif <- shrna_signif[order(shrna_signif$p),]
+saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
+```
+
+```{r}
+shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
+
+knitr::kable(shrna_signif[, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+```
+
+### Grouped by gene and lineage
+
+```{r, eval=FALSE}
+shrna_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
+shrna_signif_lineage <- adj_signif(shrna_signif_lineage)
+shrna_signif_lineage <- mutate(shrna_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
+saveRDS(shrna_signif_lineage, "./data_munging/rds/shrna_signif_lineage.rds")
+```
+
+```{r, eval=FALSE}
+shrna_signif_lineage <- readRDS("./data_munging/rds/shrna_signif_lineage.rds")
+```
+
+
+# Heatmaps
+
+--------------------------------------------------------------------------------
+
+## CRISPR
+
+```{r, eval=FALSE}
+# Set up heatmap data
+chm_data <- t(crispr)
+colnames(chm_data) <- chm_data[1, ]
+chm_data <- chm_data[-1, ]
+chm_cols <- colnames(chm_data)
+chm_data <- apply(chm_data, 2, as.double)
+chm_data <- apply(chm_data, 2, function(x) (x - mean(x)) / var(x))
+colnames(chm_data) <- chm_cols
+
+# Metadata anotation dataframe
+chm_annot <- merge(merge(data.frame("Broad_ID" = crispr$Broad_ID), crispr_meta[, c("Broad_ID", "cell_line_SSMD", "cas9_activity", "culture_type", "primary_tissue")], by = "Broad_ID", all.x = TRUE), ccl_info[, c("Broad_ID", "Primary.Disease", "Gender", "Source")], by = "Broad_ID", all.x = TRUE)
+rownames(chm_annot) <- chm_annot$Broad_ID
+chm_annot$Broad_ID <- NULL
+colnames(chm_annot) <- c("Cell_Line_SSMD", "Cas9_Activity", "Culture_Type", "Primary_Tissue", "Primary_Disease", "Gender", "Source")
+chm_annot$Cell_Line_SSMD <- as.numeric(chm_annot$Cell_Line_SSMD)
+chm_annot$Cas9_Activity <- as.numeric(chm_annot$Cas9_Activity)
+
+# Make full grid for genomic features
+crispr_grid_ccls <- unique(crispr_data$Broad_ID)
+crispr_grid_genes <- unique(crispr_data$Hugo_Symbol)
+crispr_grid <- expand.grid("Broad_ID" = crispr_grid_ccls, "Hugo_Symbol" = crispr_grid_genes)
+
+# Gene expression
+ge_chm_grid <- merge(crispr_grid, ge_melt[, c("Hugo_Symbol", "Broad_ID", "RPKM")], by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
+```
+
+
+```{r, eval=FALSE}
+chma <- HeatmapAnnotation(df = chm_annot)
+
+chm_euc <- Heatmap(chm_data, name = "CERES Score",
+        bottom_annotation = chma,
+        bottom_annotation_height = unit(5, "in"),
+        row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
+        col = colorRamp2(c(-15, 0, 5), c("purple4", "white", "seagreen4")),
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        show_column_names = FALSE,
+        row_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        show_row_names = FALSE,
+        row_dend_reorder = TRUE,
+        column_dend_reorder = TRUE,
+        clustering_distance_rows = "euclidean",
+        clustering_distance_columns = "euclidean",
+        clustering_method_rows = "complete",
+        clustering_method_columns = "complete",
+        column_dend_height = unit(4, "in"),
+        row_dend_width = unit(4, "in"),
+        width = 3)
+
+pdf("./plots_18Q3/crispr_heatmap_euclidean.pdf", width = 100, height = 100, paper = "special") 
+draw(chm_euc, heatmap_legend_side = "right", annotation_legend_side = "right")
+seekViewport("annotation_Cell_Line_SSMD")
+grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Cas9_Activity")
+grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Culture_Type")
+grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Tissue")
+grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Disease")
+grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Gender")
+grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Source")
+grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+dev.off()
+```
+
+
+
+# Per-gene plots
+
+--------------------------------------------------------------------------------
+
+## Grouped plots {.tabset .tabset-fade .tabset-pills}
+
+### KRAS
+
+```{r fig.height=12, fig.width=12}
+make_CRISPRgrob("KRAS")
+```
+
+### TP53
+
+```{r fig.height=12, fig.width=12}
+make_CRISPRgrob("TP53")
+```
+
+### BRAF
+
+```{r fig.height=12, fig.width=12}
+make_CRISPRgrob("BRAF")
+```
+
+### NRAS
+
+```{r fig.height=12, fig.width=12}
+make_CRISPRgrob("NRAS")
+```
+
+## Sorted lineage plots {.tabset .tabset-fade .tabset-pills}
+
+### KRAS
+
+```{r fig.height=10, fig.width=15}
+make_CRISPRlinplot("KRAS")
+```
+
+### TP53
+
+```{r fig.height=10, fig.width=15}
+make_CRISPRlinplot("TP53")
+```
+
+### BRAF
+
+```{r fig.height=10, fig.width=15}
+make_CRISPRlinplot("BRAF")
+```
+
+### NRAS
+
+```{r fig.height=10, fig.width=15}
+make_CRISPRlinplot("NRAS")
+```
+
+
+# References
+
+--------------------------------------------------------------------------------
+
+Barretina, J., Caponigro, G., Stransky, N., Venkatesan, K., Margolin, A. A., Kim, S., … Garraway, L. A. (2012). The Cancer Cell Line Encyclopedia enables predictive modelling of anticancer drug sensitivity. Nature, 483(7391), 603–607. https://doi.org/10.1038/nature11003
+
+Broad Institute Cancer Dependency Map; Cancer Data Science (2018): Cancer Dependency Map, CRISPR Avana dataset 18Q3 (Avana_public_18Q3). figshare. Fileset. doi:10.6084/m9.figshare.6931364.v1
+
+Consortium, T. C. C. L. E., & Consortium, T. G. of D. S. in C. (2015). Pharmacogenomic agreement between two cancer cell line data sets. Nature, 528(7580), 84–87. https://doi.org/10.1038/nature15736
+
+Data Science, Cancer (2018): DEMETER2 data. figshare. Fileset. doi:10.6084/m9.figshare.6025238.v2
+
+Doench, J. G., Fusi, N., Sullender, M., Hegde, M., Vaimberg, E. W., Donovan, K. F., … Root, D. E. (2016). Optimized sgRNA design to maximize activity and minimize off-target effects of CRISPR-Cas9. Nature Biotechnology, 34(2), 184–191. https://doi.org/10.1038/nbt.3437
+
+Meyers, R. M., Bryan, J. G., McFarland, J. M., Weir, B. A., Sizemore, A. E., Xu, H., … Tsherniak, A. (2017). Computational correction of copy-number effect improves specificity of CRISPR-Cas9 essentiality screens in cancer cells. Nature Genetics, 49(12), 1779–1784. https://doi.org/10.1038/ng.3984
+
+McFarland, J. M., Ho, Z. V., Kugener, G., Dempster, J. M., Montgomery, P. G., Bryan, J. G., … Tsherniak, A. (2018). Improved estimation of cancer dependencies from large-scale RNAi screens using model-based normalization and data integration. https://doi.org/10.1101/305656
+
+
+# Session information
+
+--------------------------------------------------------------------------------
+
+```{r}
+print(sessionInfo())
+```
+
+
+
+
