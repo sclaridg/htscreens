@@ -539,7 +539,7 @@ chm_annot$Cas9_Activity <- as.numeric(chm_annot$Cas9_Activity)
 ```
 
 Heatmap code:
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 chm_scores_plot <- Heatmap(chm_scores, name = "CERES Score",
         bottom_annotation = HeatmapAnnotation(df = chm_annot),
         bottom_annotation_height = unit(5, "in"),
@@ -559,36 +559,97 @@ chm_scores_plot <- Heatmap(chm_scores, name = "CERES Score",
         column_dend_height = unit(4, "in"),
         row_dend_width = unit(4, "in"),
         width = 3)
+
+chm_plot_cols <- colnames(chm_scores)[unlist(column_order(chm_scores_plot))]
+chm_plot_rows <- rownames(chm_scores)[unlist(row_order(chm_scores_plot))]
+
 chm_ge_plot <- Heatmap(chm_ge, name = "Gene Expression (RPKM)",
+        na_col = "black",
         cluster_rows = FALSE, cluster_columns = FALSE,
         show_row_names = FALSE, show_column_names = FALSE,
         column_title = "Gene Expression",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
-        column_order = colnames(chm_scores)[unlist(column_order(chm_scores_plot))],
-        row_order = rownames(chm_scores)[unlist(row_order(chm_scores_plot))],
+        column_order = chm_plot_cols,
+        row_order = chm_plot_rows,
         width = 1)
 chm_cn_plot <- Heatmap(chm_cn, name = "Copy Number",
+        na_col = "black",
         cluster_rows = FALSE, cluster_columns = FALSE,
         show_row_names = FALSE, show_column_names = FALSE,
         column_title = "Copy Number",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
-        column_order = colnames(chm_scores)[unlist(column_order(chm_scores_plot))],
-        row_order = rownames(chm_scores)[unlist(row_order(chm_scores_plot))],
+        column_order = chm_plot_cols,
+        row_order = chm_plot_rows,
         width = 1)
 chm_mut_plot <- Heatmap(chm_mut, name = "Mutation Status",
+        na_col = "black",
         col = c("cyan3", "darkorchid"),
         cluster_rows = FALSE, cluster_columns = FALSE,
         show_row_names = FALSE, show_column_names = FALSE,
         column_title = "Mutation Status",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
-        column_order = colnames(chm_scores)[unlist(column_order(chm_scores_plot))],
-        row_order = rownames(chm_scores)[unlist(row_order(chm_scores_plot))],
+        column_order = chm_plot_cols,
+        row_order = chm_plot_rows,
         width = 1)
 
-chm_all_plot <- chm_scores_plot + chm_ge_plot + chm_cn_plot + chm_mut_plot
-  
-pdf("./plots_18Q3/crispr_heatmap_all.pdf", width = 100, height = 100, paper = "special") 
-draw(chm_all_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+# chm_all_plot <- chm_scores_plot + chm_ge_plot + chm_cn_plot + chm_mut_plot
+#   
+# pdf("./../crispr_lineages_giant_files/crispr_heatmap_all.pdf", width = 100, height = 100, paper = "special") 
+# draw(chm_all_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+# seekViewport("annotation_Cell_Line_SSMD")
+# grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Cas9_Activity")
+# grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Culture_Type")
+# grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Primary_Tissue")
+# grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Primary_Disease")
+# grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Gender")
+# grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Source")
+# grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# dev.off()
+
+# pdf("./../crispr_lineages_giant_files/crispr_heatmap_ge.pdf", width = 100, height = 100, paper = "special") 
+# draw(chm_scores_plot + chm_ge_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+# seekViewport("annotation_Cell_Line_SSMD")
+# grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Cas9_Activity")
+# grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Culture_Type")
+# grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Primary_Tissue")
+# grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Primary_Disease")
+# grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Gender")
+# grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# seekViewport("annotation_Source")
+# grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+# dev.off()
+
+pdf("./../crispr_lineages_giant_files/crispr_heatmap_mut.pdf", width = 100, height = 100, paper = "special") 
+draw(chm_scores_plot + chm_mut_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+seekViewport("annotation_Cell_Line_SSMD")
+grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Cas9_Activity")
+grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Culture_Type")
+grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Tissue")
+grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Disease")
+grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Gender")
+grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Source")
+grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+dev.off()
+
+pdf("./../crispr_lineages_giant_files/crispr_heatmap_cn.pdf", width = 100, height = 100, paper = "special") 
+draw(chm_scores_plot + chm_cn_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 seekViewport("annotation_Cas9_Activity")
