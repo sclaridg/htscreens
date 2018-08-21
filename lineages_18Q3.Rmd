@@ -100,7 +100,7 @@ make_CRISPRgrob <- function(g) {
     theme(legend.position = "none") +
     labs(x = paste0(g, " Mutation Status"), y = "CERES Score",
          title = "Mutation Status",
-         subtitle = paste0("Wilcoxon test:\n\tBH-corrected p-value: ", sig$p.adj.short, "\n\tUncorrected p-value: ", sig$p.short))
+         subtitle = paste0("Wilcoxon test:\n- BH-corrected p-value: ", sig$p.adj.short, "\n- Uncorrected p-value: ", sig$p.short))
   
   # Copy number
   lo_cn <- range(gene$Copy_Number[!is.na(gene$Copy_Number)])[1]
@@ -250,8 +250,7 @@ colnames(cn) <- gsub(" .*", "", colnames(cn))
 colnames(cn)[1] <- "Broad_ID"
 
 # Melt
-cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]))
-colnames(cn_melt) <- c("Broad_ID", "Hugo_Symbol", "Copy_Number")
+cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Hugo_Symbol", value.name = "Copy_Number")
 
 saveRDS(cn_melt, "./data_munging/rds/cn_melt_18Q3.rds", compress = "xz")
 ```
@@ -263,28 +262,25 @@ cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q3.rds")
 ## Gene expression file
 
 Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
-```{r}
-ge <- read.delim("./../CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
-```
-
 ```{r, eval=FALSE}
+ge <- read.delim("./../crispr_lineages_giant_files/CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
+
 # Edit columns
 ge$Name <- NULL
 colnames(ge)[1] <- "Hugo_Symbol"
 
 # Melt
-ge_melt <- melt(data = ge, id.vars = "Hugo_Symbol", measure.vars = colnames(ge[2:ncol(ge)]))
-colnames(ge_melt)[3] <- "RPKM"
+ge_melt <- melt(data = ge, id.vars = "Hugo_Symbol", measure.vars = colnames(ge[2:ncol(ge)]), value.name = "RPKM")
 ## Split variable column
 ge_melt <- with(ge_melt, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "Broad_ID")), RPKM))
 ## Remove parentheses around Broad IDs
 ge_melt$Broad_ID <- gsub("\\(|\\)", "", ge_melt$Broad_ID)
 
-saveRDS(ge_melt, "./../ge_melt_18Q3.rds", compress = "xz")
+saveRDS(ge_melt, "./../crispr_lineages_giant_files/ge_melt_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-ge_melt <- readRDS("./../ge_melt_18Q3.rds")
+ge_melt <- readRDS("./../crispr_lineages_giant_files/ge_melt_18Q3.rds")
 ```
 
 ## CRISPR data and annotations
@@ -299,8 +295,7 @@ colnames(crispr) <- gsub(" .*", "", colnames(crispr))
 Merge annotation data:
 ```{r, eval=FALSE}
 # Melt CRISPR dataset for merging
-crispr_melt <- melt(crispr, id.vars = "Broad_ID", measure.vars = colnames(crispr)[2:ncol(crispr)])
-colnames(crispr_melt) <- c("Broad_ID", "Hugo_Symbol", "Score")
+crispr_melt <- melt(crispr, id.vars = "Broad_ID", measure.vars = colnames(crispr)[2:ncol(crispr)], variable.name = "Hugo_Symbol", value.name = "Score")
 
 # Merge cell line metadata
 crispr_melt <- merge(crispr_melt, ccl_info, by = "Broad_ID", all.x = TRUE)
@@ -352,8 +347,7 @@ colnames(shrna)[1] <- "Hugo_Symbol"
 shrna$Hugo_Symbol <- gsub(" .*", "", shrna$Hugo_Symbol)
 
 # Melt shRNA dataset for merging
-shrna_melt <- melt(shrna , id.vars = "Hugo_Symbol", measure.vars = colnames(shrna)[2:ncol(shrna)])
-colnames(shrna_melt) <- c("Hugo_Symbol", "CCLE_Name", "Score")
+shrna_melt <- melt(shrna , id.vars = "Hugo_Symbol", measure.vars = colnames(shrna)[2:ncol(shrna)], variable.name = "CCLE_Name", value.name = "Score")
 shrna_melt <- drop_na(shrna_melt)
 ```
 
@@ -391,11 +385,11 @@ shrna_data <- merge(shrna_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.
 ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(shrna_data$Hugo_Symbol))
 shrna_data <- merge(shrna_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
 
-saveRDS(shrna_data, "./../shrna_data_18Q3.rds", compress = "xz")
+saveRDS(shrna_data, "./../crispr_lineages_giant_files/shrna_data_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-shrna_data <- readRDS("./../shrna_data_18Q3.rds")
+shrna_data <- readRDS("./../crispr_lineages_giant_files/shrna_data_18Q3.rds")
 shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
 ```
 
@@ -421,7 +415,7 @@ saveRDS(crispr_signif, "./data_munging/rds/crispr_signif.rds")
 ```{r}
 crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
 
-knitr::kable(crispr_signif[, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(crispr_signif[1:100, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -451,7 +445,7 @@ saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
 ```{r}
 shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
 
-knitr::kable(shrna_signif[, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(shrna_signif[1:100, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -460,11 +454,11 @@ knitr::kable(shrna_signif[, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilc
 shrna_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
 shrna_signif_lineage <- adj_signif(shrna_signif_lineage)
 shrna_signif_lineage <- mutate(shrna_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
-saveRDS(shrna_signif_lineage, "./../shrna_signif_lineage.rds")
+saveRDS(shrna_signif_lineage, "./../crispr_lineages_giant_files/shrna_signif_lineage.rds")
 ```
 
 ```{r, eval=FALSE}
-shrna_signif_lineage <- readRDS("./../shrna_signif_lineage.rds")
+shrna_signif_lineage <- readRDS("./../crispr_lineages_giant_files/shrna_signif_lineage.rds")
 ```
 
 
@@ -474,15 +468,66 @@ shrna_signif_lineage <- readRDS("./../shrna_signif_lineage.rds")
 
 ## CRISPR
 
+Make and save heatmap data matrices:
 ```{r, eval=FALSE}
 # Set up heatmap data
-chm_data <- t(crispr)
-colnames(chm_data) <- chm_data[1, ]
-chm_data <- chm_data[-1, ]
-chm_cols <- colnames(chm_data)
-chm_data <- apply(chm_data, 2, as.double)
-chm_data <- apply(chm_data, 2, function(x) (x - mean(x)) / var(x))
-colnames(chm_data) <- chm_cols
+chm_scores <- t(crispr)
+colnames(chm_scores) <- chm_scores[1, ]
+chm_scores <- chm_scores[-1, ]
+chm_cols <- colnames(chm_scores)
+chm_scores <- apply(chm_scores, 2, as.double)
+chm_scores <- apply(chm_scores, 2, function(x) (x - mean(x)) / var(x))
+colnames(chm_scores) <- chm_cols
+saveRDS(chm_scores, "./data_munging/rds/crispr_heatmap_scores.rds")
+
+# Make full grid for genomic features
+crispr_grid_ccls <- unique(crispr_data$Broad_ID)
+crispr_grid_genes <- unique(crispr_data$Hugo_Symbol)
+crispr_grid <- expand.grid("Broad_ID" = crispr_grid_ccls, "Hugo_Symbol" = crispr_grid_genes)
+
+# Gene expression
+ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))[, c("Hugo_Symbol", "Broad_ID", "RPKM")]
+chm_ge_grid <- merge(crispr_grid, ge_filt, by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
+chm_ge <- reshape(chm_ge_grid, idvar = "Hugo_Symbol", timevar = "Broad_ID", direction = "wide")
+chm_ge_rows <- chm_ge$Hugo_Symbol
+chm_ge$Hugo_Symbol <- NULL
+chm_ge_cols <- colnames(chm_ge) %>% gsub("RPKM.", "", .)
+chm_ge <- matrix(as.numeric(unlist(chm_ge)), nrow = nrow(chm_ge))
+rownames(chm_ge) <- chm_ge_rows
+colnames(chm_ge) <- chm_ge_cols
+saveRDS(chm_ge, "./data_munging/rds/crispr_heatmap_ge.rds")
+
+# Mutation status
+chm_mut_grid <- merge(crispr_grid, maf_df[, c("Broad_ID", "Hugo_Symbol", "Mutation_Status")], by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
+chm_mut_grid$Mutation_Status <- ifelse(is.na(chm_mut_grid$Mutation_Status), 0, 1)
+chm_mut <- reshape(chm_mut_grid, idvar = "Hugo_Symbol", timevar = "Broad_ID", direction = "wide")
+chm_mut_rows <- chm_mut$Hugo_Symbol
+chm_mut$Hugo_Symbol <- NULL
+chm_mut_cols <- colnames(chm_mut) %>% gsub("Mutation_Status.", "", .)
+chm_mut <- matrix(as.numeric(unlist(chm_mut)), nrow = nrow(chm_mut))
+rownames(chm_mut) <- chm_mut_rows
+colnames(chm_mut) <- chm_mut_cols
+saveRDS(chm_mut, "./data_munging/rds/crispr_heatmap_mut.rds")
+
+# Copy number
+cn_filt <- filter(cn_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
+chm_cn_grid <- merge(crispr_grid, cn_melt, by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
+chm_cn <- reshape(chm_cn_grid, idvar = "Hugo_Symbol", timevar = "Broad_ID", direction = "wide")
+chm_cn_rows <- chm_cn$Hugo_Symbol
+chm_cn$Hugo_Symbol <- NULL
+chm_cn_cols <- colnames(chm_cn) %>% gsub("Copy_Number.", "", .)
+chm_cn <- matrix(as.numeric(unlist(chm_cn)), nrow = nrow(chm_cn))
+rownames(chm_cn) <- chm_cn_rows
+colnames(chm_cn) <- chm_cn_cols
+saveRDS(chm_cn, "./data_munging/rds/crispr_heatmap_cn.rds")
+```
+
+Load heatmap matrices:
+```{r}
+chm_scores <- readRDS("./data_munging/rds/crispr_heatmap_scores.rds")
+chm_ge <- readRDS("./data_munging/rds/crispr_heatmap_ge.rds")
+chm_mut <- readRDS("./data_munging/rds/crispr_heatmap_mut.rds")
+chm_cn <- readRDS("./data_munging/rds/crispr_heatmap_cn.rds")
 
 # Metadata anotation dataframe
 chm_annot <- merge(merge(data.frame("Broad_ID" = crispr$Broad_ID), crispr_meta[, c("Broad_ID", "cell_line_SSMD", "cas9_activity", "culture_type", "primary_tissue")], by = "Broad_ID", all.x = TRUE), ccl_info[, c("Broad_ID", "Primary.Disease", "Gender", "Source")], by = "Broad_ID", all.x = TRUE)
@@ -491,25 +536,16 @@ chm_annot$Broad_ID <- NULL
 colnames(chm_annot) <- c("Cell_Line_SSMD", "Cas9_Activity", "Culture_Type", "Primary_Tissue", "Primary_Disease", "Gender", "Source")
 chm_annot$Cell_Line_SSMD <- as.numeric(chm_annot$Cell_Line_SSMD)
 chm_annot$Cas9_Activity <- as.numeric(chm_annot$Cas9_Activity)
-
-# Make full grid for genomic features
-crispr_grid_ccls <- unique(crispr_data$Broad_ID)
-crispr_grid_genes <- unique(crispr_data$Hugo_Symbol)
-crispr_grid <- expand.grid("Broad_ID" = crispr_grid_ccls, "Hugo_Symbol" = crispr_grid_genes)
-
-# Gene expression
-ge_chm_grid <- merge(crispr_grid, ge_melt[, c("Hugo_Symbol", "Broad_ID", "RPKM")], by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
 ```
 
-
+Heatmap code:
 ```{r, eval=FALSE}
-chma <- HeatmapAnnotation(df = chm_annot)
-
-chm_euc <- Heatmap(chm_data, name = "CERES Score",
-        bottom_annotation = chma,
+chm_scores_plot <- Heatmap(chm_scores, name = "CERES Score",
+        bottom_annotation = HeatmapAnnotation(df = chm_annot),
         bottom_annotation_height = unit(5, "in"),
         row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
         col = colorRamp2(c(-15, 0, 5), c("purple4", "white", "seagreen4")),
+        na_col = "black",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         show_column_names = FALSE,
         row_title_gp = gpar(fontsize = 60, fontface = "bold"),
@@ -523,9 +559,36 @@ chm_euc <- Heatmap(chm_data, name = "CERES Score",
         column_dend_height = unit(4, "in"),
         row_dend_width = unit(4, "in"),
         width = 3)
+chm_ge_plot <- Heatmap(chm_ge, name = "Gene Expression (RPKM)",
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Gene Expression",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = colnames(chm_scores)[unlist(column_order(chm_scores_plot))],
+        row_order = rownames(chm_scores)[unlist(row_order(chm_scores_plot))],
+        width = 1)
+chm_cn_plot <- Heatmap(chm_cn, name = "Copy Number",
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Copy Number",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = colnames(chm_scores)[unlist(column_order(chm_scores_plot))],
+        row_order = rownames(chm_scores)[unlist(row_order(chm_scores_plot))],
+        width = 1)
+chm_mut_plot <- Heatmap(chm_mut, name = "Mutation Status",
+        col = c("cyan3", "darkorchid"),
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Mutation Status",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = colnames(chm_scores)[unlist(column_order(chm_scores_plot))],
+        row_order = rownames(chm_scores)[unlist(row_order(chm_scores_plot))],
+        width = 1)
 
-pdf("./plots_18Q3/crispr_heatmap_euclidean.pdf", width = 100, height = 100, paper = "special") 
-draw(chm_euc, heatmap_legend_side = "right", annotation_legend_side = "right")
+chm_all_plot <- chm_scores_plot + chm_ge_plot + chm_cn_plot + chm_mut_plot
+  
+pdf("./plots_18Q3/crispr_heatmap_all.pdf", width = 100, height = 100, paper = "special") 
+draw(chm_all_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 seekViewport("annotation_Cas9_Activity")
