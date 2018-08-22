@@ -83,7 +83,7 @@ adj_signif <- function(df) {
 ### Make CRISPR grobs
 
 ```{r}
-make_CRISPRgrob <- function(g) {
+makeCRISPRgrob <- function(g) {
   
   gene <- filter(crispr_data, Hugo_Symbol == g)
   
@@ -157,7 +157,7 @@ make_CRISPRgrob <- function(g) {
 ### Make lineage plot
 
 ```{r}
-make_CRISPRlinplot <- function(g) {
+makeCRISPRlinplot <- function(g) {
   gene <- filter(crispr_data, Hugo_Symbol == g)
   sig <- filter(crispr_signif_lineage, Hugo_Symbol == g)
   gene <- merge(gene, sig, by = c("Hugo_Symbol", "lineage_name"))
@@ -183,13 +183,146 @@ make_CRISPRlinplot <- function(g) {
 }
 ```
 
+### Make individual heatmaps per cluster
+
+Take in a sorted gene list from a larger heatmap and produce smaller, individual heatmaps:
+```{r, eval=FALSE}
+makeHeatmaps <- function(clust_obj, clust_num) {
+  chm_plot_cols <- colnames(clust_obj)
+  chm_plot_rows <- rownames(clust_obj)
+  
+  chm_plot <- Heatmap(clust_obj, name = "CERES Score",
+          bottom_annotation = HeatmapAnnotation(df = chm_annot),
+          bottom_annotation_height = unit(5, "in"),
+          row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
+          col = colorRamp2(c(min(chm_scores), 0, max(chm_scores)), c("purple4", "white", "seagreen4")),
+          na_col = "black",
+          column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+          show_column_names = FALSE,
+          row_title_gp = gpar(fontsize = 60, fontface = "bold"),
+          show_row_names = FALSE,
+          row_dend_reorder = TRUE,
+          column_dend_reorder = TRUE,
+          column_order = chm_plot_cols,
+          row_order = chm_plot_rows,
+          column_dend_height = unit(4, "in"),
+          row_dend_width = unit(4, "in"),
+          width = 3)
+  
+  chm_ge_plot <- Heatmap(chm_ge[row_order(chm_scores_draw)[[clust_num]],], name = "Gene Expression (RPKM)",
+          col = colorRamp2(c(min(chm_ge[!is.na(chm_ge)]), 0.25, max(chm_ge[!is.na(chm_ge)])), c("dodgerblue4", "white", "firebrick4")),
+          na_col = "black",
+          cluster_rows = FALSE, cluster_columns = FALSE,
+          show_row_names = FALSE, show_column_names = FALSE,
+          column_title = "Gene Expression",
+          column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+          column_order = chm_plot_cols,
+          row_order = chm_plot_rows,
+          width = 1)
+  chm_cn_plot <- Heatmap(chm_cn[row_order(chm_scores_draw)[[clust_num]],], name = "Copy Number",
+          col = colorRamp2(c(min(chm_cn[!is.na(chm_cn)]), 2, max(chm_cn[!is.na(chm_cn)])), c("dodgerblue4", "white", "firebrick4")),
+          na_col = "black",
+          cluster_rows = FALSE, cluster_columns = FALSE,
+          show_row_names = FALSE, show_column_names = FALSE,
+          column_title = "Copy Number",
+          column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+          column_order = chm_plot_cols,
+          row_order = chm_plot_rows,
+          width = 1)
+  chm_mut_plot <- Heatmap(chm_mut[row_order(chm_scores_draw)[[clust_num]],], name = "Mutation Status",
+          na_col = "black",
+          col = c("cyan3", "darkorchid"),
+          cluster_rows = FALSE, cluster_columns = FALSE,
+          show_row_names = FALSE, show_column_names = FALSE,
+          column_title = "Mutation Status",
+          column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+          column_order = chm_plot_cols,
+          row_order = chm_plot_rows,
+          width = 1)
+  
+  chm_all_plot <- chm_plot + chm_ge_plot + chm_cn_plot + chm_mut_plot
+  
+  pdf(paste0("./plots_18Q3/crispr_heatmap_all_c", clust_num, ".pdf"), width = 100, height = 100, paper = "special")
+  draw(chm_all_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+  seekViewport("annotation_Cell_Line_SSMD")
+  grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Cas9_Activity")
+  grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Culture_Type")
+  grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Tissue")
+  grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Disease")
+  grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Gender")
+  grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Source")
+  grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  dev.off()
+  
+  pdf(paste0("./plots_18Q3/crispr_heatmap_ge_c", clust_num, ".pdf"), width = 100, height = 100, paper = "special")
+  draw(chm_plot + chm_ge_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+  seekViewport("annotation_Cell_Line_SSMD")
+  grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Cas9_Activity")
+  grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Culture_Type")
+  grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Tissue")
+  grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Disease")
+  grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Gender")
+  grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Source")
+  grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  dev.off()
+  
+  pdf(paste0("./plots_18Q3/crispr_heatmap_mut_c", clust_num, ".pdf"), width = 100, height = 100, paper = "special") 
+  draw(chm_plot + chm_mut_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+  seekViewport("annotation_Cell_Line_SSMD")
+  grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Cas9_Activity")
+  grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Culture_Type")
+  grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Tissue")
+  grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Disease")
+  grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Gender")
+  grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Source")
+  grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  dev.off()
+  
+  pdf(paste0("./plots_18Q3/crispr_heatmap_cn_c", clust_num, ".pdf"), width = 100, height = 100, paper = "special") 
+  draw(chm_plot + chm_cn_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+  seekViewport("annotation_Cell_Line_SSMD")
+  grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Cas9_Activity")
+  grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Culture_Type")
+  grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Tissue")
+  grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Primary_Disease")
+  grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Gender")
+  grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  seekViewport("annotation_Source")
+  grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+  dev.off()
+}
+```
+
 ## Cell line converter
 
 This comprehensive cancer cell line information curated by Daniel Charytonowicz.
 ```{r}
-ccl_converter <- read.delim("./data_munging/danielc_cell_line_database_completed_extra_SE.tsv", sep = "\t", row.names = NULL, header = TRUE)
-colnames(ccl_converter)[4] <- "CCLE_Name"
-colnames(ccl_converter)[10] <- "Broad_ID"
+ccl_converter <- read.delim("./data_munging/cell_line_database_FINAL_MASTER.tsv", sep = "\t", row.names = 1, header = TRUE)
+colnames(ccl_converter)[colnames(ccl_converter) == "ccle_cell_line_name"] <- "CCLE_Name"
+colnames(ccl_converter)[colnames(ccl_converter) == "broad_id"] <- "Broad_ID"
 ```
 
 ## Cell line metadata
@@ -215,6 +348,12 @@ test <- merge(ccl_test, dan_test, by = "CCLE_Name", all = TRUE, suffixes = c("_D
 test$BroadIDs_match <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
 ```
 
+## Cancer Gene Census (CGC) gene list
+
+Select genes from the Cancer Gene Census (CGC). The list was pulled from the [International Cancer Genome Consortium (ICGC) data portal](https://dcc.icgc.org/search/g?filters=%7B%22gene%22:%7B%22curatedSetId%22:%7B%22is%22:%5B%22GS1%22%5D%7D%7D%7D) (Advaced Search > Genes > Curated Gene Set > Cancer Gene Census).
+```{r}
+cgc <- data_frame("Hugo_Symbol" = read.delim("./data_munging/gene-ids-for-set-Cancer Gene Census.tsv", header = FALSE, sep = "\t")[, 2])
+```
 
 ## MAF file
 
@@ -468,16 +607,20 @@ shrna_signif_lineage <- readRDS("./../crispr_lineages_giant_files/shrna_signif_l
 
 ## CRISPR
 
+### Data management
+
 Make and save heatmap data matrices:
 ```{r, eval=FALSE}
 # Set up heatmap data
 chm_scores <- t(crispr)
 colnames(chm_scores) <- chm_scores[1, ]
 chm_scores <- chm_scores[-1, ]
+chm_rows <- rownames(chm_scores)
 chm_cols <- colnames(chm_scores)
 chm_scores <- apply(chm_scores, 2, as.double)
 chm_scores <- apply(chm_scores, 2, function(x) (x - mean(x)) / var(x))
 colnames(chm_scores) <- chm_cols
+rownames(chm_scores) <- chm_rows
 saveRDS(chm_scores, "./data_munging/rds/crispr_heatmap_scores.rds")
 
 # Make full grid for genomic features
@@ -538,13 +681,15 @@ chm_annot$Cell_Line_SSMD <- as.numeric(chm_annot$Cell_Line_SSMD)
 chm_annot$Cas9_Activity <- as.numeric(chm_annot$Cas9_Activity)
 ```
 
-Heatmap code:
-```{r, eval=TRUE}
+### K-means clustered
+
+Code for k-means clustered heatmap:
+```{r, eval=FALSE}
 chm_scores_plot <- Heatmap(chm_scores, name = "CERES Score",
         bottom_annotation = HeatmapAnnotation(df = chm_annot),
         bottom_annotation_height = unit(5, "in"),
         row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
-        col = colorRamp2(c(-15, 0, 5), c("purple4", "white", "seagreen4")),
+        col = colorRamp2(c(min(chm_scores), 0, max(chm_scores)), c("purple4", "white", "seagreen4")),
         na_col = "black",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         show_column_names = FALSE,
@@ -558,80 +703,13 @@ chm_scores_plot <- Heatmap(chm_scores, name = "CERES Score",
         clustering_method_columns = "complete",
         column_dend_height = unit(4, "in"),
         row_dend_width = unit(4, "in"),
-        width = 3)
+        width = 3,
+        km = 5, gap = unit(0.5, "in"))
 
-chm_plot_cols <- colnames(chm_scores)[unlist(column_order(chm_scores_plot))]
-chm_plot_rows <- rownames(chm_scores)[unlist(row_order(chm_scores_plot))]
+chm_scores_draw <- draw(chm_scores_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
 
-chm_ge_plot <- Heatmap(chm_ge, name = "Gene Expression (RPKM)",
-        na_col = "black",
-        cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
-        column_title = "Gene Expression",
-        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
-        column_order = chm_plot_cols,
-        row_order = chm_plot_rows,
-        width = 1)
-chm_cn_plot <- Heatmap(chm_cn, name = "Copy Number",
-        na_col = "black",
-        cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
-        column_title = "Copy Number",
-        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
-        column_order = chm_plot_cols,
-        row_order = chm_plot_rows,
-        width = 1)
-chm_mut_plot <- Heatmap(chm_mut, name = "Mutation Status",
-        na_col = "black",
-        col = c("cyan3", "darkorchid"),
-        cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
-        column_title = "Mutation Status",
-        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
-        column_order = chm_plot_cols,
-        row_order = chm_plot_rows,
-        width = 1)
-
-# chm_all_plot <- chm_scores_plot + chm_ge_plot + chm_cn_plot + chm_mut_plot
-#   
-# pdf("./../crispr_lineages_giant_files/crispr_heatmap_all.pdf", width = 100, height = 100, paper = "special") 
-# draw(chm_all_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
-# seekViewport("annotation_Cell_Line_SSMD")
-# grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Cas9_Activity")
-# grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Culture_Type")
-# grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Primary_Tissue")
-# grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Primary_Disease")
-# grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Gender")
-# grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Source")
-# grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# dev.off()
-
-# pdf("./../crispr_lineages_giant_files/crispr_heatmap_ge.pdf", width = 100, height = 100, paper = "special") 
-# draw(chm_scores_plot + chm_ge_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
-# seekViewport("annotation_Cell_Line_SSMD")
-# grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Cas9_Activity")
-# grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Culture_Type")
-# grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Primary_Tissue")
-# grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Primary_Disease")
-# grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Gender")
-# grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# seekViewport("annotation_Source")
-# grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
-# dev.off()
-
-pdf("./../crispr_lineages_giant_files/crispr_heatmap_mut.pdf", width = 100, height = 100, paper = "special") 
-draw(chm_scores_plot + chm_mut_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+pdf("./plots_18Q3/crispr_heatmap_euclidean_split5.pdf", width = 100, height = 100, paper = "special")
+chm_scores_draw
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 seekViewport("annotation_Cas9_Activity")
@@ -648,8 +726,91 @@ seekViewport("annotation_Source")
 grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 dev.off()
 
-pdf("./../crispr_lineages_giant_files/crispr_heatmap_cn.pdf", width = 100, height = 100, paper = "special") 
-draw(chm_scores_plot + chm_cn_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
+# chm_scores_c1 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[1]],])))
+# chm_scores_c2 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[2]],])))
+# chm_scores_c3 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[3]],])))
+# chm_scores_c4 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[4]],])))
+
+chm_scores_c1 <- chm_scores[row_order(chm_scores_draw)[[1]],]
+chm_scores_c2 <- chm_scores[row_order(chm_scores_draw)[[2]],]
+chm_scores_c3 <- chm_scores[row_order(chm_scores_draw)[[3]],]
+chm_scores_c4 <- chm_scores[row_order(chm_scores_draw)[[4]],]
+chm_scores_c5 <- chm_scores[row_order(chm_scores_draw)[[5]],]
+
+makeHeatmaps(chm_scores_c1, 1)
+makeHeatmaps(chm_scores_c2, 2)
+makeHeatmaps(chm_scores_c3, 3)
+makeHeatmaps(chm_scores_c4, 4)
+makeHeatmaps(chm_scores_c5, 5)
+```
+
+### CGC genes
+
+Code for heatmap of CGC-filtered genes only:
+```{r, eval=FALSE}
+chm_scores_cgc <- subset(chm_scores, rownames(chm_scores) %in% cgc$Hugo_Symbol)
+chm_ge_cgc <- subset(chm_ge, rownames(chm_ge) %in% cgc$Hugo_Symbol)
+chm_mut_cgc <- subset(chm_mut, rownames(chm_mut) %in% cgc$Hugo_Symbol)
+chm_cn_cgc <- subset(chm_cn, rownames(chm_cn) %in% cgc$Hugo_Symbol)
+
+chm_plot_cgc <- Heatmap(chm_scores_cgc, name = "CERES Score",
+        bottom_annotation = HeatmapAnnotation(df = chm_annot),
+        bottom_annotation_height = unit(5, "in"),
+        row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
+        col = colorRamp2(c(min(chm_scores_cgc), 0, max(chm_scores_cgc)), c("purple4", "white", "seagreen4")),
+        na_col = "black",
+        row_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        row_names_gp = gpar(fontsize = 10),
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_names_gp = gpar(fontsize = 10),
+        row_dend_reorder = TRUE,
+        column_dend_reorder = TRUE,
+        clustering_distance_rows = "euclidean",
+        clustering_distance_columns = "euclidean",
+        clustering_method_rows = "complete",
+        clustering_method_columns = "complete",
+        column_dend_height = unit(4, "in"),
+        row_dend_width = unit(4, "in"),
+        width = 3)
+
+chm_plot_cgc_cols <- colnames(chm_scores_cgc)[unlist(column_order(chm_plot_cgc))]
+chm_plot_cgc_rows <- rownames(chm_scores_cgc)[unlist(row_order(chm_plot_cgc))]
+
+chm_ge_plot_cgc <- Heatmap(chm_ge_cgc, name = "Gene Expression (RPKM)",
+        col = colorRamp2(c(min(chm_ge_cgc[!is.na(chm_ge_cgc)]), 0.25, max(chm_ge_cgc[!is.na(chm_ge_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+        na_col = "black",
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Gene Expression",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = chm_plot_cgc_cols,
+        row_order = chm_plot_cgc_rows,
+        width = 1)
+chm_cn_plot_cgc <- Heatmap(chm_cn_cgc, name = "Copy Number",
+        col = colorRamp2(c(min(chm_cn_cgc[!is.na(chm_cn_cgc)]), 2, max(chm_cn_cgc[!is.na(chm_cn_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+        na_col = "black",
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Copy Number",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = chm_plot_cgc_cols,
+        row_order = chm_plot_cgc_rows,
+        width = 1)
+chm_mut_plot_cgc <- Heatmap(chm_mut_cgc, name = "Mutation Status",
+        na_col = "black",
+        col = c("cyan3", "darkorchid"),
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Mutation Status",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = chm_plot_cgc_cols,
+        row_order = chm_plot_cgc_rows,
+        width = 1)
+
+chm_all_plot_cgc <- chm_plot_cgc + chm_ge_plot_cgc + chm_cn_plot_cgc + chm_mut_plot_cgc
+
+pdf("./plots_18Q3/crispr_heatmap_all_cgc.pdf", width = 100, height = 100, paper = "special")
+draw(chm_all_plot_cgc, heatmap_legend_side = "right", annotation_legend_side = "right")
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 seekViewport("annotation_Cas9_Activity")
@@ -666,7 +827,6 @@ seekViewport("annotation_Source")
 grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 dev.off()
 ```
-
 
 
 # Per-gene plots
@@ -678,25 +838,25 @@ dev.off()
 ### KRAS
 
 ```{r fig.height=12, fig.width=12}
-make_CRISPRgrob("KRAS")
+makeCRISPRgrob("KRAS")
 ```
 
 ### TP53
 
 ```{r fig.height=12, fig.width=12}
-make_CRISPRgrob("TP53")
+makeCRISPRgrob("TP53")
 ```
 
 ### BRAF
 
 ```{r fig.height=12, fig.width=12}
-make_CRISPRgrob("BRAF")
+makeCRISPRgrob("BRAF")
 ```
 
 ### NRAS
 
 ```{r fig.height=12, fig.width=12}
-make_CRISPRgrob("NRAS")
+makeCRISPRgrob("NRAS")
 ```
 
 ## Sorted lineage plots {.tabset .tabset-fade .tabset-pills}
@@ -704,25 +864,25 @@ make_CRISPRgrob("NRAS")
 ### KRAS
 
 ```{r fig.height=10, fig.width=15}
-make_CRISPRlinplot("KRAS")
+makeCRISPRlinplot("KRAS")
 ```
 
 ### TP53
 
 ```{r fig.height=10, fig.width=15}
-make_CRISPRlinplot("TP53")
+makeCRISPRlinplot("TP53")
 ```
 
 ### BRAF
 
 ```{r fig.height=10, fig.width=15}
-make_CRISPRlinplot("BRAF")
+makeCRISPRlinplot("BRAF")
 ```
 
 ### NRAS
 
 ```{r fig.height=10, fig.width=15}
-make_CRISPRlinplot("NRAS")
+makeCRISPRlinplot("NRAS")
 ```
 
 
