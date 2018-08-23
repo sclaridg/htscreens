@@ -666,7 +666,7 @@ saveRDS(chm_cn, "./data_munging/rds/crispr_heatmap_cn.rds")
 ```
 
 Load heatmap matrices:
-```{r}
+```{r, eval=FALSE}
 chm_scores <- readRDS("./data_munging/rds/crispr_heatmap_scores.rds")
 chm_ge <- readRDS("./data_munging/rds/crispr_heatmap_ge.rds")
 chm_mut <- readRDS("./data_munging/rds/crispr_heatmap_mut.rds")
@@ -682,6 +682,8 @@ chm_annot$Cas9_Activity <- as.numeric(chm_annot$Cas9_Activity)
 ```
 
 ### K-means clustered
+
+#### Euclidean distance
 
 Code for k-means clustered heatmap:
 ```{r, eval=FALSE}
@@ -726,11 +728,6 @@ seekViewport("annotation_Source")
 grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
 dev.off()
 
-# chm_scores_c1 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[1]],])))
-# chm_scores_c2 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[2]],])))
-# chm_scores_c3 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[3]],])))
-# chm_scores_c4 <- t(t(rownames(chm_scores[row_order(chm_scores_draw)[[4]],])))
-
 chm_scores_c1 <- chm_scores[row_order(chm_scores_draw)[[1]],]
 chm_scores_c2 <- chm_scores[row_order(chm_scores_draw)[[2]],]
 chm_scores_c3 <- chm_scores[row_order(chm_scores_draw)[[3]],]
@@ -746,7 +743,11 @@ makeHeatmaps(chm_scores_c5, 5)
 
 ### CGC genes
 
-Code for heatmap of CGC-filtered genes only:
+Code for heatmap of CGC-filtered genes only
+
+
+#### Euclidean distance
+
 ```{r, eval=FALSE}
 chm_scores_cgc <- subset(chm_scores, rownames(chm_scores) %in% cgc$Hugo_Symbol)
 chm_ge_cgc <- subset(chm_ge, rownames(chm_ge) %in% cgc$Hugo_Symbol)
@@ -809,7 +810,7 @@ chm_mut_plot_cgc <- Heatmap(chm_mut_cgc, name = "Mutation Status",
 
 chm_all_plot_cgc <- chm_plot_cgc + chm_ge_plot_cgc + chm_cn_plot_cgc + chm_mut_plot_cgc
 
-pdf("./plots_18Q3/crispr_heatmap_all_cgc.pdf", width = 100, height = 100, paper = "special")
+pdf("./plots_18Q3/crispr_heatmap_euclidean_all_cgc.pdf", width = 100, height = 100, paper = "special")
 draw(chm_all_plot_cgc, heatmap_legend_side = "right", annotation_legend_side = "right")
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
@@ -828,36 +829,118 @@ grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30
 dev.off()
 ```
 
+#### Pearson correlation
+
+```{r, eval=FALSE}
+chm_scores_cgc <- subset(chm_scores, rownames(chm_scores) %in% cgc$Hugo_Symbol)
+chm_ge_cgc <- subset(chm_ge, rownames(chm_ge) %in% cgc$Hugo_Symbol)
+chm_mut_cgc <- subset(chm_mut, rownames(chm_mut) %in% cgc$Hugo_Symbol)
+chm_cn_cgc <- subset(chm_cn, rownames(chm_cn) %in% cgc$Hugo_Symbol)
+
+chm_plot_cgc <- Heatmap(chm_scores_cgc, name = "CERES Score",
+        bottom_annotation = HeatmapAnnotation(df = chm_annot),
+        bottom_annotation_height = unit(5, "in"),
+        row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
+        col = colorRamp2(c(min(chm_scores_cgc), 0, max(chm_scores_cgc)), c("purple4", "white", "seagreen4")),
+        na_col = "black",
+        row_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        row_names_gp = gpar(fontsize = 10),
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_names_gp = gpar(fontsize = 8),
+        row_dend_reorder = TRUE,
+        column_dend_reorder = TRUE,
+        clustering_distance_rows = "pearson",
+        clustering_distance_columns = "pearson",
+        clustering_method_rows = "complete",
+        clustering_method_columns = "complete",
+        column_dend_height = unit(4, "in"),
+        row_dend_width = unit(4, "in"),
+        width = 3)
+
+chm_plot_cgc_cols <- colnames(chm_scores_cgc)[unlist(column_order(chm_plot_cgc))]
+chm_plot_cgc_rows <- rownames(chm_scores_cgc)[unlist(row_order(chm_plot_cgc))]
+
+chm_ge_plot_cgc <- Heatmap(chm_ge_cgc, name = "Gene Expression (RPKM)",
+        col = colorRamp2(c(min(chm_ge_cgc[!is.na(chm_ge_cgc)]), 0.25, max(chm_ge_cgc[!is.na(chm_ge_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+        na_col = "black",
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Gene Expression",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = chm_plot_cgc_cols,
+        row_order = chm_plot_cgc_rows,
+        width = 1)
+chm_cn_plot_cgc <- Heatmap(chm_cn_cgc, name = "Copy Number",
+        col = colorRamp2(c(min(chm_cn_cgc[!is.na(chm_cn_cgc)]), 2, max(chm_cn_cgc[!is.na(chm_cn_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+        na_col = "black",
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Copy Number",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = chm_plot_cgc_cols,
+        row_order = chm_plot_cgc_rows,
+        width = 1)
+chm_mut_plot_cgc <- Heatmap(chm_mut_cgc, name = "Mutation Status",
+        na_col = "black",
+        col = c("cyan3", "darkorchid"),
+        cluster_rows = FALSE, cluster_columns = FALSE,
+        show_row_names = FALSE, show_column_names = FALSE,
+        column_title = "Mutation Status",
+        column_title_gp = gpar(fontsize = 60, fontface = "bold"),
+        column_order = chm_plot_cgc_cols,
+        row_order = chm_plot_cgc_rows,
+        width = 1)
+
+chm_all_plot_cgc <- chm_plot_cgc + chm_ge_plot_cgc + chm_cn_plot_cgc + chm_mut_plot_cgc
+
+pdf("./plots_18Q3/crispr_heatmap_pearson_all_cgc.pdf", width = 100, height = 100, paper = "special")
+draw(chm_all_plot_cgc, heatmap_legend_side = "right", annotation_legend_side = "right")
+seekViewport("annotation_Cell_Line_SSMD")
+grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Cas9_Activity")
+grid.text("Cas9 Activity", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Culture_Type")
+grid.text("Culture Type", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Tissue")
+grid.text("Primary Tissue", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Disease")
+grid.text("Primary Disease", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Gender")
+grid.text("Gender", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+seekViewport("annotation_Source")
+grid.text("Source", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
+dev.off()
+```
 
 # Per-gene plots
 
 --------------------------------------------------------------------------------
 
-## Grouped plots {.tabset .tabset-fade .tabset-pills}
+## Grouped plots
 
-### KRAS
-
-```{r fig.height=12, fig.width=12}
-makeCRISPRgrob("KRAS")
+Plot code:
+```{r, eval=FALSE}
+crispr_all_genes <- unique(crispr_data$Hugo_Symbol)
+crispr_all_groups <- lapply(crispr_all_genes, makeCRISPRgrob)
+crispr_all_groups_paths <- paste0(crispr_all_genes, "_crispr_grouped.png")
+pwalk(list(crispr_all_groups_paths, crispr_all_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots", dpi = 300, width = 12, height = 12, units = "in")
 ```
 
-### TP53
-
-```{r fig.height=12, fig.width=12}
-makeCRISPRgrob("TP53")
+Data management:
+```{r, eval=FALSE}
+crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots", full.names = TRUE))
+names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots/" = ""))
 ```
 
-### BRAF
-
-```{r fig.height=12, fig.width=12}
-makeCRISPRgrob("BRAF")
+Plots:
+```{r, eval=FALSE}
+crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
+crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
+bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
 ```
 
-### NRAS
 
-```{r fig.height=12, fig.width=12}
-makeCRISPRgrob("NRAS")
-```
+
 
 ## Sorted lineage plots {.tabset .tabset-fade .tabset-pills}
 
