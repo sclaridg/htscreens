@@ -1,4 +1,4 @@
-# CRISPR Lineage Analysis
+# CRISPR and shRNA Screen Lineage Analysis
 
 Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017) and the Broad and Dana-Farber Cancer Institite's Achilles shRNA (MacFarland et al. 2018, Data Science 2018).
 
