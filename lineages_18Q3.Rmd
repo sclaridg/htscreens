@@ -158,28 +158,33 @@ makeCRISPRgrob <- function(g) {
 
 ```{r}
 makeCRISPRlinplot <- function(g) {
-  gene <- filter(crispr_data, Hugo_Symbol == g)
   sig <- filter(crispr_signif_lineage, Hugo_Symbol == g)
-  gene <- merge(gene, sig, by = c("Hugo_Symbol", "lineage_name"))
-  gene <- mutate(gene, lineage_name = reorder(lineage_name, p, mean))
-  crispr_color <- as.character(gene$Color)
-  names(crispr_color) <- gene$Mutation_Status
-  score_range <- abs(range(gene$Score)[2] - range(gene$Score)[1])
-  round_accuracy <- ifelse(score_range <= 2, 0.25,
-                           ifelse(score_range <= 3, 0.5, 1.0))
-  
-  plot <- ggplot(data = gene, aes(x = lineage_name, y = Score)) +
-    geom_point(alpha = 0.5, mapping = aes(color = Mutation_Status)) +
-    scale_color_manual(values = crispr_color) +
-    coord_cartesian(y = c(min(gene$Score), round_any(x = max(gene$Score), accuracy = round_accuracy, f = ceiling))) +
-    geom_signif(data = gene, mapping = aes(xmin = lineage_name, xmax = lineage_name, annotations = paste(p.short, "\n", p.adj.short), y_position = max(gene$Score)), manual = TRUE, tip_length   = 0, size = 0, textsize = 3) +
-    theme(legend.position = "top", axis.text.x = element_text(angle = 70, hjust = 1, size = 10)) +
-    labs(y = "CERES Score",
-         x = "Lineage",
-         color = "Mutation Status",
-         title = paste0(g, ": CERES score by cell line lineage"),
-         subtitle = "Lineages sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.")
-  return(plot)
+  if(nrow(sig) == 0) {
+    return(NULL)
+  }
+  else {
+    gene <- filter(crispr_data, Hugo_Symbol == g)
+    gene <- merge(gene, sig, by = c("Hugo_Symbol", "lineage_name"))
+    gene <- mutate(gene, lineage_name = reorder(lineage_name, p, mean))
+    crispr_color <- as.character(gene$Color)
+    names(crispr_color) <- gene$Mutation_Status
+    score_range <- abs(range(gene$Score)[2] - range(gene$Score)[1])
+    round_accuracy <- ifelse(score_range <= 2, 0.25,
+                             ifelse(score_range <= 3, 0.5, 1.0))
+    
+    plot <- ggplot(data = gene, aes(x = lineage_name, y = Score)) +
+      geom_point(alpha = 0.5, mapping = aes(color = Mutation_Status)) +
+      scale_color_manual(values = crispr_color) +
+      coord_cartesian(y = c(min(gene$Score), round_any(x = max(gene$Score), accuracy = round_accuracy, f = ceiling))) +
+      geom_signif(data = gene, mapping = aes(xmin = lineage_name, xmax = lineage_name, annotations = paste(p.short, "\n", p.adj.short), y_position = max(gene$Score)), manual = TRUE, tip_length   = 0, size = 0, textsize = 3) +
+      theme(legend.position = "top", axis.text.x = element_text(angle = 70, hjust = 1, size = 10)) +
+      labs(y = "CERES Score",
+           x = "Lineage",
+           color = "Mutation Status",
+           title = paste0(g, ": CERES score by cell line lineage"),
+           subtitle = "Lineages sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.")
+    return(plot)
+  }
 }
 ```
 
@@ -242,7 +247,7 @@ makeHeatmaps <- function(clust_obj, clust_num) {
   
   chm_all_plot <- chm_plot + chm_ge_plot + chm_cn_plot + chm_mut_plot
   
-  pdf(paste0("./plots_18Q3/crispr_heatmap_all_c", clust_num, ".pdf"), width = 100, height = 100, paper = "special")
+  pdf(paste0("./plots_18Q3/crispr_heatmap_clustered/crispr_heatmap_all_c", clust_num, ".pdf"), width = 100, height = 100, paper = "special")
   draw(chm_all_plot, heatmap_legend_side = "right", annotation_legend_side = "right")
   seekViewport("annotation_Cell_Line_SSMD")
   grid.text("Cell Line SSMD", unit(1, "npc") + unit(2, "mm"), 0.5, gp = gpar(fontsize = 30), default.units = "npc", just = "left")
@@ -376,6 +381,7 @@ maf_summ$percent <- maf_summ$n / sum(maf_summ$n) * 100
 knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
+
 ## Copy number file
 
 ```{r, eval=FALSE}
@@ -474,6 +480,20 @@ saveRDS(crispr_data, "./data_munging/rds/crispr_data_18Q3.rds", compress = "xz")
 ```{r}
 crispr_data <- readRDS("./data_munging/rds/crispr_data_18Q3.rds")
 crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
+# write.table(crispr_data, file = "crispr_data.tsv", quote = FALSE, sep = "\t")
+```
+
+```{r, include=FALSE, eval=FALSE}
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(maf_df$Hugo_Symbol)))
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(cn_melt$Hugo_Symbol)))
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(ge_melt$Hugo_Symbol)))
+
+length(intersect(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID)))
+length(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)))
+length(intersect(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID)))
+
+length(intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
+setdiff(crispr_data$Broad_ID, intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
 ```
 
 ## shRNA data and annotations
@@ -536,6 +556,23 @@ shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
 write(union(as.character(distinct(crispr_data[which(is.na(crispr_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name), as.character(distinct(shrna_data[which(is.na(shrna_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name)), file = "./data_munging//na_ccl_in_converter.txt")
 ```
 
+
+# Mutation exploration
+
+--------------------------------------------------------------------------------
+
+```{r}
+maf_annot <- merge(maf_raw[maf_raw$Variant_Classification != "Silent",] %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
+```
+
+```{r fig.height=6, fig.width=12}
+ggplot(data = maf_annot, aes(x = primary_tissue, y = n)) +
+  geom_jitter(alpha = 0.6, size = 0.7, position = position_jitter(w = 0.15)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
 # Wilcoxon tests
 
 --------------------------------------------------------------------------------
@@ -554,7 +591,7 @@ saveRDS(crispr_signif, "./data_munging/rds/crispr_signif.rds")
 ```{r}
 crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
 
-knitr::kable(filter(crispr_signif, p < 0.1)[, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif, p < 0.1)[, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -568,6 +605,8 @@ saveRDS(crispr_signif_lineage, "./data_munging/rds/crispr_signif_lineage.rds")
 
 ```{r}
 crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_lineage.rds")
+
+knitr::kable(filter(crispr_signif_lineage, p < 0.1)[, c(1, 2, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines by Lineage, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## shRNA
@@ -584,7 +623,7 @@ saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
 ```{r}
 shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
 
-knitr::kable(filter(shrna_signif, p < 0.1), c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(shrna_signif, p < 0.1)[, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -920,66 +959,47 @@ dev.off()
 
 Plot code:
 ```{r, eval=FALSE}
-crispr_all_genes <- unique(crispr_data$Hugo_Symbol)
+crispr_data_cgc <- filter(crispr_data, Hugo_Symbol %in% cgc$Hugo_Symbol)
+crispr_all_genes <- unique(crispr_data_cgc$Hugo_Symbol)
 crispr_all_groups <- lapply(crispr_all_genes, makeCRISPRgrob)
 crispr_all_groups_paths <- paste0(crispr_all_genes, "_crispr_grouped.png")
-pwalk(list(crispr_all_groups_paths, crispr_all_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots", dpi = 300, width = 12, height = 12, units = "in")
+pwalk(list(crispr_all_groups_paths, crispr_all_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots_cgc", dpi = 300, width = 12, height = 12, units = "in")
 ```
 
 Data management:
-```{r, eval=FALSE}
-crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots", full.names = TRUE))
-names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots/" = ""))
-```
-
-Plots:
-```{r, eval=FALSE}
+```{r}
+crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots_cgc", full.names = TRUE))
+names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots_cgc/" = ""))
 crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
 crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
 bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
 ```
 
 
-### KRAS
+## Sorted lineage plots
 
-```{r fig.height=12, fig.width=12}
-makeCRISPRgrob("KRAS")
+Plot code:
+```{r, eval=FALSE}
+crispr_data_cgc <- filter(crispr_data, Hugo_Symbol %in% cgc$Hugo_Symbol)
+crispr_all_genes <- unique(crispr_data_cgc$Hugo_Symbol)
+crispr_all_lins <- lapply(crispr_all_genes, makeCRISPRlinplot)
+crispr_all_lins_paths <- paste0(crispr_all_genes, "_crispr_lineage.png")
+pwalk(list(crispr_all_lins_paths, crispr_all_lins), ggsave, path = "./plots_18Q3/crispr_lineage_plots_cgc", dpi = 300, width = 12, height = 12, units = "in")
 ```
 
-
-### TP53
-
-```{r fig.height=12, fig.width=12}
-makeCRISPRgrob("TP53")
+```{r}
+makeCRISPRlinplot("HMGA1")
+test <- filter(crispr_signif_lineage, Hugo_Symbol == "HMGA1")
 ```
 
-
-## Sorted lineage plots {.tabset .tabset-fade .tabset-pills}
-
-### KRAS
-
-```{r fig.height=10, fig.width=15}
-makeCRISPRlinplot("KRAS")
+Data management:
+```{r}
+crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_lineage_plots_cgc", full.names = TRUE))
+names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_lineage.png" = "", "./plots_18Q3/crispr_lineage_plots_cgc/" = ""))
+crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
+crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
+bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
 ```
-
-### TP53
-
-```{r fig.height=10, fig.width=15}
-makeCRISPRlinplot("TP53")
-```
-
-### BRAF
-
-```{r fig.height=10, fig.width=15}
-makeCRISPRlinplot("BRAF")
-```
-
-### NRAS
-
-```{r fig.height=10, fig.width=15}
-makeCRISPRlinplot("NRAS")
-```
-
 
 # References
 
