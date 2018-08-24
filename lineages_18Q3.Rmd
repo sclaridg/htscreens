@@ -554,7 +554,7 @@ saveRDS(crispr_signif, "./data_munging/rds/crispr_signif.rds")
 ```{r}
 crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
 
-knitr::kable(crispr_signif[1:100, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif, p < 0.1)[, c(1, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -584,7 +584,7 @@ saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
 ```{r}
 shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
 
-knitr::kable(shrna_signif[1:100, c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(shrna_signif, p < 0.1), c(1, 5, 6, 7, 8, 10)], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -940,6 +940,18 @@ bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE,
 ```
 
 
+### KRAS
+
+```{r fig.height=12, fig.width=12}
+makeCRISPRgrob("KRAS")
+```
+
+
+### TP53
+
+```{r fig.height=12, fig.width=12}
+makeCRISPRgrob("TP53")
+```
 
 
 ## Sorted lineage plots {.tabset .tabset-fade .tabset-pills}
