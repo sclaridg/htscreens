@@ -381,6 +381,7 @@ maf_summ$percent <- maf_summ$n / sum(maf_summ$n) * 100
 knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
+
 ## Copy number file
 
 ```{r, eval=FALSE}
@@ -479,6 +480,20 @@ saveRDS(crispr_data, "./data_munging/rds/crispr_data_18Q3.rds", compress = "xz")
 ```{r}
 crispr_data <- readRDS("./data_munging/rds/crispr_data_18Q3.rds")
 crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
+# write.table(crispr_data, file = "crispr_data.tsv", quote = FALSE, sep = "\t")
+```
+
+```{r, include=FALSE, eval=FALSE}
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(maf_df$Hugo_Symbol)))
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(cn_melt$Hugo_Symbol)))
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(ge_melt$Hugo_Symbol)))
+
+length(intersect(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID)))
+length(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)))
+length(intersect(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID)))
+
+length(intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
+setdiff(crispr_data$Broad_ID, intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
 ```
 
 ## shRNA data and annotations
@@ -541,6 +556,23 @@ shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
 write(union(as.character(distinct(crispr_data[which(is.na(crispr_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name), as.character(distinct(shrna_data[which(is.na(shrna_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name)), file = "./data_munging//na_ccl_in_converter.txt")
 ```
 
+
+# Mutation exploration
+
+--------------------------------------------------------------------------------
+
+```{r}
+maf_annot <- merge(maf_raw[maf_raw$Variant_Classification != "Silent",] %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
+```
+
+```{r fig.height=6, fig.width=12}
+ggplot(data = maf_annot, aes(x = primary_tissue, y = n)) +
+  geom_jitter(alpha = 0.6, size = 0.7, position = position_jitter(w = 0.15)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
 # Wilcoxon tests
 
 --------------------------------------------------------------------------------
@@ -573,6 +605,8 @@ saveRDS(crispr_signif_lineage, "./data_munging/rds/crispr_signif_lineage.rds")
 
 ```{r}
 crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_lineage.rds")
+
+knitr::kable(filter(crispr_signif_lineage, p < 0.1)[, c(1, 2, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines by Lineage, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## shRNA
