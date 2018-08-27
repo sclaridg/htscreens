@@ -344,6 +344,22 @@ shrna_meta <- read.delim("./data_munging/sample_info_18Q3_shrna.csv", sep = ",",
 colnames(shrna_meta)[1] <- "CCLE_Name"
 ```
 
+###  Metadata exploration
+
+```{r}
+tissue_summ <- crispr_meta %>% group_by(primary_tissue) %>% tally()
+disease_summ <- ccl_info %>% group_by(Primary.Disease) %>% tally()
+```
+
+```{r fig.height=5, fig.width=8}
+ggplot(data = tissue_summ) + 
+  aes(x = 0, y = n, fill = primary_tissue, label = primary_tissue) +
+  geom_histogram(color = "black", stat = "identity") +
+  geom_text(position = position_stack(vjust = 0.5))
+```
+
+
+
 ```{r}
 dan_test <- select(ccl_converter, CCLE_Name, Broad_ID, cell_line_name)
 dan_test <- dan_test[-which(dan_test$CCLE_Name == ""), ]
@@ -480,7 +496,7 @@ saveRDS(crispr_data, "./data_munging/rds/crispr_data_18Q3.rds", compress = "xz")
 ```{r}
 crispr_data <- readRDS("./data_munging/rds/crispr_data_18Q3.rds")
 crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
-# write.table(crispr_data, file = "crispr_data.tsv", quote = FALSE, sep = "\t")
+write.table(crispr_data[, c("Hugo_Symbol", "Broad_ID", "Score", "Primary.Disease", "primary_tissue", "Mutation_Status")], file = "~/Desktop/crispr_data_select.tsv", quote = FALSE, sep = "\t")
 ```
 
 ```{r, include=FALSE, eval=FALSE}
