@@ -38,7 +38,6 @@ options(mc.cores = num_cores)
 Load libraries.
 ```{r}
 library(NMF)
-library(ggsignif)
 library(ggpubr)
 library(rowr)
 library(data.table)
@@ -46,7 +45,6 @@ library(CePa)
 library(plyr)
 library(tidyverse)
 library(magrittr)
-library(ggrepel)
 library(matrixStats)
 library(parallel)
 library(kableExtra)
@@ -118,10 +116,10 @@ makeCRISPRgrob <- function(g) {
          subtitle = "r: Pearson correlation coeffcient")
   
   # Gene expression
-  lo_ge <- range(gene$RPKM[!is.na(gene$RPKM)])[1]
-  hi_ge <- range(gene$RPKM[!is.na(gene$RPKM)])[2]
+  lo_ge <- range(gene$RPKM_log2[!is.na(gene$RPKM_log2)])[1]
+  hi_ge <- range(gene$RPKM_log2[!is.na(gene$RPKM_log2)])[2]
   mid_ge <- (hi_ge - lo_ge) / 2
-  plot_ge <- ggplot(data = gene, aes(x = RPKM, y = Score, color = Mutation_Status)) +
+  plot_ge <- ggplot(data = gene, aes(x = RPKM_log2, y = Score, color = Mutation_Status)) +
     geom_point(size = 0.5, alpha = 0.5) +
     geom_smooth(method = "lm", size = 0.5) +
     geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
@@ -129,7 +127,7 @@ makeCRISPRgrob <- function(g) {
     stat_cor(method = "pearson", show.legend = FALSE, label.x = c((lo_ge + mid_ge) / 2, (hi_ge - mid_ge) / 2 + mid_ge), label.y = max(gene$Score)) +
     theme(legend.position = "none") +
     labs(y = "CERES Score", color = "Mutation Status",
-         x = paste0(g, " Gene Expression (RPKM)"),
+         x = paste0(g, " Gene Expression [log2(RPKM)]"),
          title = "Gene Expression",
          subtitle = "r: Pearson correlation coeffcient")
   
@@ -404,7 +402,7 @@ knitr::kable(maf_summ, caption = "Distribution of variant classifications in the
 cn <- read.delim("./data_munging/public_18Q3_gene_cn.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 
 # Convert log2 ratios (log2(CN/2)) to CN
-cn[2:ncol(cn)] <- lapply(cn[2:ncol(cn)], function(x) 2 * (2 ^ x))
+# cn[2:ncol(cn)] <- lapply(cn[2:ncol(cn)], function(x) 2 * (2 ^ x))
 
 # Remove Entrez gene IDs from colnames
 colnames(cn) <- gsub(" .*", "", colnames(cn))
@@ -489,15 +487,17 @@ crispr_data <- merge(crispr_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), al
 # Gene expression (RPKM)
 ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
 crispr_data <- merge(crispr_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
+crispr_data$RPKM_log2 <- log2(crispr_data$RPKM + 0.0001)
 
-saveRDS(crispr_data, "./data_munging/rds/crispr_data_18Q3.rds", compress = "xz")
+saveRDS(crispr_data, "./../crispr_lineages_giant_files/crispr_data_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-crispr_data <- readRDS("./data_munging/rds/crispr_data_18Q3.rds")
+crispr_data <- readRDS("./../crispr_lineages_giant_files/crispr_data_18Q3.rds")
 crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 write.table(crispr_data[, c("Hugo_Symbol", "Broad_ID", "Score", "Primary.Disease", "primary_tissue", "Mutation_Status")], file = "~/Desktop/crispr_data_select.tsv", quote = FALSE, sep = "\t")
 ```
+
 
 ```{r, include=FALSE, eval=FALSE}
 length(intersect(unique(crispr_data$Hugo_Symbol), unique(maf_df$Hugo_Symbol)))
@@ -625,6 +625,22 @@ crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_lineage.rds")
 knitr::kable(filter(crispr_signif_lineage, p < 0.1)[, c(1, 2, 5, 6, 7, 8, 10)], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines by Lineage, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
+### Grouped by gene and tissue
+
+```{r, eval=TRUE}
+crispr_signif_tissue <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif_tissue <- adj_signif(crispr_signif_tissue)
+# crispr_signif_tissue <- mutate(crispr_signif_tissue, primary_tissue = reorder(primary_tissue, p.adj, mean))
+crispr_signif_tissue <- crispr_signif_tissue[order(crispr_signif_tissue$p),]
+saveRDS(crispr_signif_tissue, "./data_munging/rds/crispr_signif_tissue.rds")
+```
+
+```{r}
+crispr_signif_tissue <- readRDS("./data_munging/rds/crispr_signif_tissue.rds")
+
+knitr::kable(filter(crispr_signif_tissue, p < 0.1)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines by Primary Tissue, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+```
+
 ## shRNA
 
 ### Grouped by gene
@@ -685,12 +701,14 @@ crispr_grid <- expand.grid("Broad_ID" = crispr_grid_ccls, "Hugo_Symbol" = crispr
 
 # Gene expression
 ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))[, c("Hugo_Symbol", "Broad_ID", "RPKM")]
+ge_filt$RPKM <- log2(ge_filt$RPKM + 0.0001)
 chm_ge_grid <- merge(crispr_grid, ge_filt, by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
 chm_ge <- reshape(chm_ge_grid, idvar = "Hugo_Symbol", timevar = "Broad_ID", direction = "wide")
 chm_ge_rows <- chm_ge$Hugo_Symbol
 chm_ge$Hugo_Symbol <- NULL
 chm_ge_cols <- colnames(chm_ge) %>% gsub("RPKM.", "", .)
-chm_ge <- matrix(as.numeric(unlist(chm_ge)), nrow = nrow(chm_ge))
+chm_ge <- apply(chm_ge, 2, as.double)
+chm_ge <- apply(chm_ge, 2, function(x) (x - mean(x, na.rm = TRUE)) / var(x, na.rm = TRUE))
 rownames(chm_ge) <- chm_ge_rows
 colnames(chm_ge) <- chm_ge_cols
 saveRDS(chm_ge, "./data_munging/rds/crispr_heatmap_ge.rds")
@@ -714,7 +732,8 @@ chm_cn <- reshape(chm_cn_grid, idvar = "Hugo_Symbol", timevar = "Broad_ID", dire
 chm_cn_rows <- chm_cn$Hugo_Symbol
 chm_cn$Hugo_Symbol <- NULL
 chm_cn_cols <- colnames(chm_cn) %>% gsub("Copy_Number.", "", .)
-chm_cn <- matrix(as.numeric(unlist(chm_cn)), nrow = nrow(chm_cn))
+chm_cn <- apply(chm_cn, 2, as.double)
+chm_cn <- apply(chm_cn, 2, function(x) (x - mean(x, na.rm = TRUE)) / var(x, na.rm = TRUE))
 rownames(chm_cn) <- chm_cn_rows
 colnames(chm_cn) <- chm_cn_cols
 saveRDS(chm_cn, "./data_munging/rds/crispr_heatmap_cn.rds")
@@ -800,8 +819,12 @@ makeHeatmaps(chm_scores_c5, 5)
 
 Code for heatmap of CGC-filtered genes only
 
-
 #### Euclidean distance
+
+```{r}
+mean(chm_cn_cgc[!is.na(chm_cn_cgc)])
+```
+
 
 ```{r, eval=FALSE}
 chm_scores_cgc <- subset(chm_scores, rownames(chm_scores) %in% cgc$Hugo_Symbol)
@@ -812,7 +835,7 @@ chm_cn_cgc <- subset(chm_cn, rownames(chm_cn) %in% cgc$Hugo_Symbol)
 chm_plot_cgc <- Heatmap(chm_scores_cgc, name = "CERES Score",
         bottom_annotation = HeatmapAnnotation(df = chm_annot),
         bottom_annotation_height = unit(5, "in"),
-        row_title = "Genes", column_title = "Cancer Cell Lines (Broad IDs)",
+        row_title = "Genes", column_title = "Cancer Cell Lines",
         col = colorRamp2(c(min(chm_scores_cgc), 0, max(chm_scores_cgc)), c("purple4", "white", "seagreen4")),
         na_col = "black",
         row_title_gp = gpar(fontsize = 60, fontface = "bold"),
@@ -832,21 +855,21 @@ chm_plot_cgc <- Heatmap(chm_scores_cgc, name = "CERES Score",
 chm_plot_cgc_cols <- colnames(chm_scores_cgc)[unlist(column_order(chm_plot_cgc))]
 chm_plot_cgc_rows <- rownames(chm_scores_cgc)[unlist(row_order(chm_plot_cgc))]
 
-chm_ge_plot_cgc <- Heatmap(chm_ge_cgc, name = "Gene Expression (RPKM)",
-        col = colorRamp2(c(min(chm_ge_cgc[!is.na(chm_ge_cgc)]), 0.25, max(chm_ge_cgc[!is.na(chm_ge_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+chm_ge_plot_cgc <- Heatmap(chm_ge_cgc, name = "Gene Expression [log2(RPKM)]",
+        col = colorRamp2(c(min(chm_ge_cgc[!is.na(chm_ge_cgc)]), 0, max(chm_ge_cgc[!is.na(chm_ge_cgc)])), c("dodgerblue4", "white", "firebrick4")),
         na_col = "black",
         cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
+        row_names_gp = gpar(fontsize = 10), show_column_names = FALSE,
         column_title = "Gene Expression",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         column_order = chm_plot_cgc_cols,
         row_order = chm_plot_cgc_rows,
         width = 1)
-chm_cn_plot_cgc <- Heatmap(chm_cn_cgc, name = "Copy Number",
-        col = colorRamp2(c(min(chm_cn_cgc[!is.na(chm_cn_cgc)]), 2, max(chm_cn_cgc[!is.na(chm_cn_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+chm_cn_plot_cgc <- Heatmap(chm_cn_cgc, name = "Copy Number log2(CN/2)",
+        col = colorRamp2(c(min(chm_cn_cgc[!is.na(chm_cn_cgc)]), 0, max(chm_cn_cgc[!is.na(chm_cn_cgc)])), c("white", "thistle2", "mediumorchid4")),
         na_col = "black",
         cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
+        row_names_gp = gpar(fontsize = 10), show_column_names = FALSE,
         column_title = "Copy Number",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         column_order = chm_plot_cgc_cols,
@@ -856,7 +879,7 @@ chm_mut_plot_cgc <- Heatmap(chm_mut_cgc, name = "Mutation Status",
         na_col = "black",
         col = c("cyan3", "darkorchid"),
         cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
+        row_names_gp = gpar(fontsize = 10), show_column_names = FALSE,
         column_title = "Mutation Status",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         column_order = chm_plot_cgc_cols,
@@ -916,20 +939,20 @@ chm_plot_cgc_cols <- colnames(chm_scores_cgc)[unlist(column_order(chm_plot_cgc))
 chm_plot_cgc_rows <- rownames(chm_scores_cgc)[unlist(row_order(chm_plot_cgc))]
 
 chm_ge_plot_cgc <- Heatmap(chm_ge_cgc, name = "Gene Expression (RPKM)",
-        col = colorRamp2(c(min(chm_ge_cgc[!is.na(chm_ge_cgc)]), 0.25, max(chm_ge_cgc[!is.na(chm_ge_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+        col = colorRamp2(c(min(chm_ge_cgc[!is.na(chm_ge_cgc)]), 0, max(chm_ge_cgc[!is.na(chm_ge_cgc)])), c("dodgerblue4", "white", "firebrick4")),
         na_col = "black",
         cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
+        row_names_gp = gpar(fontsize = 10), show_column_names = FALSE,
         column_title = "Gene Expression",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         column_order = chm_plot_cgc_cols,
         row_order = chm_plot_cgc_rows,
         width = 1)
 chm_cn_plot_cgc <- Heatmap(chm_cn_cgc, name = "Copy Number",
-        col = colorRamp2(c(min(chm_cn_cgc[!is.na(chm_cn_cgc)]), 2, max(chm_cn_cgc[!is.na(chm_cn_cgc)])), c("dodgerblue4", "white", "firebrick4")),
+        col = colorRamp2(c(min(chm_cn_cgc[!is.na(chm_cn_cgc)]), 0, max(chm_cn_cgc[!is.na(chm_cn_cgc)])), c("dodgerblue4", "white", "firebrick4")),
         na_col = "black",
         cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
+        row_names_gp = gpar(fontsize = 10), show_column_names = FALSE,
         column_title = "Copy Number",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         column_order = chm_plot_cgc_cols,
@@ -939,7 +962,7 @@ chm_mut_plot_cgc <- Heatmap(chm_mut_cgc, name = "Mutation Status",
         na_col = "black",
         col = c("cyan3", "darkorchid"),
         cluster_rows = FALSE, cluster_columns = FALSE,
-        show_row_names = FALSE, show_column_names = FALSE,
+        row_names_gp = gpar(fontsize = 10), show_column_names = FALSE,
         column_title = "Mutation Status",
         column_title_gp = gpar(fontsize = 60, fontface = "bold"),
         column_order = chm_plot_cgc_cols,
@@ -973,6 +996,10 @@ dev.off()
 
 ## Grouped plots
 
+```{r fig.height=12, fig.width=12, include=FALSE}
+makeCRISPRgrob("KRAS")
+```
+
 Plot code:
 ```{r, eval=FALSE}
 crispr_data_cgc <- filter(crispr_data, Hugo_Symbol %in% cgc$Hugo_Symbol)
@@ -992,7 +1019,12 @@ bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE,
 ```
 
 
+
 ## Sorted lineage plots
+
+```{r fig.height=12, fig.width=12, include=FALSE}
+makeCRISPRlinplot("KRAS")
+```
 
 Plot code:
 ```{r, eval=FALSE}
@@ -1001,11 +1033,6 @@ crispr_all_genes <- unique(crispr_data_cgc$Hugo_Symbol)
 crispr_all_lins <- lapply(crispr_all_genes, makeCRISPRlinplot)
 crispr_all_lins_paths <- paste0(crispr_all_genes, "_crispr_lineage.png")
 pwalk(list(crispr_all_lins_paths, crispr_all_lins), ggsave, path = "./plots_18Q3/crispr_lineage_plots_cgc", dpi = 300, width = 12, height = 12, units = "in")
-```
-
-```{r}
-makeCRISPRlinplot("HMGA1")
-test <- filter(crispr_signif_lineage, Hugo_Symbol == "HMGA1")
 ```
 
 Data management:
