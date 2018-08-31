@@ -398,19 +398,20 @@ cgc <- data_frame("Hugo_Symbol" = read.delim("./data_munging/gene-ids-for-set-Ca
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 ```{r}
 maf_raw <- read.delim("./data_munging/CCLE_DepMap_18q3_maf_20180718.txt.gz", header = TRUE, sep = "\t")
-
-# Remove silent mutations
-maf_df <- maf_raw[maf_raw$Variant_Classification != "Silent",]
+# Filter for cell lines in CRISPR screen
+maf_raw <- filter(maf_raw, Broad_ID %in% unique(crispr_meta$Broad_ID))
 
 # Select columns
-maf_df <- unique(subset(maf_raw, select = c("Hugo_Symbol", "Tumor_Sample_Barcode", "Broad_ID")))
-colnames(maf_df)[2] <- "CCLE_Name"
+maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "Tumor_Sample_Barcode", "Broad_ID", "Variant_Classification", "isDeleterious"))
+colnames(maf_df)[colnames(maf_df) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
 # Add Mutation_Status column
-maf_df$Mutation_Status <- "Mutant"
+maf_df$Mutation_Status <- ifelse(maf_df$Variant_Classification == "Missense_Mutation" | maf_df$isDeleterious == TRUE, "Mutant", "Other")
+maf_df <- unique(subset(maf_df, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Mutation_Status")))
 
-# MAF summary table
+# Whole MAF summary table
 maf_summ <- maf_raw[, c("Variant_Classification", "isDeleterious")] %>% group_by(Variant_Classification, isDeleterious) %>% tally()
-maf_summ$percent <- maf_summ$n / sum(maf_summ$n) * 100
+maf_summ$Percent <- format(round(maf_summ$n / sum(maf_summ$n) * 100, 4), nsmall = 2)
+maf_summ$isDeleterious <- ifelse(maf_summ$isDeleterious == "TRUE", "Yes", "No")
 knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
@@ -496,19 +497,19 @@ crispr_melt <- merge(crispr_melt, crispr_meta, by = c("CCLE_Name", "Broad_ID"), 
 
 # Merge mutation annotations
 crispr_muts <- merge(crispr_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
-crispr_muts <- crispr_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Wildtype", Mutation_Status))
+crispr_muts <- crispr_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Other", Mutation_Status))
 crispr_muts$Hugo_Symbol <- factor(crispr_muts$Hugo_Symbol)
 
-# Summarize number of mutant and wildtype cell lines
+# Summarize number of mutant and Other cell lines
 crispr_muts_summ <- crispr_muts %>% group_by(Hugo_Symbol) %>%
-  summarize(N_Wildtype = sum(Mutation_Status == "Wildtype"),
+  summarize(N_Other = sum(Mutation_Status == "Other"),
             N_Mutant = sum(Mutation_Status == "Mutant"))
 
 # Merge test results back into full dataset, which restores information lost in the summarization
 crispr_data <- merge(crispr_muts_summ, crispr_muts, by = "Hugo_Symbol")
 
 # Add Color column
-crispr_data$Color <- ifelse(crispr_data$Mutation_Status == "Wildtype", "cyan3", "darkorchid")
+crispr_data$Color <- ifelse(crispr_data$Mutation_Status == "Other", "cyan3", "darkorchid")
 crispr_data$Color <- factor(crispr_data$Color)
 
 # Cell line lineages
@@ -541,6 +542,10 @@ length(intersect(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID)))
 length(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)))
 length(intersect(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID)))
 
+setdiff(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID))
+setdiff(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID))
+setdiff(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID))
+
 length(intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
 setdiff(crispr_data$Broad_ID, intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
 ```
@@ -567,19 +572,19 @@ shrna_melt <- merge(shrna_melt, shrna_meta, by = "CCLE_Name", all.x = TRUE)
 
 # Merge mutation annotations
 shrna_muts <- merge(shrna_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
-shrna_muts <- shrna_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Wildtype", Mutation_Status))
+shrna_muts <- shrna_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Other", Mutation_Status))
 shrna_muts$Hugo_Symbol <- factor(shrna_muts$Hugo_Symbol)
 
-# Summarize number of mutant and wildtype cell lines
+# Summarize number of mutant and Other cell lines
 shrna_muts_summ <- shrna_muts %>% group_by(Hugo_Symbol) %>%
-  summarize(N_Wildtype = sum(Mutation_Status == "Wildtype"),
+  summarize(N_Other = sum(Mutation_Status == "Other"),
             N_Mutant = sum(Mutation_Status == "Mutant"))
 
 # Merge test results back into full dataset, which restores information lost in the summarization
 shrna_data <- merge(shrna_muts_summ, shrna_muts, by = "Hugo_Symbol")
 
 # Add Color column
-shrna_data$Color <- ifelse(shrna_data$Mutation_Status == "Wildtype", "cyan3", "darkorchid")
+shrna_data$Color <- ifelse(shrna_data$Mutation_Status == "Other", "cyan3", "darkorchid")
 shrna_data$Color <- factor(shrna_data$Color)
 
 # Cell line lineages
@@ -617,50 +622,73 @@ tissue_summ <- crispr_meta %>% group_by(primary_tissue) %>% tally()
 disease_summ <- ccl_info %>% group_by(Primary.Disease) %>% tally()
 ```
 
-```{r fig.height=5, fig.width=8}
+```{r fig.height=12, fig.width=3}
 ggplot(data = tissue_summ) + 
   aes(x = 0, y = n, fill = primary_tissue, label = primary_tissue) +
   geom_histogram(color = "black", stat = "identity") +
-  geom_text(position = position_stack(vjust = 0.5))
+  geom_text(position = position_stack(vjust = 0.5)) +
+  scale_y_continuous(breaks = seq(0, 500, by = 25), labels = seq(0, 500, by = 25)) +
+  coord_cartesian(ylim = c(0, 500)) +
+  theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()) +
+  labs(y = "Count")
 ```
 
 ## Mutations
 
 ```{r}
-maf_annot <- merge(maf_raw[maf_raw$Variant_Classification != "Silent",] %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
+maf_df_filt <- filter(maf_df, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
+maf_summ_filt <- maf_df_filt %>% group_by(Mutation_Status) %>% tally()
+maf_summ_filt$Percent <- format(round(maf_summ_filt$n / sum(maf_summ_filt$n) * 100, 4), nsmall = 2)
+maf_summ_filt$Percent <- as.numeric(as.character(maf_summ_filt$Percent))
 ```
 
-```{r fig.height=3, fig.width=6}
-ggplot(data = maf_annot, aes(x = primary_tissue, y = n)) +
-  geom_jitter(alpha = 0.6, size = 0.7, position = position_jitter(w = 0.15)) +
+Distribution of mutations across cell lines and primary tissues. Each data point represents a single cell line.
+```{r fig.height=4, fig.width=10}
+maf_ccl_annot <- merge(maf_df %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
+
+maf_ccl_annot_plot <- ggplot(data = maf_ccl_annot, aes(x = primary_tissue, y = n, color = primary_tissue)) +
+  geom_jitter(alpha = 0.8, size = 1, position = position_jitter(w = 0.25)) +
+  scale_y_continuous(breaks = seq(0, 9000, by = 1000), labels = seq(0, 9000, by = 1000)) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none") +
+  labs(x = "Primary Tissue", y = "Number of Mutations")
+
+ggsave(filename = "./plots_18Q3/crispr/maf_ccl_annot_plot.pdf", plot = maf_ccl_annot_plot, width = 12, height = 5, device = "pdf")
+```
+
+```{r fig.height=6, fig.width=12}
+maf_gene_annot <- maf_df_filt %>% group_by(Hugo_Symbol) %>% tally()
+
+ggplot(data = maf_gene_annot, aes(x = n)) +
+  geom_histogram(breaks = seq(0, 600, by = 20), fill = "darkslategray3", color = "black", alpha = 0.7) +
+  coord_cartesian(ylim = c(0, 13000)) +
+  scale_y_continuous(breaks = seq(0, 13500, by = 500), labels = formatC(seq(0, 13500, by = 500), format = "d")) +
+  scale_x_continuous(breaks = seq(0, 600, by = 20), labels = seq(0, 600, by = 20)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Distribution of mutations across cell lines and primary tissues", subtitle = "Each data point represents a single cell line.", x = "Primary Tissue", y = "Number of Mutations")
+  stat_bin(breaks = seq(0, 600, by = 20), geom = "text", colour = "black", size = 2.5, aes(label = ..count..), vjust = -0.2, angle = 45, hjust = -0.1) +
+  labs(x = "Number of Mutations", y = "Frequency", title = paste0("Distribution of mutational load for ", length(unique(maf_gene_annot$Hugo_Symbol)), " genes in the CCLE MAF file across all ", length(unique(crispr_ccl$Broad_ID)), " cell lines in the CRISPR screen"))
 ```
 
 ## Dependency probabilities
 
-```{r fig.height=3, fig.width=6}
-ggplot(data = crispr_data, aes(x = Dep_Prob)) +
+```{r fig.height=6, fig.width=12}
+drop_prob_100 <- ggplot(data = crispr_data, aes(x = Dep_Prob)) +
   geom_histogram(breaks = seq(0, 1, by = 0.05), fill = "darkslategray3", color = "black", alpha = 0.7) +
   scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
   scale_y_continuous(breaks = seq(0, 5500000, by = 500000), labels = formatC(seq(0, 5500000, by = 500000), format = "d")) +
   stat_bin(breaks = seq(0, 1, by = 0.05), geom = "text", colour = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
   labs(title = "Distribution of all dependency probabilities", x = "Probability of Real Dependency", y = "Frequency")
-```
 
-```{r}
-dep95 <- filter(crispr_data, Dep_Prob >= 0.95)
-```
-
-
-```{r fig.height=6, fig.width=8}
-ggplot(data = dep95, aes(x = Dep_Prob)) +
-  geom_histogram(mapping = aes(fill = primary_tissue), breaks = seq(0.95, 1, by = 0.005), color = "black", alpha = 0.7) +
+dep_prob_5 <- ggplot(data = filter(crispr_data, Dep_Prob >= 0.95), aes(x = Dep_Prob)) +
+  geom_histogram(mapping = aes(fill = primary_tissue), breaks = seq(0.95, 1, by = 0.005), color = "black") +
   scale_y_continuous(breaks = seq(0, 60000, by = 10000), labels = formatC(seq(0, 60000, by = 10000), format = "d")) +
   theme(legend.position = "bottom") +
-  guides(fill = guide_legend(nrow = 3, byrow = FALSE)) +
+  guides(fill = guide_legend(nrow = 4, byrow = FALSE)) +
   stat_bin(breaks = seq(0.95, 1, by = 0.005), geom = "text", color = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
   labs(title = "Distribution of all dependency probabilities > 0.95", x = "Probability of Real Dependency", y = "Frequency", fill = "Primary Tissue")
+
+dep_prob_inset <- dep_prob_100 + annotation_custom(ggplotGrob(dep_prob_5), xmin = 0.49, xmax = 0.99, ymin = 2500000, ymax = 5000000)
+
+ggsave("./../crispr_lineages_giant_files/dependency_probability_inset.pdf", plot = dep_prob_inset, width = 12, height = 6, units = "in", device = "pdf")
 ```
 
 
@@ -682,7 +710,7 @@ saveRDS(crispr_signif, "./data_munging/rds/crispr_signif.rds")
 ```{r}
 crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
 
-knitr::kable(filter(crispr_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
@@ -690,14 +718,14 @@ knitr::kable(filter(crispr_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p
 ```{r, eval=FALSE}
 crispr_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_lineage <- adj_signif(crispr_signif_lineage)
-crispr_signif_lineage <- mutate(crispr_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
+crispr_signif_lineage <- crispr_signif_lineage[order(crispr_signif_lineage$p),]
 saveRDS(crispr_signif_lineage, "./data_munging/rds/crispr_signif_lineage.rds")
 ```
 
 ```{r}
 crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_lineage.rds")
 
-knitr::kable(filter(crispr_signif_lineage, p < 0.05)[, c("Hugo_Symbol", "lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines by Lineage, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_lineage, p < 0.05)[, c("Hugo_Symbol", "lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines by Lineage, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and tissue
@@ -705,7 +733,6 @@ knitr::kable(filter(crispr_signif_lineage, p < 0.05)[, c("Hugo_Symbol", "lineage
 ```{r, eval=FALSE}
 crispr_signif_tissue <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_tissue <- adj_signif(crispr_signif_tissue)
-# crispr_signif_tissue <- mutate(crispr_signif_tissue, primary_tissue = reorder(primary_tissue, p.adj, mean))
 crispr_signif_tissue <- crispr_signif_tissue[order(crispr_signif_tissue$p),]
 saveRDS(crispr_signif_tissue, "./data_munging/rds/crispr_signif_tissue.rds")
 ```
@@ -713,7 +740,7 @@ saveRDS(crispr_signif_tissue, "./data_munging/rds/crispr_signif_tissue.rds")
 ```{r}
 crispr_signif_tissue <- readRDS("./data_munging/rds/crispr_signif_tissue.rds")
 
-knitr::kable(filter(crispr_signif_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines by Primary Tissue, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines by Primary Tissue, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## shRNA
@@ -730,7 +757,7 @@ saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
 ```{r}
 shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
 
-knitr::kable(filter(shrna_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Wildtype Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(shrna_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
