@@ -685,10 +685,6 @@ dep_prob_5 <- ggplot(data = filter(crispr_data, Dep_Prob >= 0.95), aes(x = Dep_P
   guides(fill = guide_legend(nrow = 4, byrow = FALSE)) +
   stat_bin(breaks = seq(0.95, 1, by = 0.005), geom = "text", color = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
   labs(title = "Distribution of all dependency probabilities > 0.95", x = "Probability of Real Dependency", y = "Frequency", fill = "Primary Tissue")
-
-dep_prob_inset <- dep_prob_100 + annotation_custom(ggplotGrob(dep_prob_5), xmin = 0.49, xmax = 0.99, ymin = 2500000, ymax = 5000000)
-
-ggsave("./../crispr_lineages_giant_files/dependency_probability_inset.pdf", plot = dep_prob_inset, width = 12, height = 6, units = "in", device = "pdf")
 ```
 
 
