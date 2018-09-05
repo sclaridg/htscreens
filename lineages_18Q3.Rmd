@@ -397,7 +397,7 @@ saveRDS(crispr_data, "./../crispr_lineages_giant_files/crispr_data_18Q3.rds", co
 ```{r}
 crispr_data <- readRDS("./../crispr_lineages_giant_files/crispr_data_18Q3.rds")
 crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
-# write.table(crispr_data[, c("Hugo_Symbol", "Broad_ID", "Score", "Primary.Disease", "primary_tissue", "Mutation_Status")], file = "~/Desktop/crispr_data_select.tsv", quote = FALSE, sep = "\t")
+# write.table(crispr_data, file = "~/Desktop/crispr_data.tsv", quote = FALSE, sep = "\t")
 ```
 
 ```{r, include=FALSE, eval=FALSE}
@@ -513,7 +513,7 @@ score_summ_plot <- ggplot(data = crispr_data, aes(x = primary_tissue, color = pr
   scale_y_continuous(breaks = seq(-4, 6, by = 1), labels = seq(-4, 6, by = 1)) +
   theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none") +
   labs(x = "Primary Tissue", y = "CERES Score")
-
+score_summ_plot
 # ggsave(filename = "./plots_18Q3/crispr/ceres_score_summ_plot.pdf", plot = score_summ_plot, width = 12, height = 4, device = "pdf")
 ```
 
@@ -531,13 +531,19 @@ Distribution of mutations across cell lines and primary tissues. Each data point
 maf_ccl_annot <- merge(maf_df %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
 
 maf_ccl_annot_plot <- ggplot(data = maf_ccl_annot, aes(x = primary_tissue, y = n, color = primary_tissue)) +
-  geom_jitter(alpha = 0.8, size = 1, position = position_jitter(w = 0.25)) +
+  geom_boxplot(outlier.shape = NA, fill = NA) +
+  geom_jitter(alpha = 0.7, size = 1, position = position_jitter(w = 0.25)) +
   scale_y_continuous(breaks = seq(0, 9000, by = 1000), labels = seq(0, 9000, by = 1000)) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none") +
+  theme(axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
   labs(x = "Primary Tissue", y = "Number of Mutations")
-
+maf_ccl_annot_plot
 # ggsave(filename = "./plots_18Q3/crispr/maf_ccl_annot_plot.pdf", plot = maf_ccl_annot_plot, width = 12, height = 4, device = "pdf")
 ```
+
+```{r fig.height=8, fig.width=12}
+ggsave(filename = "./plots_18Q3/crispr/score_mut_summ.pdf", plot = grid.draw(rbind(ggplotGrob(maf_ccl_annot_plot), ggplotGrob(score_summ_plot), size = "first")), width = 12, height = 8, device = "pdf")
+```
+
 
 ```{r fig.height=6, fig.width=12}
 maf_gene_annot <- maf_df_filt %>% group_by(Hugo_Symbol) %>% tally()
@@ -595,17 +601,19 @@ crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
 knitr::kable(filter(crispr_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=3, fig.width=6}
-wilcox_gene_plot <- ggplot(data = crispr_signif, aes(x = p.adj)) +
-  geom_histogram(breaks = seq(0, 1, by = 0.025), fill = "darkslategray3", color = "black", alpha = 0.7) +
+```{r fig.height=4, fig.width=8}
+wilcox_gene_plot <- ggplot(data = crispr_signif) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3",), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
   coord_cartesian(ylim = c(0, 4500)) +
   scale_y_continuous(breaks = seq(0, 4500, by = 500), labels = formatC(seq(0, 4500, by = 500), format = "d")) +
-  stat_bin(breaks = seq(0, 1, by = 0.025), geom = "text", colour = "black", size = 3, aes(label = ..count..), vjust = 0.3, angle = 80, hjust = -0.4) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  #stat_bin(breaks = seq(0, 1, by = 0.025), geom = "text", colour = "black", size = 3, aes(label = ..count..), vjust = 0.3, angle = 80, hjust = -0.4) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
-
-ggsave(filename = "./plots_18Q3/crispr/pvals_genes.pdf", plot = wilcox_gene_plot, width = 10, height = 5, device = "pdf")
+wilcox_gene_plot
+# ggsave(filename = "./plots_18Q3/crispr/pvals_genes.pdf", plot = wilcox_gene_plot, width = 8, height = 4, device = "pdf")
 ```
 
 
@@ -643,17 +651,18 @@ crispr_signif_tissue <- readRDS("./data_munging/rds/crispr_signif_tissue.rds")
 knitr::kable(filter(crispr_signif_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines by Primary Tissue, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=3, fig.width=6}
-wilcox_gene_tissue_plot <- ggplot(data = crispr_signif_tissue, aes(x = p.adj)) +
-  geom_histogram(breaks = seq(0, 1, by = 0.025), fill = "darkslateblue", color = "black", alpha = 0.7) +
+```{r fig.height=4, fig.width=8}
+wilcox_gene_tissue_plot <- ggplot(data = crispr_signif_tissue) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3",), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  coord_cartesian(ylim = c(0, 55000)) +
-  scale_y_continuous(breaks = seq(0, 55000, by = 5000), labels = formatC(seq(0, 55000, by = 5000), format = "d")) +
-  stat_bin(breaks = seq(0, 1, by = 0.025), geom = "text", colour = "black", size = 3, aes(label = ..count..), vjust = 0.3, angle = 80, hjust = -0.4) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(breaks = seq(0, 50000, by = 5000), labels = formatC(seq(0, 50000, by = 5000), format = "d")) +
+  #stat_bin(breaks = seq(0, 1, by = 0.025), geom = "text", colour = "black", size = 3, aes(label = ..count..), vjust = 0.3, angle = 80, hjust = -0.4) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
-
-ggsave(filename = "./plots_18Q3/crispr/pvals_genes_tissues.pdf", plot = wilcox_gene_tissue_plot, width = 10, height = 5, device = "pdf")
+wilcox_gene_tissue_plot
+# ggsave(filename = "./plots_18Q3/crispr/pvals_genes_tissues.pdf", plot = wilcox_gene_tissue_plot, width = 8, height = 4, device = "pdf")
 ```
 
 ## shRNA
@@ -787,7 +796,7 @@ chm_all_plot <- Heatmap(chm_scores, name = "CERES Score",
         bottom_annotation_height = unit(5, "in"),
         heatmap_legend_param = list(title_gp = gpar(fontsize = 20), labels_gp = gpar(fontsize = 15), title_position = "topcenter", legend_height = unit(2, "in")),
         row_title = "Genes", column_title = "Cancer Cell Lines",
-        col = colorRamp2(c(min(chm_scores_cgc), 0, max(chm_scores_cgc)), c("purple4", "white", "seagreen4")),
+        col = colorRamp2(c(min(chm_scores), 0, max(chm_scores)), c("purple4", "white", "seagreen4")),
         na_col = "black",
         row_title_gp = gpar(fontsize = 30, fontface = "bold"),
         row_names_gp = gpar(fontsize = 5),
@@ -804,6 +813,24 @@ chm_all_plot <- Heatmap(chm_scores, name = "CERES Score",
         width = 3)
 
 pdf("./plots_18Q3/crispr_heatmap_euclidean_all.pdf", width = 50, height = 50, paper = "special")
+draw(chm_all_plot, heatmap_legend_side = "bottom", annotation_legend_side = "bottom")
+seekViewport("annotation_Cell_Line_SSMD")
+grid.text("Cell Line SSMD", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Cas9_Activity")
+grid.text("Cas9 Activity", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Culture_Type")
+grid.text("Culture Type", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Tissue")
+grid.text("Primary Tissue", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Disease")
+grid.text("Primary Disease", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Gender")
+grid.text("Gender", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Source")
+grid.text("Source", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+dev.off()
+
+png("./plots_18Q3/crispr_heatmap_euclidean_all.png", width = 50, height = 50, units = "in", res = 96)
 draw(chm_all_plot, heatmap_legend_side = "bottom", annotation_legend_side = "bottom")
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
@@ -904,6 +931,24 @@ chm_mut_plot_cgc <- Heatmap(chm_mut_cgc, name = "Mutation Status",
 chm_all_plot_cgc <- chm_plot_cgc + chm_ge_plot_cgc + chm_cn_plot_cgc + chm_mut_plot_cgc
 
 pdf("./plots_18Q3/crispr_heatmap_euclidean_all_cgc.pdf", width = 50, height = 50, paper = "special")
+draw(chm_all_plot_cgc, heatmap_legend_side = "bottom", annotation_legend_side = "bottom")
+seekViewport("annotation_Cell_Line_SSMD")
+grid.text("Cell Line SSMD", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Cas9_Activity")
+grid.text("Cas9 Activity", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Culture_Type")
+grid.text("Culture Type", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Tissue")
+grid.text("Primary Tissue", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Primary_Disease")
+grid.text("Primary Disease", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Gender")
+grid.text("Gender", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+seekViewport("annotation_Source")
+grid.text("Source", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
+dev.off()
+
+png("./plots_18Q3/crispr_heatmap_euclidean_all_cgc.png", width = 50, height = 50, units = "in", res = 96)
 draw(chm_all_plot_cgc, heatmap_legend_side = "bottom", annotation_legend_side = "bottom")
 seekViewport("annotation_Cell_Line_SSMD")
 grid.text("Cell Line SSMD", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15), default.units = "npc", just = "left")
@@ -1022,6 +1067,67 @@ dev.off()
 # Per-gene plots
 
 --------------------------------------------------------------------------------
+
+## Report 2 plot
+
+```{r}
+sig_genes <- c("KRAS", "TP53", "NRAS", "BRAF", "PIK3CA", "PTEN", "CTNNB1")
+crispr_sig_genes <- filter(crispr_data, Hugo_Symbol %in% sig_genes)
+crispr_sig_genes$Hugo_Symbol <- factor(crispr_sig_genes$Hugo_Symbol, levels = c("KRAS", "TP53", "NRAS", "BRAF", "PIK3CA", "PTEN", "CTNNB1"))
+```
+
+```{r fig.height=18, fig.width=5}
+crispr_color <- as.character(crispr_sig_genes$Color)
+names(crispr_color) <- crispr_sig_genes$Mutation_Status
+
+# Mutation status
+plot_mut <- ggplot(data = crispr_sig_genes, aes(x = Mutation_Status, y = Score, color = Mutation_Status)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.3, size = 0.7, position = position_jitter(w = 0.05)) +
+  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free_y") +
+  scale_color_manual(values = crispr_color) +
+  geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
+  theme_light() +
+  theme(legend.position = "none") +
+  labs(x = "Mutation Status", y = "CERES Score",
+       title = "Mutation Status")
+# plot_mut
+
+# Copy number
+plot_cn <- ggplot(data = crispr_sig_genes, aes(x = Copy_Number, y = Score, color = Mutation_Status)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "lm", size = 0.5) +
+  scale_color_manual(values = crispr_color) +
+  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free") +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc = "right", label.y.npc = "top") +
+  theme_light() +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  labs(y = "CERES Score", color = "Mutation Status",
+       x = "Theoretical Copy number", title = "Copy Number")
+# plot_cn
+
+# Gene expression
+plot_ge <- ggplot(data = crispr_sig_genes, aes(x = RPKM_log2, y = Score, color = Mutation_Status)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "lm", size = 0.5) +
+  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free_y") +
+  scale_color_manual(values = crispr_color) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc = "left", label.y.npc = "top") +
+  theme_light() +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  labs(y = "CERES Score", color = "Mutation Status",
+       x = "Gene Expression [log2(RPKM)]",
+       title = "Gene Expression")
+# plot_ge
+```
+
+```{r fig.height=18, fig.width=15}
+grid.newpage()
+grid.draw(cbind(ggplotGrob(plot_mut), ggplotGrob(plot_ge), ggplotGrob(plot_cn), size = "last"))
+
+ggsave(filename = "./plots_18Q3/crispr/omics_sig_genes.pdf", plot = grid.draw(cbind(ggplotGrob(plot_mut), ggplotGrob(plot_ge), ggplotGrob(plot_cn), size = "last")), width = 15, height = 18, device = "pdf")
+```
+
 
 ## Grouped plots
 
