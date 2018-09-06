@@ -60,9 +60,11 @@ library(ComplexHeatmap)
 library(circlize)
 ```
 
-## Functions {.tabset .tabset-fade .tabset-pills}
+# Functions {.tabset .tabset-fade .tabset-pills}
 
-### Significance thresholding
+--------------------------------------------------------------------------------
+
+## Significance thresholding
 
 ```{r}
 adj_signif <- function(df) {
@@ -79,7 +81,7 @@ adj_signif <- function(df) {
 }
 ```
 
-### Make CRISPR grobs
+## Make CRISPR grobs
 
 ```{r}
 makeCRISPRgrob <- function(g) {
@@ -99,7 +101,7 @@ makeCRISPRgrob <- function(g) {
     theme(legend.position = "none") +
     labs(x = paste0(g, " Mutation Status"), y = "CERES Score",
          title = "Mutation Status",
-         subtitle = paste0("Wilcoxon test:\n- BH-corrected p-value: ", sig$p.adj.short, "\n- Uncorrected p-value: ", sig$p.short))
+         subtitle = paste0("Wilcoxon test:\n- BH-corrected p-value: ", sig$p.adj.short, "\n- Uncorrected p-value: ", sig$p.short, "\nMutant lines harbor deleterious mutations."))
   
   # Copy number
   lo_cn <- range(gene$Copy_Number[!is.na(gene$Copy_Number)])[1]
@@ -153,7 +155,7 @@ makeCRISPRgrob <- function(g) {
 }
 ```
 
-### Make lineage plot
+## Make lineage plot
 
 ```{r}
 makeCRISPRlinplot <- function(g) {
@@ -163,31 +165,31 @@ makeCRISPRlinplot <- function(g) {
   }
   else {
     gene <- filter(crispr_data, Hugo_Symbol == g)
-    gene <- merge(gene, sig, by = c("Hugo_Symbol", "lineage_name"))
-    gene <- mutate(gene, lineage_name = reorder(lineage_name, p, mean))
+    gene <- merge(gene, sig, by = c("Hugo_Symbol", "group_general_lineage_name"))
+    gene <- mutate(gene, group_general_lineage_name = reorder(group_general_lineage_name, p, mean))
     crispr_color <- as.character(gene$Color)
     names(crispr_color) <- gene$Mutation_Status
     score_range <- abs(range(gene$Score)[2] - range(gene$Score)[1])
     round_accuracy <- ifelse(score_range <= 2, 0.25,
                              ifelse(score_range <= 3, 0.5, 1.0))
     
-    plot <- ggplot(data = gene, aes(x = lineage_name, y = Score)) +
+    plot <- ggplot(data = gene, aes(x = group_general_lineage_name, y = Score)) +
       geom_point(alpha = 0.5, mapping = aes(color = Mutation_Status)) +
       scale_color_manual(values = crispr_color) +
       coord_cartesian(y = c(min(gene$Score), round_any(x = max(gene$Score), accuracy = round_accuracy, f = ceiling))) +
-      geom_signif(data = gene, mapping = aes(xmin = lineage_name, xmax = lineage_name, annotations = paste(p.short, "\n", p.adj.short), y_position = max(gene$Score)), manual = TRUE, tip_length   = 0, size = 0, textsize = 3) +
+      geom_signif(data = gene, mapping = aes(xmin = group_general_lineage_name, xmax = group_general_lineage_name, annotations = paste(p.short, "\n", p.adj.short), y_position = max(gene$Score)), manual = TRUE, tip_length   = 0, size = 0, textsize = 3) +
       theme(legend.position = "top", axis.text.x = element_text(angle = 70, hjust = 1, size = 10)) +
       labs(y = "CERES Score",
            x = "Lineage",
            color = "Mutation Status",
            title = paste0(g, ": CERES score by cell line lineage"),
-           subtitle = "Lineages sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.")
+           subtitle = "Lineages sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.\nMutant lines harbor deleterious mutations.")
     return(plot)
   }
 }
 ```
 
-### Make tissue plot
+## Make tissue plot
 
 ```{r}
 makeCRISPRtissueplot <- function(g) {
@@ -215,52 +217,69 @@ makeCRISPRtissueplot <- function(g) {
            x = "Primary Tissue",
            color = "Mutation Status",
            title = paste0(g, ": CERES score by cell line primary tissue"),
-           subtitle = "Primary tissues sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.")
+           subtitle = "Primary tissues sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.\nMutant lines harbor deleterious mutations.")
     return(plot)
   }
 }
 ```
 
-## Cell line converter
+# Data management
+
+--------------------------------------------------------------------------------
+
+## D. Charytonowicz ell line converter
 
 This comprehensive cancer cell line information curated by Daniel Charytonowicz.
 ```{r}
-ccl_converter <- read.delim("./data_munging/cell_line_database_FINAL_MASTER.tsv", sep = "\t", row.names = 1, header = TRUE)
+ccl_converter <- read.delim("./data_munging/cell_line_database_completed_extra_grouped_doids_FINAL.csv", sep = "\t", header = TRUE)
 colnames(ccl_converter)[colnames(ccl_converter) == "ccle_cell_line_name"] <- "CCLE_Name"
 colnames(ccl_converter)[colnames(ccl_converter) == "broad_id"] <- "Broad_ID"
 ```
 
-## Cell line metadata
+```{r}
+ccl_converter_test <- read.delim("./data_munging/cell_line_database_FINAL_MASTER.tsv", sep = "\t", header = TRUE)
+colnames(ccl_converter_test)[colnames(ccl_converter_test) == "ccle_cell_line_name"] <- "CCLE_Name"
+colnames(ccl_converter_test)[colnames(ccl_converter_test) == "broad_id"] <- "Broad_ID"
+```
+
+## DepMap cell line metadata
 
 ```{r}
 ccl_info <- read.delim("./data_munging/DepMap-2018q3-celllines.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 ccl_info$Primary.Disease <- gsub("\\\\", "", ccl_info$Primary.Disease)
 ccl_info$Primary.Disease <- gsub("Ewings", "Ewing's", ccl_info$Primary.Disease)
 
+# From figshare
 crispr_meta <- read.delim("./data_munging/sample_info_18Q3_crispr.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 colnames(crispr_meta)[7] <- "CCLE_Name"
-
-shrna_meta <- read.delim("./data_munging/sample_info_18Q3_shrna.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-colnames(shrna_meta)[1] <- "CCLE_Name"
 ```
 
-```{r}
+```{r, include=FALSE}
 dan_test <- select(ccl_converter, CCLE_Name, Broad_ID, cell_line_name)
 dan_test <- dan_test[-which(dan_test$CCLE_Name == ""), ]
+old_dan_test <- select(ccl_converter_test, CCLE_Name, Broad_ID, cell_line_name)
+old_dan_test <- old_dan_test[-which(old_dan_test$CCLE_Name == ""), ]
+colnames(old_dan_test)[colnames(old_dan_test) == "Broad_ID"] <- "Broad_ID_Old"
 ccl_test <- select(ccl_info, CCLE_Name, Broad_ID)
 
 test <- merge(ccl_test, dan_test, by = "CCLE_Name", all = TRUE, suffixes = c("_DepMap", "_Daniel"))
-test$BroadIDs_match <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
+test <- merge(test, old_dan_test, by = "CCLE_Name", all = TRUE)
+test$BroadIDs_match_Daniel <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
+test$BroadIDs_match_Old <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Old), TRUE, FALSE)
+
+test_false_Daniel <- filter(test, BroadIDs_match_Daniel == FALSE)
+test_false_Old <- filter(test, BroadIDs_match_Old == FALSE)
+# write.table(test_false, file = "~/Desktop/cell_line_database_problems.csv", quote = FALSE, sep = ",")
 ```
 
-## Cancer Gene Census (CGC) gene list
+## CGC gene list
 
 Select genes from the Cancer Gene Census (CGC). The list was pulled from the [International Cancer Genome Consortium (ICGC) data portal](https://dcc.icgc.org/search/g?filters=%7B%22gene%22:%7B%22curatedSetId%22:%7B%22is%22:%5B%22GS1%22%5D%7D%7D%7D) (Advaced Search > Genes > Curated Gene Set > Cancer Gene Census).
 ```{r}
 cgc <- data_frame("Hugo_Symbol" = read.delim("./data_munging/gene-ids-for-set-Cancer Gene Census.tsv", header = FALSE, sep = "\t")[, 2])
 ```
 
-## MAF file
+## CCLE MAF file
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 ```{r}
@@ -272,8 +291,9 @@ maf_raw <- filter(maf_raw, Broad_ID %in% unique(crispr_meta$Broad_ID))
 maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "Tumor_Sample_Barcode", "Broad_ID", "Variant_Classification", "isDeleterious"))
 colnames(maf_df)[colnames(maf_df) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
 # Add Mutation_Status column
-maf_df$Mutation_Status <- ifelse(maf_df$Variant_Classification == "Missense_Mutation" | maf_df$isDeleterious == TRUE, "Mutant", "Other")
-maf_df <- unique(subset(maf_df, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Mutation_Status")))
+maf_df$Mutation_Status <- ifelse(maf_df$isDeleterious == TRUE, "Mutant", "Other")
+maf_df$Mutation_Status_Nonsilent <- ifelse(maf_df$Variant_Classification == "Silent", "Other", "Mutant")
+maf_df <- unique(subset(maf_df, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Mutation_Status", "Mutation_Status_Nonsilent")))
 
 # Whole MAF summary table
 maf_summ <- maf_raw[, c("Variant_Classification", "isDeleterious")] %>% group_by(Variant_Classification, isDeleterious) %>% tally()
@@ -283,7 +303,7 @@ knitr::kable(maf_summ, caption = "Distribution of variant classifications in the
 ```
 
 
-## Copy number file
+## CCLE copy number file
 
 ```{r, eval=FALSE}
 cn <- read.delim("./data_munging/public_18Q3_gene_cn.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
@@ -305,7 +325,7 @@ saveRDS(cn_melt, "./data_munging/rds/cn_melt_18Q3.rds", compress = "xz")
 cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q3.rds")
 ```
 
-## Gene expression file
+## CCLE gene expression file
 
 Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
 ```{r, eval=FALSE}
@@ -329,7 +349,7 @@ saveRDS(ge_melt, "./../crispr_lineages_giant_files/ge_melt_18Q3.rds", compress =
 ge_melt <- readRDS("./../crispr_lineages_giant_files/ge_melt_18Q3.rds")
 ```
 
-## CRISPR dependency probabilities
+## DepMap dependency probabilities
 
 ```{r}
 dep <- read.delim("./data_munging/gene_dependency_18Q3.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
@@ -338,7 +358,7 @@ colnames(dep) <- gsub(" .*", "", colnames(dep))
 ```
 
 
-## CRISPR data and annotations
+## Merge CRISPR data and annotations
 
 The latest CRISPR CERES score data (18Q3, August 2018) was pulled from the [DepMap Data Portal](https://depmap.org/portal/download/) (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017).
 ```{r, eval=TRUE}
@@ -400,193 +420,15 @@ crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 # write.table(crispr_data, file = "~/Desktop/crispr_data.tsv", quote = FALSE, sep = "\t")
 ```
 
-```{r, include=FALSE, eval=FALSE}
-length(intersect(unique(crispr_data$Hugo_Symbol), unique(maf_df$Hugo_Symbol)))
-length(intersect(unique(crispr_data$Hugo_Symbol), unique(cn_melt$Hugo_Symbol)))
-length(intersect(unique(crispr_data$Hugo_Symbol), unique(ge_melt$Hugo_Symbol)))
-
-length(intersect(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID)))
-length(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)))
-length(intersect(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID)))
-
-setdiff(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID))
-setdiff(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID))
-setdiff(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID))
-
-length(intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
-setdiff(crispr_data$Broad_ID, intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
-```
-
-## shRNA data and annotations
-
-The Achilles shRNA DEMETER score data was pulled from the [CTD^2^ Data Portal](https://ocg.cancer.gov/programs/ctd2/data-portal) (Tsherniak et al 2017).
-```{r, eval=FALSE}
-shrna <- read.table("./data_munging/D2_combined_gene_dep_scores.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
-colnames(shrna)[1] <- "Hugo_Symbol"
-# Remove Entrez gene IDs from gene names
-shrna$Hugo_Symbol <- gsub(" .*", "", shrna$Hugo_Symbol)
-
-# Melt shRNA dataset for merging
-shrna_melt <- melt(shrna , id.vars = "Hugo_Symbol", measure.vars = colnames(shrna)[2:ncol(shrna)], variable.name = "CCLE_Name", value.name = "Score")
-shrna_melt <- drop_na(shrna_melt)
-```
-
-Merge annotation data:
-```{r, eval=FALSE}
-# Merge cell line metadata
-shrna_melt <- merge(shrna_melt, ccl_info, by = "CCLE_Name", all.x = TRUE)
-shrna_melt <- merge(shrna_melt, shrna_meta, by = "CCLE_Name", all.x = TRUE)
-
-# Merge mutation annotations
-shrna_muts <- merge(shrna_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
-shrna_muts <- shrna_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Other", Mutation_Status))
-shrna_muts$Hugo_Symbol <- factor(shrna_muts$Hugo_Symbol)
-
-# Summarize number of mutant and Other cell lines
-shrna_muts_summ <- shrna_muts %>% group_by(Hugo_Symbol) %>%
-  summarize(N_Other = sum(Mutation_Status == "Other"),
-            N_Mutant = sum(Mutation_Status == "Mutant"))
-
-# Merge test results back into full dataset, which restores information lost in the summarization
-shrna_data <- merge(shrna_muts_summ, shrna_muts, by = "Hugo_Symbol")
-
-# Add Color column
-shrna_data$Color <- ifelse(shrna_data$Mutation_Status == "Other", "cyan3", "darkorchid")
-shrna_data$Color <- factor(shrna_data$Color)
-
-# Cell line lineages
-shrna_data <- merge(shrna_data, ccl_converter, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
-levels(shrna_data$lineage_name) <- sort(levels(shrna_data$lineage_name), decreasing = TRUE)
-
-# Copy number
-shrna_data <- merge(shrna_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
-
-# Gene expression (RPKM)
-ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(shrna_data$Hugo_Symbol))
-shrna_data <- merge(shrna_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
-
-saveRDS(shrna_data, "./../crispr_lineages_giant_files/shrna_data_18Q3.rds", compress = "xz")
-```
-
-```{r}
-shrna_data <- readRDS("./../crispr_lineages_giant_files/shrna_data_18Q3.rds")
-shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
-```
-
-```{r, eval=FALSE}
-write(union(as.character(distinct(crispr_data[which(is.na(crispr_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name), as.character(distinct(shrna_data[which(is.na(shrna_data$lineage_name)), c("CCLE_Name", "lineage_name")])$CCLE_Name)), file = "./data_munging//na_ccl_in_converter.txt")
-```
-
-
-# Exploration
-
---------------------------------------------------------------------------------
-
-##  Metadata
-
-```{r}
-tissue_summ <- crispr_meta %>% group_by(primary_tissue) %>% tally()
-disease_summ <- ccl_info %>% group_by(Primary.Disease) %>% tally()
-```
-
-```{r fig.height=12, fig.width=3}
-ggplot(data = tissue_summ) + 
-  aes(x = 0, y = n, fill = primary_tissue, label = primary_tissue) +
-  geom_histogram(color = "black", stat = "identity") +
-  geom_text(position = position_stack(vjust = 0.5)) +
-  scale_y_continuous(breaks = seq(0, 500, by = 25), labels = seq(0, 500, by = 25)) +
-  coord_cartesian(ylim = c(0, 500)) +
-  theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()) +
-  labs(y = "Count")
-```
-
-## Scores
-
-Distribution of scores across cell lines and primary tissues. Each data point represents a single cell line.
-```{r fig.height=4, fig.width=12}
-ceres_summ <- crispr_data %>% group_by(primary_tissue) %>% summarize(Max = max(Score),
-                                                                     Min = min(Score))
-score_summ_plot <- ggplot(data = crispr_data, aes(x = primary_tissue, color = primary_tissue)) +
-  geom_boxplot(mapping = aes(y = Score), outlier.shape = NA) +
-  geom_point(data = ceres_summ, mapping = aes(x = primary_tissue, y = Min)) +
-  geom_point(data = ceres_summ, mapping = aes(x = primary_tissue, y = Max)) +
-  scale_y_continuous(breaks = seq(-4, 6, by = 1), labels = seq(-4, 6, by = 1)) +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none") +
-  labs(x = "Primary Tissue", y = "CERES Score")
-score_summ_plot
-# ggsave(filename = "./plots_18Q3/crispr/ceres_score_summ_plot.pdf", plot = score_summ_plot, width = 12, height = 4, device = "pdf")
-```
-
-## Mutations
-
-```{r}
-maf_df_filt <- filter(maf_df, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
-maf_summ_filt <- maf_df_filt %>% group_by(Mutation_Status) %>% tally()
-maf_summ_filt$Percent <- format(round(maf_summ_filt$n / sum(maf_summ_filt$n) * 100, 4), nsmall = 2)
-maf_summ_filt$Percent <- as.numeric(as.character(maf_summ_filt$Percent))
-```
-
-Distribution of mutations across cell lines and primary tissues. Each data point represents a single cell line.
-```{r fig.height=4, fig.width=10}
-maf_ccl_annot <- merge(maf_df %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
-
-maf_ccl_annot_plot <- ggplot(data = maf_ccl_annot, aes(x = primary_tissue, y = n, color = primary_tissue)) +
-  geom_boxplot(outlier.shape = NA, fill = NA) +
-  geom_jitter(alpha = 0.7, size = 1, position = position_jitter(w = 0.25)) +
-  scale_y_continuous(breaks = seq(0, 9000, by = 1000), labels = seq(0, 9000, by = 1000)) +
-  theme(axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
-  labs(x = "Primary Tissue", y = "Number of Mutations")
-maf_ccl_annot_plot
-# ggsave(filename = "./plots_18Q3/crispr/maf_ccl_annot_plot.pdf", plot = maf_ccl_annot_plot, width = 12, height = 4, device = "pdf")
-```
-
-```{r fig.height=8, fig.width=12}
-ggsave(filename = "./plots_18Q3/crispr/score_mut_summ.pdf", plot = grid.draw(rbind(ggplotGrob(maf_ccl_annot_plot), ggplotGrob(score_summ_plot), size = "first")), width = 12, height = 8, device = "pdf")
-```
-
-
-```{r fig.height=6, fig.width=12}
-maf_gene_annot <- maf_df_filt %>% group_by(Hugo_Symbol) %>% tally()
-
-ggplot(data = maf_gene_annot, aes(x = n)) +
-  geom_histogram(breaks = seq(0, 600, by = 20), fill = "darkslategray3", color = "black", alpha = 0.7) +
-  coord_cartesian(ylim = c(0, 13000)) +
-  scale_y_continuous(breaks = seq(0, 13500, by = 500), labels = formatC(seq(0, 13500, by = 500), format = "d")) +
-  scale_x_continuous(breaks = seq(0, 600, by = 20), labels = seq(0, 600, by = 20)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  stat_bin(breaks = seq(0, 600, by = 20), geom = "text", colour = "black", size = 2.5, aes(label = ..count..), vjust = -0.2, angle = 45, hjust = -0.1) +
-  labs(x = "Number of Mutations", y = "Frequency", title = paste0("Distribution of mutational load for ", length(unique(maf_gene_annot$Hugo_Symbol)), " genes in the CCLE MAF file across all ", length(unique(crispr_ccl$Broad_ID)), " cell lines in the CRISPR screen"))
-```
-
-## Dependency probabilities
-
-```{r fig.height=6, fig.width=12}
-drop_prob_100 <- ggplot(data = crispr_data, aes(x = Dep_Prob)) +
-  geom_histogram(breaks = seq(0, 1, by = 0.05), fill = "darkslategray3", color = "black", alpha = 0.7) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  scale_y_continuous(breaks = seq(0, 5500000, by = 500000), labels = formatC(seq(0, 5500000, by = 500000), format = "d")) +
-  stat_bin(breaks = seq(0, 1, by = 0.05), geom = "text", colour = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
-  labs(title = "Distribution of all dependency probabilities", x = "Probability of Real Dependency", y = "Frequency")
-
-dep_prob_5 <- ggplot(data = filter(crispr_data, Dep_Prob >= 0.95), aes(x = Dep_Prob)) +
-  geom_histogram(mapping = aes(fill = primary_tissue), breaks = seq(0.95, 1, by = 0.005), color = "black") +
-  scale_y_continuous(breaks = seq(0, 60000, by = 10000), labels = formatC(seq(0, 60000, by = 10000), format = "d")) +
-  theme(legend.position = "bottom") +
-  guides(fill = guide_legend(nrow = 4, byrow = FALSE)) +
-  stat_bin(breaks = seq(0.95, 1, by = 0.005), geom = "text", color = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
-  labs(title = "Distribution of all dependency probabilities > 0.95", x = "Probability of Real Dependency", y = "Frequency", fill = "Primary Tissue")
-```
-
-
 # Wilcoxon tests
 
 --------------------------------------------------------------------------------
 
-## CRISPR
+## Grouped by gene
 
-### Grouped by gene
+### Deleterious vs. Other
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 crispr_signif <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif <- adj_signif(crispr_signif)
 crispr_signif <- crispr_signif[order(crispr_signif$p),]
@@ -598,17 +440,16 @@ write.table(crispr_signif, file = "~/Desktop/crispr_signif_gene.csv", quote = FA
 ```{r}
 crispr_signif <- readRDS("./data_munging/rds/crispr_signif.rds")
 
-knitr::kable(filter(crispr_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
 wilcox_gene_plot <- ggplot(data = crispr_signif) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  geom_histogram(aes(x = p.adj, fill = "darkslategray3",), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  coord_cartesian(ylim = c(0, 4500)) +
-  scale_y_continuous(breaks = seq(0, 4500, by = 500), labels = formatC(seq(0, 4500, by = 500), format = "d")) +
-  #stat_bin(breaks = seq(0, 1, by = 0.025), geom = "text", colour = "black", size = 3, aes(label = ..count..), vjust = 0.3, angle = 80, hjust = -0.4) +
+  coord_cartesian(ylim = c(0, 3500)) +
+  scale_y_continuous(breaks = seq(0, 3500, by = 500), labels = formatC(seq(0, 3500, by = 500), format = "d")) +
   scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
@@ -616,11 +457,42 @@ wilcox_gene_plot
 # ggsave(filename = "./plots_18Q3/crispr/pvals_genes.pdf", plot = wilcox_gene_plot, width = 8, height = 4, device = "pdf")
 ```
 
+### Non-silent mutant vs. Other
 
-### Grouped by gene and lineage
+```{r, eval=TRUE}
+crispr_signif_nonsilent<- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif_nonsilent <- adj_signif(crispr_signif_nonsilent)
+crispr_signif_nonsilent <- crispr_signif_nonsilent[order(crispr_signif_nonsilent$p),]
+saveRDS(crispr_signif_nonsilent, "./data_munging/rds/crispr_signif_nonsilent.rds")
 
-```{r, eval=FALSE}
-crispr_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+write.table(crispr_signif_nonsilent, file = "~/Desktop/crispr_signif_nonsilent_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
+```
+
+```{r}
+crispr_signif_nonsilent <- readRDS("./data_munging/rds/crispr_signif_nonsilent.rds")
+
+knitr::kable(filter(crispr_signif_nonsilent, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r fig.height=4, fig.width=8}
+wilcox_gene_nonsilent_plot <- ggplot(data = crispr_signif_nonsilent) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  # coord_cartesian(ylim = c(0, 3500)) +
+  # scale_y_continuous(breaks = seq(0, 3500, by = 500), labels = formatC(seq(0, 3500, by = 500), format = "d")) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_gene_nonsilent_plot
+```
+
+## Grouped by gene and lineage
+
+### Deleterious vs. Other
+
+```{r, eval=TRUE}
+crispr_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_lineage <- adj_signif(crispr_signif_lineage)
 crispr_signif_lineage <- crispr_signif_lineage[order(crispr_signif_lineage$p),]
 saveRDS(crispr_signif_lineage, "./data_munging/rds/crispr_signif_lineage.rds")
@@ -631,12 +503,58 @@ write.table(crispr_signif_lineage, file = "~/Desktop/crispr_signif_lineage.csv",
 ```{r}
 crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_lineage.rds")
 
-knitr::kable(filter(crispr_signif_lineage, p < 0.05)[, c("Hugo_Symbol", "lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines by Lineage, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
-### Grouped by gene and tissue
+```{r fig.height=4, fig.width=8}
+wilcox_lineage_plot <- ggplot(data = crispr_signif_lineage) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  # coord_cartesian(ylim = c(0, 3500)) +
+  # scale_y_continuous(breaks = seq(0, 3500, by = 500), labels = formatC(seq(0, 3500, by = 500), format = "d")) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_lineage_plot
+# ggsave(filename = "./plots_18Q3/crispr/pvals_genes.pdf", plot = wilcox_gene_plot, width = 8, height = 4, device = "pdf")
+```
 
-```{r, eval=FALSE}
+### Non-silent mutant vs. Other
+
+```{r, eval=TRUE}
+crispr_signif_nonsilent_lineage <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif_nonsilent_lineage <- adj_signif(crispr_signif_nonsilent_lineage)
+crispr_signif_nonsilent_lineage <- crispr_signif_nonsilent_lineage[order(crispr_signif_nonsilent_lineage$p),]
+saveRDS(crispr_signif_nonsilent_lineage, "./data_munging/rds/crispr_signif_nonsilent_lineage.rds")
+
+write.table(crispr_signif_nonsilent_lineage, file = "~/Desktop/crispr_signif_nonsilent_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
+```
+
+```{r}
+crispr_signif_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_signif_nonsilent_lineage.rds")
+
+knitr::kable(filter(crispr_signif_nonsilent_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r fig.height=4, fig.width=8}
+wilcox_lineage_nonsilent_plot <- ggplot(data = crispr_signif_nonsilent_lineage) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  # coord_cartesian(ylim = c(0, 3500)) +
+  # scale_y_continuous(breaks = seq(0, 3500, by = 500), labels = formatC(seq(0, 3500, by = 500), format = "d")) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_lineage_nonsilent_plot
+```
+
+## Grouped by gene and tissue
+
+### Deleterious vs. Other
+
+```{r, eval=TRUE}
 crispr_signif_tissue <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_tissue <- adj_signif(crispr_signif_tissue)
 crispr_signif_tissue <- crispr_signif_tissue[order(crispr_signif_tissue$p),]
@@ -648,60 +566,59 @@ write.table(crispr_signif_tissue, file = "~/Desktop/crispr_signif_tissue.csv", q
 ```{r}
 crispr_signif_tissue <- readRDS("./data_munging/rds/crispr_signif_tissue.rds")
 
-knitr::kable(filter(crispr_signif_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CRISPR Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines by Primary Tissue, p < 0.1 (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines by tissue, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
-wilcox_gene_tissue_plot <- ggplot(data = crispr_signif_tissue) +
+wilcox_tissue_plot <- ggplot(data = crispr_signif_tissue) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  geom_histogram(aes(x = p.adj, fill = "darkslategray3",), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  scale_y_continuous(breaks = seq(0, 50000, by = 5000), labels = formatC(seq(0, 50000, by = 5000), format = "d")) +
-  #stat_bin(breaks = seq(0, 1, by = 0.025), geom = "text", colour = "black", size = 3, aes(label = ..count..), vjust = 0.3, angle = 80, hjust = -0.4) +
+  # scale_y_continuous(breaks = seq(0, 50000, by = 5000), labels = formatC(seq(0, 50000, by = 5000), format = "d")) +
   scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
-wilcox_gene_tissue_plot
-# ggsave(filename = "./plots_18Q3/crispr/pvals_genes_tissues.pdf", plot = wilcox_gene_tissue_plot, width = 8, height = 4, device = "pdf")
+wilcox_tissue_plot
+# ggsave(filename = "./plots_18Q3/crispr/pvals_genes_tissues.pdf", plot = wilcox_tissue_plot, width = 8, height = 4, device = "pdf")
 ```
 
-## shRNA
+### Non-silent mutant vs. Other
 
-### Grouped by gene
+```{r, eval=TRUE}
+crispr_signif_nonsilent_tissue <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif_nonsilent_tissue <- adj_signif(crispr_signif_nonsilent_tissue)
+crispr_signif_nonsilent_tissue <- crispr_signif_nonsilent_tissue[order(crispr_signif_nonsilent_tissue$p),]
+saveRDS(crispr_signif_nonsilent_tissue, "./data_munging/rds/crispr_signif_nonsilent_tissue.rds")
 
-```{r, eval=FALSE}
-shrna_signif <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
-shrna_signif <- adj_signif(shrna_signif)
-shrna_signif <- shrna_signif[order(shrna_signif$p),]
-saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
+write.table(crispr_signif_nonsilent_tissue, file = "~/Desktop/crispr_signif_nonsilent_tissue.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
-```{r, eval=FALSE}
-shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
+```{r}
+crispr_signif_nonsilent_tissue <- readRDS("./data_munging/rds/crispr_signif_nonsilent_tissue.rds")
 
-knitr::kable(filter(shrna_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_nonsilent_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines by tissue, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
-### Grouped by gene and lineage
-
-```{r, eval=FALSE}
-shrna_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
-shrna_signif_lineage <- adj_signif(shrna_signif_lineage)
-shrna_signif_lineage <- mutate(shrna_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
-saveRDS(shrna_signif_lineage, "./../crispr_lineages_giant_files/shrna_signif_lineage.rds")
-```
-
-```{r, eval=FALSE}
-shrna_signif_lineage <- readRDS("./../crispr_lineages_giant_files/shrna_signif_lineage.rds")
+```{r fig.height=4, fig.width=8}
+wilcox_tissue_nonsilent_plot <- ggplot(data = crispr_signif_nonsilent_tissue) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  # coord_cartesian(ylim = c(0, 3500)) +
+  # scale_y_continuous(breaks = seq(0, 3500, by = 500), labels = formatC(seq(0, 3500, by = 500), format = "d")) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_tissue_nonsilent_plot
 ```
 
 # Heatmaps
 
 --------------------------------------------------------------------------------
 
-## CRISPR
+## Data management
 
-### Data management
+The mutation status portion of these heatmaps was made using deleterious and missense mutations as "mutant" and all others as "other."
 
 Make and save heatmap data matrices:
 ```{r, eval=FALSE}
@@ -779,7 +696,7 @@ chm_annot$Cell_Line_SSMD <- as.numeric(chm_annot$Cell_Line_SSMD)
 chm_annot$Cas9_Activity <- as.numeric(chm_annot$Cas9_Activity)
 ```
 
-### All genes, no omics
+## All genes, no omics
 
 ```{r, eval=FALSE}
 chm_annot_list <- HeatmapAnnotation(df = chm_annot, annotation_legend_param = list(
@@ -849,11 +766,11 @@ grid.text("Source", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15
 dev.off()
 ```
 
-### CGC genes
+## CGC genes
 
 Code for heatmap of CGC-filtered genes only
 
-#### Euclidean distance
+### Euclidean distance
 
 ```{r, eval=FALSE}
 chm_scores_cgc <- subset(chm_scores, rownames(chm_scores) %in% cgc$Hugo_Symbol)
@@ -968,7 +885,7 @@ dev.off()
 ```
 
 
-#### Pearson correlation
+### Pearson correlation
 
 ```{r, eval=FALSE}
 chm_scores_cgc <- subset(chm_scores, rownames(chm_scores) %in% cgc$Hugo_Symbol)
@@ -1064,70 +981,11 @@ grid.text("Source", unit(1, "npc") + unit(1, "mm"), 0.5, gp = gpar(fontsize = 15
 dev.off()
 ```
 
+
+
 # Per-gene plots
 
 --------------------------------------------------------------------------------
-
-## Report 2 plot
-
-```{r}
-sig_genes <- c("KRAS", "TP53", "NRAS", "BRAF", "PIK3CA", "PTEN", "CTNNB1")
-crispr_sig_genes <- filter(crispr_data, Hugo_Symbol %in% sig_genes)
-crispr_sig_genes$Hugo_Symbol <- factor(crispr_sig_genes$Hugo_Symbol, levels = c("KRAS", "TP53", "NRAS", "BRAF", "PIK3CA", "PTEN", "CTNNB1"))
-```
-
-```{r fig.height=18, fig.width=5}
-crispr_color <- as.character(crispr_sig_genes$Color)
-names(crispr_color) <- crispr_sig_genes$Mutation_Status
-
-# Mutation status
-plot_mut <- ggplot(data = crispr_sig_genes, aes(x = Mutation_Status, y = Score, color = Mutation_Status)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_jitter(alpha = 0.3, size = 0.7, position = position_jitter(w = 0.05)) +
-  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free_y") +
-  scale_color_manual(values = crispr_color) +
-  geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
-  theme_light() +
-  theme(legend.position = "none") +
-  labs(x = "Mutation Status", y = "CERES Score",
-       title = "Mutation Status")
-# plot_mut
-
-# Copy number
-plot_cn <- ggplot(data = crispr_sig_genes, aes(x = Copy_Number, y = Score, color = Mutation_Status)) +
-  geom_point(size = 0.5, alpha = 0.5) +
-  geom_smooth(method = "lm", size = 0.5) +
-  scale_color_manual(values = crispr_color) +
-  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free") +
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc = "right", label.y.npc = "top") +
-  theme_light() +
-  theme(legend.position = "none", axis.title.y = element_blank()) +
-  labs(y = "CERES Score", color = "Mutation Status",
-       x = "Theoretical Copy number", title = "Copy Number")
-# plot_cn
-
-# Gene expression
-plot_ge <- ggplot(data = crispr_sig_genes, aes(x = RPKM_log2, y = Score, color = Mutation_Status)) +
-  geom_point(size = 0.5, alpha = 0.5) +
-  geom_smooth(method = "lm", size = 0.5) +
-  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free_y") +
-  scale_color_manual(values = crispr_color) +
-  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc = "left", label.y.npc = "top") +
-  theme_light() +
-  theme(legend.position = "none", axis.title.y = element_blank()) +
-  labs(y = "CERES Score", color = "Mutation Status",
-       x = "Gene Expression [log2(RPKM)]",
-       title = "Gene Expression")
-# plot_ge
-```
-
-```{r fig.height=18, fig.width=15}
-grid.newpage()
-grid.draw(cbind(ggplotGrob(plot_mut), ggplotGrob(plot_ge), ggplotGrob(plot_cn), size = "last"))
-
-ggsave(filename = "./plots_18Q3/crispr/omics_sig_genes.pdf", plot = grid.draw(cbind(ggplotGrob(plot_mut), ggplotGrob(plot_ge), ggplotGrob(plot_cn), size = "last")), width = 15, height = 18, device = "pdf")
-```
-
 
 ## Grouped plots
 
@@ -1152,8 +1010,6 @@ crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_b
 crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
 bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
 ```
-
-
 
 ## Sorted lineage plots
 
@@ -1201,6 +1057,275 @@ names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_tissue
 crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
 crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
 bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+
+
+# Report #2
+
+--------------------------------------------------------------------------------
+
+##  Metadata
+
+```{r}
+tissue_summ <- crispr_meta %>% group_by(primary_tissue) %>% tally()
+disease_summ <- ccl_info %>% group_by(Primary.Disease) %>% tally()
+```
+
+```{r fig.height=12, fig.width=3}
+ggplot(data = tissue_summ) + 
+  aes(x = 0, y = n, fill = primary_tissue, label = primary_tissue) +
+  geom_histogram(color = "black", stat = "identity") +
+  geom_text(position = position_stack(vjust = 0.5)) +
+  scale_y_continuous(breaks = seq(0, 500, by = 25), labels = seq(0, 500, by = 25)) +
+  coord_cartesian(ylim = c(0, 500)) +
+  theme(legend.position = "none", axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.title.x = element_blank()) +
+  labs(y = "Count")
+```
+
+```{r, include=FALSE, eval=FALSE}
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(maf_df$Hugo_Symbol)))
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(cn_melt$Hugo_Symbol)))
+length(intersect(unique(crispr_data$Hugo_Symbol), unique(ge_melt$Hugo_Symbol)))
+
+length(intersect(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID)))
+length(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)))
+length(intersect(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID)))
+
+setdiff(unique(crispr_data$Broad_ID), unique(maf_df$Broad_ID))
+setdiff(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID))
+setdiff(unique(crispr_data$Broad_ID), unique(ge_melt$Broad_ID))
+
+length(intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
+setdiff(crispr_data$Broad_ID, intersect(intersect(unique(crispr_data$Broad_ID), unique(cn_melt$Broad_ID)), unique(ge_melt$Broad_ID)))
+```
+
+## Scores
+
+Distribution of scores across cell lines and primary tissues. Each data point represents a single cell line.
+```{r fig.height=4, fig.width=12}
+ceres_summ <- crispr_data %>% group_by(primary_tissue) %>% summarize(Max = max(Score),
+                                                                     Min = min(Score))
+score_summ_plot <- ggplot(data = crispr_data, aes(x = primary_tissue, color = primary_tissue)) +
+  geom_boxplot(mapping = aes(y = Score), outlier.shape = NA) +
+  geom_point(data = ceres_summ, mapping = aes(x = primary_tissue, y = Min)) +
+  geom_point(data = ceres_summ, mapping = aes(x = primary_tissue, y = Max)) +
+  scale_y_continuous(breaks = seq(-4, 6, by = 1), labels = seq(-4, 6, by = 1)) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none") +
+  labs(x = "Primary Tissue", y = "CERES Score")
+score_summ_plot
+# ggsave(filename = "./plots_18Q3/crispr/ceres_score_summ_plot.pdf", plot = score_summ_plot, width = 12, height = 4, device = "pdf")
+```
+
+## Mutations
+
+```{r}
+maf_df_filt <- filter(maf_df, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
+maf_summ_filt <- maf_df_filt %>% group_by(Mutation_Status) %>% tally()
+maf_summ_filt$Percent <- format(round(maf_summ_filt$n / sum(maf_summ_filt$n) * 100, 4), nsmall = 2)
+maf_summ_filt$Percent <- as.numeric(as.character(maf_summ_filt$Percent))
+```
+
+Distribution of mutations across cell lines and primary tissues. Each data point represents a single cell line.
+```{r fig.height=4, fig.width=10}
+maf_ccl_annot <- merge(maf_df %>% group_by(Broad_ID) %>% tally(), crispr_meta, by = "Broad_ID", all.y = TRUE)
+
+maf_ccl_annot_plot <- ggplot(data = maf_ccl_annot, aes(x = primary_tissue, y = n, color = primary_tissue)) +
+  geom_boxplot(outlier.shape = NA, fill = NA) +
+  geom_jitter(alpha = 0.7, size = 1, position = position_jitter(w = 0.25)) +
+  scale_y_continuous(breaks = seq(0, 9000, by = 1000), labels = seq(0, 9000, by = 1000)) +
+  theme(axis.ticks.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  labs(x = "Primary Tissue", y = "Number of Mutations")
+maf_ccl_annot_plot
+# ggsave(filename = "./plots_18Q3/crispr/maf_ccl_annot_plot.pdf", plot = maf_ccl_annot_plot, width = 12, height = 4, device = "pdf")
+```
+
+```{r fig.height=8, fig.width=12}
+# ggsave(filename = "./plots_18Q3/crispr/score_mut_summ.pdf", plot = grid.draw(rbind(ggplotGrob(maf_ccl_annot_plot), ggplotGrob(score_summ_plot), size = "first")), width = 12, height = 8, device = "pdf")
+```
+
+```{r fig.height=6, fig.width=12}
+maf_gene_annot <- maf_df_filt %>% group_by(Hugo_Symbol) %>% tally()
+
+ggplot(data = maf_gene_annot, aes(x = n)) +
+  geom_histogram(breaks = seq(0, 600, by = 20), fill = "darkslategray3", color = "black", alpha = 0.7) +
+  coord_cartesian(ylim = c(0, 13000)) +
+  scale_y_continuous(breaks = seq(0, 13500, by = 500), labels = formatC(seq(0, 13500, by = 500), format = "d")) +
+  scale_x_continuous(breaks = seq(0, 600, by = 20), labels = seq(0, 600, by = 20)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  stat_bin(breaks = seq(0, 600, by = 20), geom = "text", colour = "black", size = 2.5, aes(label = ..count..), vjust = -0.2, angle = 45, hjust = -0.1) +
+  labs(x = "Number of Mutations", y = "Frequency", title = paste0("Distribution of mutational load for ", length(unique(maf_gene_annot$Hugo_Symbol)), " genes in the CCLE MAF file across all ", length(unique(crispr_ccl$Broad_ID)), " cell lines in the CRISPR screen"))
+```
+
+## Dependency probabilities
+
+```{r fig.height=6, fig.width=12}
+drop_prob_100 <- ggplot(data = crispr_data, aes(x = Dep_Prob)) +
+  geom_histogram(breaks = seq(0, 1, by = 0.05), fill = "darkslategray3", color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  scale_y_continuous(breaks = seq(0, 5500000, by = 500000), labels = formatC(seq(0, 5500000, by = 500000), format = "d")) +
+  stat_bin(breaks = seq(0, 1, by = 0.05), geom = "text", colour = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
+  labs(title = "Distribution of all dependency probabilities", x = "Probability of Real Dependency", y = "Frequency")
+
+dep_prob_5 <- ggplot(data = filter(crispr_data, Dep_Prob >= 0.95), aes(x = Dep_Prob)) +
+  geom_histogram(mapping = aes(fill = primary_tissue), breaks = seq(0.95, 1, by = 0.005), color = "black") +
+  scale_y_continuous(breaks = seq(0, 60000, by = 10000), labels = formatC(seq(0, 60000, by = 10000), format = "d")) +
+  theme(legend.position = "bottom") +
+  guides(fill = guide_legend(nrow = 4, byrow = FALSE)) +
+  stat_bin(breaks = seq(0.95, 1, by = 0.005), geom = "text", color = "black", size = 3.5, aes(label = ..count..), vjust = -1) +
+  labs(title = "Distribution of all dependency probabilities > 0.95", x = "Probability of Real Dependency", y = "Frequency", fill = "Primary Tissue")
+```
+
+## Per-gene plots
+
+```{r fig.height=18, fig.width=5}
+sig_genes <- c("KRAS", "TP53", "NRAS", "BRAF", "PIK3CA", "PTEN", "CTNNB1")
+crispr_sig_genes <- filter(crispr_data, Hugo_Symbol %in% sig_genes)
+crispr_sig_genes$Hugo_Symbol <- factor(crispr_sig_genes$Hugo_Symbol, levels = c("KRAS", "TP53", "NRAS", "BRAF", "PIK3CA", "PTEN", "CTNNB1"))
+
+crispr_color <- as.character(crispr_sig_genes$Color)
+names(crispr_color) <- crispr_sig_genes$Mutation_Status
+
+# Mutation status
+plot_mut <- ggplot(data = crispr_sig_genes, aes(x = Mutation_Status, y = Score, color = Mutation_Status)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(alpha = 0.3, size = 0.7, position = position_jitter(w = 0.05)) +
+  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free_y") +
+  scale_color_manual(values = crispr_color) +
+  geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
+  theme_light() +
+  theme(legend.position = "none") +
+  labs(x = "Mutation Status", y = "CERES Score",
+       title = "Mutation Status")
+# plot_mut
+
+# Copy number
+plot_cn <- ggplot(data = crispr_sig_genes, aes(x = Copy_Number, y = Score, color = Mutation_Status)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "lm", size = 0.5) +
+  scale_color_manual(values = crispr_color) +
+  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free") +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc = "right", label.y.npc = "top") +
+  theme_light() +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  labs(y = "CERES Score", color = "Mutation Status",
+       x = "Theoretical Copy number", title = "Copy Number")
+# plot_cn
+
+# Gene expression
+plot_ge <- ggplot(data = crispr_sig_genes, aes(x = RPKM_log2, y = Score, color = Mutation_Status)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  geom_smooth(method = "lm", size = 0.5) +
+  facet_wrap(~ Hugo_Symbol, nrow = 7, scales = "free_y") +
+  scale_color_manual(values = crispr_color) +
+  stat_cor(method = "pearson", show.legend = FALSE, label.x.npc = "left", label.y.npc = "top") +
+  theme_light() +
+  theme(legend.position = "none", axis.title.y = element_blank()) +
+  labs(y = "CERES Score", color = "Mutation Status",
+       x = "Gene Expression [log2(RPKM)]",
+       title = "Gene Expression")
+# plot_ge
+
+# ggsave(filename = "./plots_18Q3/crispr/omics_sig_genes.pdf", plot = grid.draw(cbind(ggplotGrob(plot_mut), ggplotGrob(plot_ge), ggplotGrob(plot_cn), size = "last")), width = 15, height = 18, device = "pdf")
+```
+
+
+
+# shRNA
+
+--------------------------------------------------------------------------------
+
+## Data and annotations
+
+DepMap cell line metadata:
+```{r}
+# From figshare
+shrna_meta <- read.delim("./data_munging/sample_info_18Q3_shrna.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+colnames(shrna_meta)[1] <- "CCLE_Name"
+```
+
+The Achilles shRNA DEMETER score data was pulled from the [CTD^2^ Data Portal](https://ocg.cancer.gov/programs/ctd2/data-portal) (Tsherniak et al 2017).
+```{r, eval=FALSE}
+shrna <- read.table("./data_munging/D2_combined_gene_dep_scores.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(shrna)[1] <- "Hugo_Symbol"
+# Remove Entrez gene IDs from gene names
+shrna$Hugo_Symbol <- gsub(" .*", "", shrna$Hugo_Symbol)
+
+# Melt shRNA dataset for merging
+shrna_melt <- melt(shrna , id.vars = "Hugo_Symbol", measure.vars = colnames(shrna)[2:ncol(shrna)], variable.name = "CCLE_Name", value.name = "Score")
+shrna_melt <- drop_na(shrna_melt)
+```
+
+Merge annotation data:
+```{r, eval=FALSE}
+# Merge cell line metadata
+shrna_melt <- merge(shrna_melt, ccl_info, by = "CCLE_Name", all.x = TRUE)
+shrna_melt <- merge(shrna_melt, shrna_meta, by = "CCLE_Name", all.x = TRUE)
+
+# Merge mutation annotations
+shrna_muts <- merge(shrna_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+shrna_muts <- shrna_muts %>% mutate(Mutation_Status = if_else(is.na(Mutation_Status), "Other", Mutation_Status))
+shrna_muts$Hugo_Symbol <- factor(shrna_muts$Hugo_Symbol)
+
+# Summarize number of mutant and Other cell lines
+shrna_muts_summ <- shrna_muts %>% group_by(Hugo_Symbol) %>%
+  summarize(N_Other = sum(Mutation_Status == "Other"),
+            N_Mutant = sum(Mutation_Status == "Mutant"))
+
+# Merge test results back into full dataset, which restores information lost in the summarization
+shrna_data <- merge(shrna_muts_summ, shrna_muts, by = "Hugo_Symbol")
+
+# Add Color column
+shrna_data$Color <- ifelse(shrna_data$Mutation_Status == "Other", "cyan3", "darkorchid")
+shrna_data$Color <- factor(shrna_data$Color)
+
+# Cell line lineages
+shrna_data <- merge(shrna_data, ccl_converter, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
+levels(shrna_data$lineage_name) <- sort(levels(shrna_data$lineage_name), decreasing = TRUE)
+
+# Copy number
+shrna_data <- merge(shrna_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
+
+# Gene expression (RPKM)
+ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(shrna_data$Hugo_Symbol))
+shrna_data <- merge(shrna_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
+
+saveRDS(shrna_data, "./../crispr_lineages_giant_files/shrna_data_18Q3.rds", compress = "xz")
+```
+
+```{r, eval=FALSE}
+shrna_data <- readRDS("./../crispr_lineages_giant_files/shrna_data_18Q3.rds")
+shrna_ccl <- data.frame("Broad_ID" = shrna_data$Broad_ID)
+```
+
+## Wilcoxon tests
+
+### Grouped by gene
+
+```{r, eval=FALSE}
+shrna_signif <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
+shrna_signif <- adj_signif(shrna_signif)
+shrna_signif <- shrna_signif[order(shrna_signif$p),]
+saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
+```
+
+```{r, eval=FALSE}
+shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
+
+knitr::kable(filter(shrna_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+```
+
+### Grouped by gene and lineage
+
+```{r, eval=FALSE}
+shrna_signif_lineage <- compare_means(Score ~ Mutation_Status, group.by = c("Hugo_Symbol", "lineage_name"), data = shrna_data, method = "wilcox.test", p.adjust.method = "BH")
+shrna_signif_lineage <- adj_signif(shrna_signif_lineage)
+shrna_signif_lineage <- mutate(shrna_signif_lineage, lineage_name = reorder(lineage_name, p.adj, mean))
+saveRDS(shrna_signif_lineage, "./../crispr_lineages_giant_files/shrna_signif_lineage.rds")
+```
+
+```{r, eval=FALSE}
+shrna_signif_lineage <- readRDS("./../crispr_lineages_giant_files/shrna_signif_lineage.rds")
 ```
 
 # References
