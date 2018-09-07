@@ -227,19 +227,24 @@ makeCRISPRtissueplot <- function(g) {
 
 --------------------------------------------------------------------------------
 
-## D. Charytonowicz ell line converter
+## D. Charytonowicz cell line converter
 
 This comprehensive cancer cell line information curated by Daniel Charytonowicz.
 ```{r}
-ccl_converter <- read.delim("./data_munging/cell_line_database_completed_extra_grouped_doids_FINAL.csv", sep = "\t", header = TRUE)
-colnames(ccl_converter)[colnames(ccl_converter) == "ccle_cell_line_name"] <- "CCLE_Name"
-colnames(ccl_converter)[colnames(ccl_converter) == "broad_id"] <- "Broad_ID"
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180907.tsv", row.names = 1, sep = "\t", header = TRUE)
 ```
 
-```{r}
-ccl_converter_test <- read.delim("./data_munging/cell_line_database_FINAL_MASTER.tsv", sep = "\t", header = TRUE)
-colnames(ccl_converter_test)[colnames(ccl_converter_test) == "ccle_cell_line_name"] <- "CCLE_Name"
-colnames(ccl_converter_test)[colnames(ccl_converter_test) == "broad_id"] <- "Broad_ID"
+
+```{r, eval=FALSE, include=FALSE}
+# Editing CCL DB
+groupings <- read.delim("./data_munging/cell_line_database_completed_extra_grouped_doids_FINAL.csv", sep = "\t", header = TRUE)
+groupings <- unique(select(groupings, lineage_name, grouped_general_doid, group_general_lineage_name))
+
+ccl_converter <- read.delim("./data_munging/cell_line_database_FINAL_MASTER.tsv", sep = "\t", row.names = 1, header = TRUE)
+colnames(ccl_converter)[colnames(ccl_converter) == "ccle_cell_line_name"] <- "CCLE_Name"
+colnames(ccl_converter)[colnames(ccl_converter) == "broad_id"] <- "Broad_ID"
+
+ccl_converter <- merge(ccl_converter, groupings, by = "lineage_name", all.x = TRUE)
 ```
 
 ## DepMap cell line metadata
@@ -257,19 +262,13 @@ colnames(crispr_meta)[7] <- "CCLE_Name"
 ```{r, include=FALSE}
 dan_test <- select(ccl_converter, CCLE_Name, Broad_ID, cell_line_name)
 dan_test <- dan_test[-which(dan_test$CCLE_Name == ""), ]
-old_dan_test <- select(ccl_converter_test, CCLE_Name, Broad_ID, cell_line_name)
-old_dan_test <- old_dan_test[-which(old_dan_test$CCLE_Name == ""), ]
-colnames(old_dan_test)[colnames(old_dan_test) == "Broad_ID"] <- "Broad_ID_Old"
 ccl_test <- select(ccl_info, CCLE_Name, Broad_ID)
 
 test <- merge(ccl_test, dan_test, by = "CCLE_Name", all = TRUE, suffixes = c("_DepMap", "_Daniel"))
-test <- merge(test, old_dan_test, by = "CCLE_Name", all = TRUE)
-test$BroadIDs_match_Daniel <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
-test$BroadIDs_match_Old <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Old), TRUE, FALSE)
+test$BroadIDs_match <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
 
-test_false_Daniel <- filter(test, BroadIDs_match_Daniel == FALSE)
-test_false_Old <- filter(test, BroadIDs_match_Old == FALSE)
-# write.table(test_false, file = "~/Desktop/cell_line_database_problems.csv", quote = FALSE, sep = ",")
+test_false <- filter(test, BroadIDs_match == FALSE)
+# write.table(ccl_converter, file = "~/Desktop/cell_line_database_v1_20180907.tsv", quote = FALSE, sep = "\t")
 ```
 
 ## CGC gene list
@@ -299,9 +298,17 @@ maf_df <- unique(subset(maf_df, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID
 maf_summ <- maf_raw[, c("Variant_Classification", "isDeleterious")] %>% group_by(Variant_Classification, isDeleterious) %>% tally()
 maf_summ$Percent <- format(round(maf_summ$n / sum(maf_summ$n) * 100, 4), nsmall = 2)
 maf_summ$isDeleterious <- ifelse(maf_summ$isDeleterious == "TRUE", "Yes", "No")
+
 knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
+```{r}
+max(nchar(as.character(maf_raw$Tumor_Seq_Allele1)))
+maf_raw %>% group_by(Variant_Type, isTCGAhotspot) %>% tally()
+
+test <- filter(maf_raw, Hugo_Symbol == "KRAS")
+test %>% group_by(isDeleterious) %>% tally()
+```
 
 ## CCLE copy number file
 
@@ -419,6 +426,7 @@ crispr_data <- readRDS("./../crispr_lineages_giant_files/crispr_data_18Q3.rds")
 crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 # write.table(crispr_data, file = "~/Desktop/crispr_data.tsv", quote = FALSE, sep = "\t")
 ```
+
 
 # Wilcoxon tests
 
