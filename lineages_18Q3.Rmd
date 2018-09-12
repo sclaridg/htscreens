@@ -455,6 +455,7 @@ Filter for point mutations:
 ```{r}
 crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1)
 test_ptmuts <- filter(crispr_data_ptmuts, is.na(group_general_lineage_name))
+test_ptmuts <- filter(crispr_data_ptmuts, Hugo_Symbol == "KRAS")
 ```
 
 ## Grouped by gene
@@ -527,6 +528,11 @@ crispr_signif_delmis <- crispr_signif_delmis[order(crispr_signif_delmis$p),]
 saveRDS(crispr_signif_delmis, "./data_munging/rds/crispr_signif_deleteriousmissense_gene.rds")
 
 # write.table(crispr_signif_delmis, file = "~/Desktop/crispr_signif_deleteriousmissense_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
+```
+
+
+```{r}
+compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol"), data = crispr_data_ptmuts[which(crispr_data_ptmuts$Hugo_Symbol == "KRAS"),], method = "wilcox.test", p.adjust.method = "BH")
 ```
 
 ```{r}
