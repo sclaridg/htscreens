@@ -11,6 +11,10 @@ output:
     toc_float:
       collapsed: true
     code_folding: hide
+    pandoc_args: [
+      "+RTS", "-K1024m",
+      "-RTS"
+    ]
 ---
 
 Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017) and the Broad and Dana-Farber Cancer Institite's Achilles shRNA (MacFarland et al. 2018, Data Science 2018).
@@ -313,7 +317,7 @@ knitr::kable(maf_summ, caption = "Distribution of variant classifications in the
 max(nchar(as.character(maf_raw$Reference_Allele)))
 maf_raw %>% group_by(Variant_Type, isTCGAhotspot) %>% tally()
 
-test <- filter(maf_df, Hugo_Symbol == "KRAS")
+test <- filter(maf_raw, Hugo_Symbol == "KRAS")
 test %>% group_by(isDeleterious) %>% tally()
 ```
 
@@ -438,7 +442,7 @@ saveRDS(crispr_data, "./../crispr_lineages_giant_files/crispr_data_18Q3.rds", co
 
 ```{r}
 crispr_data <- readRDS("./../crispr_lineages_giant_files/crispr_data_18Q3.rds")
-# crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
+crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 # write.table(crispr_data, file = "~/Desktop/crispr_data.tsv", quote = FALSE, sep = "\t")
 ```
 
@@ -451,6 +455,7 @@ Filter for point mutations:
 ```{r}
 crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1)
 test_ptmuts <- filter(crispr_data_ptmuts, is.na(group_general_lineage_name))
+test_ptmuts <- filter(crispr_data_ptmuts, Hugo_Symbol == "KRAS")
 ```
 
 ## Grouped by gene
@@ -523,6 +528,11 @@ crispr_signif_delmis <- crispr_signif_delmis[order(crispr_signif_delmis$p),]
 saveRDS(crispr_signif_delmis, "./data_munging/rds/crispr_signif_deleteriousmissense_gene.rds")
 
 # write.table(crispr_signif_delmis, file = "~/Desktop/crispr_signif_deleteriousmissense_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
+```
+
+
+```{r}
+compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol"), data = crispr_data_ptmuts[which(crispr_data_ptmuts$Hugo_Symbol == "KRAS"),], method = "wilcox.test", p.adjust.method = "BH")
 ```
 
 ```{r}
@@ -621,7 +631,7 @@ saveRDS(crispr_signif_delmis_lineage, "./data_munging/rds/crispr_signif_deleteri
 ```{r}
 crispr_signif_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif_deleteriousmissense_lineage.rds")
 
-knitr::kable(filter(crispr_signif_delmis_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_delmis_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -713,7 +723,7 @@ saveRDS(crispr_signif_delmis_tissue, "./data_munging/rds/crispr_signif_deleterio
 ```{r}
 crispr_signif_delmis_tissue <- readRDS("./data_munging/rds/crispr_signif_deleteriousmissense_tissue.rds")
 
-knitr::kable(filter(crispr_signif_delmis_tissue, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_delmis_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines by tissue, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -1121,7 +1131,7 @@ pwalk(list(crispr_all_groups_paths, crispr_all_groups), ggsave, path = "./plots_
 ```
 
 Data management:
-```{r}
+```{r, eval=FALSE}
 crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots_cgc", full.names = TRUE))
 names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots_cgc/" = ""))
 crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
@@ -1145,7 +1155,7 @@ pwalk(list(crispr_all_lins_paths, crispr_all_lins), ggsave, path = "./plots_18Q3
 ```
 
 Data management:
-```{r}
+```{r, eval=FALSE}
 crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_lineage_plots_cgc", full.names = TRUE))
 names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_lineage.png" = "", "./plots_18Q3/crispr_lineage_plots_cgc/" = ""))
 crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
@@ -1169,7 +1179,7 @@ pwalk(list(crispr_all_lins_paths, crispr_all_lins), ggsave, path = "./plots_18Q3
 ```
 
 Data management:
-```{r}
+```{r, eval=FALSE}
 crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_tissue_plots_cgc", full.names = TRUE))
 names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_tissue.png" = "", "./plots_18Q3/crispr_tissue_plots_cgc/" = ""))
 crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
@@ -1356,7 +1366,7 @@ plot_ge <- ggplot(data = crispr_sig_genes, aes(x = RPKM_log2, y = Score, color =
 ## Data and annotations
 
 DepMap cell line metadata:
-```{r}
+```{r, eval=FALSE}
 # From figshare
 shrna_meta <- read.delim("./data_munging/sample_info_18Q3_shrna.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 colnames(shrna_meta)[1] <- "CCLE_Name"
