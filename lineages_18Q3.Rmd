@@ -12,7 +12,7 @@ output:
       collapsed: true
     code_folding: hide
     pandoc_args: [
-      "+RTS", "-K1024m",
+      "+RTS", "-K2048m",
       "-RTS"
     ]
 ---
@@ -466,13 +466,13 @@ test_ptmuts <- filter(crispr_data_ptmuts, Hugo_Symbol == "KRAS")
 crispr_signif_del <- compare_means(Score ~ Mutation_Status_Deleterious, group.by = c("Hugo_Symbol"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_del <- adj_signif(crispr_signif_del)
 crispr_signif_del <- crispr_signif_del[order(crispr_signif_del$p),]
-saveRDS(crispr_signif_del, "./data_munging/rds/crispr_signif_deleterious_gene.rds")
+saveRDS(crispr_signif_del, "./data_munging/rds/crispr_signif_ptmuts_deleterious_gene.rds")
 
-# write.table(crispr_signif_del, file = "~/Desktop/crispr_signif_deleterious_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# write.table(crispr_signif_del, file = "~/Desktop/crispr_signif_ptmuts_deleterious_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 ```{r}
-crispr_signif_del <- readRDS("./data_munging/rds/crispr_signif_deleterious_gene.rds")
+crispr_signif_del <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleterious_gene.rds")
 
 knitr::kable(filter(crispr_signif_del, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
@@ -486,7 +486,6 @@ wilcox_gene_plot <- ggplot(data = crispr_signif_del) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
 wilcox_gene_plot
-# ggsave(filename = "./plots_18Q3/crispr/pvals_genes.pdf", plot = wilcox_gene_plot, width = 8, height = 4, device = "pdf")
 ```
 
 ### Non-silent mutant vs. Other
@@ -495,13 +494,13 @@ wilcox_gene_plot
 crispr_signif_nonsilent <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_nonsilent <- adj_signif(crispr_signif_nonsilent)
 crispr_signif_nonsilent <- crispr_signif_nonsilent[order(crispr_signif_nonsilent$p),]
-saveRDS(crispr_signif_nonsilent, "./data_munging/rds/crispr_signif_nonsilent_gene.rds")
+saveRDS(crispr_signif_nonsilent, "./data_munging/rds/crispr_signif_ptmuts_nonsilent_gene.rds")
 
-# write.table(crispr_signif_nonsilent, file = "~/Desktop/crispr_signif_nonsilent_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# write.table(crispr_signif_nonsilent, file = "~/Desktop/crispr_signif_ptmuts_nonsilent_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 ```{r}
-crispr_signif_nonsilent <- readRDS("./data_munging/rds/crispr_signif_nonsilent_gene.rds")
+crispr_signif_nonsilent <- readRDS("./data_munging/rds/crispr_signif_ptmuts_nonsilent_gene.rds")
 
 knitr::kable(filter(crispr_signif_nonsilent, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
@@ -523,9 +522,9 @@ wilcox_gene_nonsilent_plot
 crispr_signif_delmis <- compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_delmis <- adj_signif(crispr_signif_delmis)
 crispr_signif_delmis <- crispr_signif_delmis[order(crispr_signif_delmis$p),]
-saveRDS(crispr_signif_delmis, "./data_munging/rds/crispr_signif_deleteriousmissense_gene.rds")
+saveRDS(crispr_signif_delmis, "./data_munging/rds/crispr_signif_ptmuts_deleteriousmissense_gene.rds")
 
-# write.table(crispr_signif_delmis, file = "~/Desktop/crispr_signif_deleteriousmissense_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# write.table(crispr_signif_delmis, file = "~/Desktop/crispr_signif_ptmuts_deleteriousmissense_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 
@@ -534,7 +533,7 @@ compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Sy
 ```
 
 ```{r}
-crispr_signif_delmis <- readRDS("./data_munging/rds/crispr_signif_deleteriousmissense_gene.rds")
+crispr_signif_delmis <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleteriousmissense_gene.rds")
 
 knitr::kable(filter(crispr_signif_delmis, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
@@ -558,13 +557,13 @@ wilcox_gene_delmis_plot
 crispr_signif_del_lineage <- compare_means(Score ~ Mutation_Status_Deleterious, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_del_lineage <- adj_signif(crispr_signif_del_lineage)
 crispr_signif_del_lineage <- crispr_signif_del_lineage[order(crispr_signif_del_lineage$p),]
-saveRDS(crispr_signif_del_lineage, "./data_munging/rds/crispr_signif_deleterious_lineage.rds")
+saveRDS(crispr_signif_del_lineage, "./data_munging/rds/crispr_signif_ptmuts_deleterious_lineage.rds")
 
-# write.table(crispr_signif_del_lineage, file = "~/Desktop/crispr_signif_deleterious_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# write.table(crispr_signif_del_lineage, file = "~/Desktop/crispr_signif_ptmuts_deleterious_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 ```{r}
-crispr_signif_del_lineage <- readRDS("./data_munging/rds/crispr_signif_deleterious_lineage.rds")
+crispr_signif_del_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleterious_lineage.rds")
 
 knitr::kable(filter(crispr_signif_del_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
@@ -578,7 +577,6 @@ wilcox_lineage_plot <- ggplot(data = crispr_signif_del_lineage) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
 wilcox_lineage_plot
-# ggsave(filename = "./plots_18Q3/crispr/pvals_genes.pdf", plot = wilcox_gene_plot, width = 8, height = 4, device = "pdf")
 ```
 
 ### Non-silent mutant vs. Other
@@ -587,13 +585,13 @@ wilcox_lineage_plot
 crispr_signif_nonsilent_lineage <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_nonsilent_lineage <- adj_signif(crispr_signif_nonsilent_lineage)
 crispr_signif_nonsilent_lineage <- crispr_signif_nonsilent_lineage[order(crispr_signif_nonsilent_lineage$p),]
-saveRDS(crispr_signif_nonsilent_lineage, "./data_munging/rds/crispr_signif_nonsilent_lineage.rds")
+saveRDS(crispr_signif_nonsilent_lineage, "./data_munging/rds/crispr_signif_ptmuts_nonsilent_lineage.rds")
 
-# write.table(crispr_signif_nonsilent_lineage, file = "~/Desktop/crispr_signif_nonsilent_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# write.table(crispr_signif_nonsilent_lineage, file = "~/Desktop/crispr_signif_ptmuts_nonsilent_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 ```{r}
-crispr_signif_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_signif_nonsilent_lineage.rds")
+crispr_signif_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_nonsilent_lineage.rds")
 
 knitr::kable(filter(crispr_signif_nonsilent_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
@@ -612,16 +610,16 @@ wilcox_lineage_nonsilent_plot
 ### Deleterious and missense mutant vs. Other
 
 ```{r, eval=FALSE}
-crispr_signif_delmis_lineage <- compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
+crispr_signif_delmis_lineage <- compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_delmis_lineage <- adj_signif(crispr_signif_delmis_lineage)
 crispr_signif_delmis_lineage <- crispr_signif_delmis_lineage[order(crispr_signif_delmis_lineage$p),]
-saveRDS(crispr_signif_delmis_lineage, "./data_munging/rds/crispr_signif_deleteriousmissense_lineage.rds")
+saveRDS(crispr_signif_delmis_lineage, "./data_munging/rds/crispr_signif_ptmuts_deleteriousmissense_lineage.rds")
 
-# write.table(crispr_signif_delmis_lineage, file = "~/Desktop/crispr_signif_deleteriousmissense_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# write.table(crispr_signif_delmis_lineage, file = "~/Desktop/crispr_signif_ptmuts_deleteriousmissense_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 ```{r}
-crispr_signif_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif_deleteriousmissense_lineage.rds")
+crispr_signif_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleteriousmissense_lineage.rds")
 
 knitr::kable(filter(crispr_signif_delmis_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
 ```
@@ -636,94 +634,6 @@ wilcox_gene_delmis_lineage_plot <- ggplot(data = crispr_signif_delmis_lineage) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
 wilcox_gene_delmis_lineage_plot
 ```
-
-## Grouped by gene and tissue {.tabset .tabset-fade .tabset-pills}
-
-### Deleterious vs. Other
-
-```{r, eval=FALSE}
-crispr_signif_del_tissue <- compare_means(Score ~ Mutation_Status_Deleterious, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data, method = "wilcox.test", p.adjust.method = "BH")
-crispr_signif_del_tissue <- adj_signif(crispr_signif_del_tissue)
-crispr_signif_del_tissue <- crispr_signif_del_tissue[order(crispr_signif_del_tissue$p),]
-saveRDS(crispr_signif_del_tissue, "./data_munging/rds/crispr_signif_deleterious_tissue.rds")
-
-# write.table(crispr_signif_del_tissue, file = "~/Desktop/crispr_signif_deleterious_tissue.csv", quote = FALSE, sep = ",", row.names = FALSE)
-```
-
-```{r}
-crispr_signif_del_tissue <- readRDS("./data_munging/rds/crispr_signif_deleterious_tissue.rds")
-
-knitr::kable(filter(crispr_signif_del_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines by tissue, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
-```
-
-```{r fig.height=4, fig.width=8}
-wilcox_tissue_plot <- ggplot(data = crispr_signif_del_tissue) +
-  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
-  labs(x = "BH-adjusted p-values", y = "Frequency")
-wilcox_tissue_plot
-# ggsave(filename = "./plots_18Q3/crispr/pvals_genes_tissues.pdf", plot = wilcox_tissue_plot, width = 8, height = 4, device = "pdf")
-```
-
-### Non-silent mutant vs. Other
-
-```{r, eval=FALSE}
-crispr_signif_nonsilent_tissue <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
-crispr_signif_nonsilent_tissue <- adj_signif(crispr_signif_nonsilent_tissue)
-crispr_signif_nonsilent_tissue <- crispr_signif_nonsilent_tissue[order(crispr_signif_nonsilent_tissue$p),]
-saveRDS(crispr_signif_nonsilent_tissue, "./data_munging/rds/crispr_signif_nonsilent_tissue.rds")
-
-# write.table(crispr_signif_nonsilent_tissue, file = "~/Desktop/crispr_signif_nonsilent_tissue.csv", quote = FALSE, sep = ",", row.names = FALSE)
-```
-
-```{r}
-crispr_signif_nonsilent_tissue <- readRDS("./data_munging/rds/crispr_signif_nonsilent_tissue.rds")
-
-knitr::kable(filter(crispr_signif_nonsilent_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines by tissue, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
-```
-
-```{r fig.height=4, fig.width=8}
-wilcox_tissue_nonsilent_plot <- ggplot(data = crispr_signif_nonsilent_tissue) +
-  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
-  labs(x = "BH-adjusted p-values", y = "Frequency")
-wilcox_tissue_nonsilent_plot
-```
-
-### Deleterious and missense mutant vs. Other
-
-```{r, eval=FALSE}
-crispr_signif_delmis_tissue <- compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol", "primary_tissue"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
-crispr_signif_delmis_tissue <- adj_signif(crispr_signif_delmis_tissue)
-crispr_signif_delmis_tissue <- crispr_signif_delmis_tissue[order(crispr_signif_delmis_tissue$p),]
-saveRDS(crispr_signif_delmis_tissue, "./data_munging/rds/crispr_signif_deleteriousmissense_tissue.rds")
-
-# write.table(crispr_signif_delmis_tissue, file = "~/Desktop/crispr_signif_deleteriousmissense_tissue.csv", quote = FALSE, sep = ",", row.names = FALSE)
-```
-
-```{r}
-crispr_signif_delmis_tissue <- readRDS("./data_munging/rds/crispr_signif_deleteriousmissense_tissue.rds")
-
-knitr::kable(filter(crispr_signif_delmis_tissue, p < 0.05)[, c("Hugo_Symbol", "primary_tissue", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines by tissue, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
-```
-
-```{r fig.height=4, fig.width=8}
-wilcox_gene_delmis_tissue_plot <- ggplot(data = crispr_signif_delmis_tissue) +
-  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
-  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
-  labs(x = "BH-adjusted p-values", y = "Frequency")
-wilcox_gene_delmis_tissue_plot
-```
-
 
 
 # Wilcoxon tests: All mutations
