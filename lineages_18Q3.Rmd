@@ -447,13 +447,13 @@ crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 ```
 
 
-# Wilcoxon tests: Point mutations {.tabset .tabset-fade .tabset-pills}
+# Wilcoxon tests: Point mutations
 
 --------------------------------------------------------------------------------
 
 Filter for point mutations:
 ```{r}
-crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1)
+crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1 | is.na(Var_Length))
 test_ptmuts <- filter(crispr_data_ptmuts, is.na(group_general_lineage_name))
 test_ptmuts <- filter(crispr_data_ptmuts, Hugo_Symbol == "KRAS")
 ```
@@ -813,6 +813,30 @@ wilcox_lineage_allmut_delmis_plot <- ggplot(data = crispr_signif_allmut_delmis_l
 wilcox_lineage_allmut_delmis_plot
 ```
 
+
+# Boxplots for paper outline
+
+--------------------------------------------------------------------------------
+
+```{r fig.height=5, fig.width=12}
+genes_lvlA <- c("EGFR", "KRAS", "BRAF", "NRAS", "ERBB2", "MET", "ALK", "AKT1", "PDGFRA", "RET")
+crispr_ptmuts_lvlA <- filter(crispr_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
+crispr_ptmuts_lvlA$Hugo_Symbol <- ordered(crispr_ptmuts_lvlA$Hugo_Symbol, levels = genes_lvlA)
+crispr_ptmuts_lvlA_color <- as.character(crispr_ptmuts_lvlA$Color_DeleteriousMissense)
+names(crispr_ptmuts_lvlA_color) <- crispr_ptmuts_lvlA$Mutation_Status_DeleteriousMissense
+
+crispr_ptmuts_lvlA_plot <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Hugo_Symbol, y = Score)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  geom_violin(mapping = aes(fill = Mutation_Status_DeleteriousMissense), alpha = 0.7, position = position_dodge(0.85)) +
+  geom_boxplot(mapping = aes(color = Mutation_Status_DeleteriousMissense), position = position_dodge(0.85), width = 0.1) +
+  scale_fill_manual(values = crispr_ptmuts_lvlA_color) +
+  scale_color_manual(values = c("black", "black")) +
+  guides(color = FALSE) +
+  theme(legend.direction = "horizontal", legend.justification = c(1, 0), legend.position = c(1, 0), legend.box.margin = margin(c(10, 10, 10, 10))) +
+  labs(fill = "Mutation Status", y = "CERES Score", x = "Gene")
+crispr_ptmuts_lvlA_plot
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot.png", crispr_ptmuts_lvlA_plot, width = 12, height = 5, units = "in")
+```
 
 
 # Heatmaps
