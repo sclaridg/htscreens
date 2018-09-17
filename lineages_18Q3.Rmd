@@ -447,13 +447,13 @@ crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 ```
 
 
-# Wilcoxon tests: Point mutations {.tabset .tabset-fade .tabset-pills}
+# Wilcoxon tests: Point mutations
 
 --------------------------------------------------------------------------------
 
 Filter for point mutations:
 ```{r}
-crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1)
+crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1 | is.na(Var_Length))
 test_ptmuts <- filter(crispr_data_ptmuts, is.na(group_general_lineage_name))
 test_ptmuts <- filter(crispr_data_ptmuts, Hugo_Symbol == "KRAS")
 ```
@@ -474,7 +474,7 @@ saveRDS(crispr_signif_del, "./data_munging/rds/crispr_signif_ptmuts_deleterious_
 ```{r}
 crispr_signif_del <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleterious_gene.rds")
 
-knitr::kable(filter(crispr_signif_del, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_del, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -502,7 +502,7 @@ saveRDS(crispr_signif_nonsilent, "./data_munging/rds/crispr_signif_ptmuts_nonsil
 ```{r}
 crispr_signif_nonsilent <- readRDS("./data_munging/rds/crispr_signif_ptmuts_nonsilent_gene.rds")
 
-knitr::kable(filter(crispr_signif_nonsilent, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_nonsilent, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -527,15 +527,10 @@ saveRDS(crispr_signif_delmis, "./data_munging/rds/crispr_signif_ptmuts_deleterio
 # write.table(crispr_signif_delmis, file = "~/Desktop/crispr_signif_ptmuts_deleteriousmissense_gene.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
-
-```{r}
-compare_means(Score ~ Mutation_Status_DeleteriousMissense, group.by = c("Hugo_Symbol"), data = crispr_data_ptmuts[which(crispr_data_ptmuts$Hugo_Symbol == "KRAS"),], method = "wilcox.test", p.adjust.method = "BH")
-```
-
 ```{r}
 crispr_signif_delmis <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleteriousmissense_gene.rds")
 
-knitr::kable(filter(crispr_signif_delmis, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_delmis, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -565,7 +560,7 @@ saveRDS(crispr_signif_del_lineage, "./data_munging/rds/crispr_signif_ptmuts_dele
 ```{r}
 crispr_signif_del_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleterious_lineage.rds")
 
-knitr::kable(filter(crispr_signif_del_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_del_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -593,7 +588,7 @@ saveRDS(crispr_signif_nonsilent_lineage, "./data_munging/rds/crispr_signif_ptmut
 ```{r}
 crispr_signif_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_nonsilent_lineage.rds")
 
-knitr::kable(filter(crispr_signif_nonsilent_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_nonsilent_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -621,7 +616,7 @@ saveRDS(crispr_signif_delmis_lineage, "./data_munging/rds/crispr_signif_ptmuts_d
 ```{r}
 crispr_signif_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleteriousmissense_lineage.rds")
 
-knitr::kable(filter(crispr_signif_delmis_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_delmis_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -656,7 +651,7 @@ saveRDS(crispr_signif_allmut_del, "./data_munging/rds/crispr_signif_allmut_delet
 ```{r}
 crispr_signif_allmut_del <- readRDS("./data_munging/rds/crispr_signif_allmut_deleterious_gene.rds")
 
-knitr::kable(filter(crispr_signif_allmut_del, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_allmut_del, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -685,7 +680,7 @@ saveRDS(crispr_signif_allmut_nonsilent, "./data_munging/rds/crispr_signif_allmut
 ```{r}
 crispr_signif_allmut_nonsilent <- readRDS("./data_munging/rds/crispr_signif_allmut_nonsilent_gene.rds")
 
-knitr::kable(filter(crispr_signif_allmut_nonsilent, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_allmut_nonsilent, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -713,7 +708,7 @@ saveRDS(crispr_signif_allmut_delmis, "./data_munging/rds/crispr_signif_allmut_de
 ```{r}
 crispr_signif_allmut_delmis <- readRDS("./data_munging/rds/crispr_signif_allmut_deleteriousmissense_gene.rds")
 
-knitr::kable(filter(crispr_signif_allmut_delmis, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_allmut_delmis, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -743,7 +738,7 @@ saveRDS(crispr_signif_allmut_del_lineage, "./data_munging/rds/crispr_signif_allm
 ```{r}
 crispr_signif_allmut_del_lineage <- readRDS("./data_munging/rds/crispr_signif_allmut_deleterious_lineage.rds")
 
-knitr::kable(filter(crispr_signif_allmut_del_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_allmut_del_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -771,7 +766,7 @@ saveRDS(crispr_signif_allmut_nonsilent_lineage, "./data_munging/rds/crispr_signi
 ```{r}
 crispr_signif_allmut_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_signif_allmut_nonsilent_lineage.rds")
 
-knitr::kable(filter(crispr_signif_allmut_nonsilent_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant and other cell lines by lineage, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_allmut_nonsilent_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -799,7 +794,7 @@ saveRDS(crispr_signif_allmut_delmis_lineage, "./data_munging/rds/crispr_signif_a
 ```{r}
 crispr_signif_allmut_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif_allmut_deleteriousmissens_lineage.rds")
 
-knitr::kable(filter(crispr_signif_allmut_delmis_lineage, p < 0.05)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant and other cell lines, p < 0.05 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_allmut_delmis_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious vs missense mutant and other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -811,6 +806,47 @@ wilcox_lineage_allmut_delmis_plot <- ggplot(data = crispr_signif_allmut_delmis_l
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
   labs(x = "BH-adjusted p-values", y = "Frequency")
 wilcox_lineage_allmut_delmis_plot
+```
+
+
+# Paper outline
+
+--------------------------------------------------------------------------------
+
+## Figure 1C
+
+Mutation status boxplots for genes identified in G2P.
+
+```{r fig.height=5, fig.width=12}
+genes_lvlA <- c("EGFR", "KRAS", "BRAF", "NRAS", "ERBB2", "MET", "ALK", "AKT1", "PDGFRA", "RET")
+crispr_ptmuts_lvlA <- filter(crispr_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
+crispr_ptmuts_lvlA$Hugo_Symbol <- ordered(crispr_ptmuts_lvlA$Hugo_Symbol, levels = genes_lvlA)
+crispr_ptmuts_lvlA_color <- as.character(crispr_ptmuts_lvlA$Color_DeleteriousMissense)
+names(crispr_ptmuts_lvlA_color) <- crispr_ptmuts_lvlA$Mutation_Status_DeleteriousMissense
+
+crispr_ptmuts_lvlA_plot <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Hugo_Symbol, y = Score)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  geom_violin(mapping = aes(fill = Mutation_Status_DeleteriousMissense), alpha = 0.7, position = position_dodge(0.85)) +
+  geom_boxplot(mapping = aes(color = Mutation_Status_DeleteriousMissense), position = position_dodge(0.85), width = 0.1) +
+  scale_fill_manual(values = crispr_ptmuts_lvlA_color) +
+  scale_color_manual(values = c("black", "black")) +
+  guides(color = FALSE) +
+  theme(legend.direction = "horizontal", legend.justification = c(1, 0), legend.position = c(1, 0), legend.box.margin = margin(c(10, 10, 10, 10))) +
+  labs(fill = "Mutation Status", y = "CERES Score", x = "Gene")
+crispr_ptmuts_lvlA_plot
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot.png", crispr_ptmuts_lvlA_plot, width = 12, height = 5, units = "in")
+```
+
+## Figure 1D
+
+Match specific point mutations.
+
+```{r}
+g2p_indications <- filter(read.delim("./data_munging/data_mutation_associations_appended.csv", sep = "\t", row.names = 1, header = TRUE), Evidence.Level == "A")
+
+maf_g2p_indications <- filter(maf_raw, Genome_Change %in% g2p_indications$MutationName)
+
+test <- merge(maf_g2p_indications, crispr_data, by = c("Hugo_Symbol", "Broad_ID"))
 ```
 
 
@@ -1515,7 +1551,7 @@ saveRDS(shrna_signif, "./data_munging/rds/shrna_signif.rds")
 ```{r, eval=FALSE}
 shrna_signif <- readRDS("./data_munging/rds/shrna_signif.rds")
 
-knitr::kable(filter(shrna_signif, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% footnote(general = "Wilcoxon test Benjamini-Hochberg-corrected p-values:\n*: p <= 0.05\n**: p <= 0.01\n***: p <= 0.001\n****: p <= 0.0001") %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(shrna_signif, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "shRNA Screen: Wilcoxon Test Results Comparing Mutant and Other Cell Lines, p < 0.1  (Benjamini-Hochberg-corrected p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ### Grouped by gene and lineage
