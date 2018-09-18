@@ -293,10 +293,10 @@ For mutation calling, get paired gene name and cell line fields in a data frame.
 maf_raw <- read.delim("./data_munging/CCLE_DepMap_18q3_maf_20180718.txt.gz", header = TRUE, sep = "\t")
 # Filter for cell lines in CRISPR screen
 maf_raw <- filter(maf_raw, Broad_ID %in% unique(crispr_meta$Broad_ID))
+colnames(maf_raw)[colnames(maf_raw) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
 
 # Select columns
-maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "Tumor_Sample_Barcode", "Broad_ID", "Variant_Classification", "isDeleterious", "Reference_Allele"))
-colnames(maf_df)[colnames(maf_df) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
+maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Variant_Classification", "isDeleterious", "Reference_Allele"))
 maf_df$Var_Length <- nchar(as.character(maf_df$Reference_Allele))
 
 # Add Mutation_Status column
@@ -313,7 +313,7 @@ maf_summ$isDeleterious <- ifelse(maf_summ$isDeleterious == "TRUE", "Yes", "No")
 knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
-```{r}
+```{r, eval=FALSE}
 max(nchar(as.character(maf_raw$Reference_Allele)))
 maf_raw %>% group_by(Variant_Type, isTCGAhotspot) %>% tally()
 
@@ -369,7 +369,7 @@ ge_melt <- readRDS("./../crispr_lineages_giant_files/ge_melt_18Q3.rds")
 
 ## DepMap dependency probabilities
 
-```{r}
+```{r, eval=FALSE}
 dep <- read.delim("./data_munging/gene_dependency_18Q3.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(dep) <- gsub(" .*", "", colnames(dep))
@@ -834,19 +834,44 @@ crispr_ptmuts_lvlA_plot <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Hugo_Symbol
   theme(legend.direction = "horizontal", legend.justification = c(1, 0), legend.position = c(1, 0), legend.box.margin = margin(c(10, 10, 10, 10))) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Gene")
 crispr_ptmuts_lvlA_plot
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot.png", crispr_ptmuts_lvlA_plot, width = 12, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot.png", crispr_ptmuts_lvlA_plot, device = "png", width = 12, height = 5, units = "in")
+
+crispr_ptmuts_lvlA_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Mutation_Status_DeleteriousMissense, y = Score)) +
+  facet_wrap(~ Hugo_Symbol, ncol = length(unique(crispr_ptmuts_lvlA$Hugo_Symbol))) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  geom_violin(mapping = aes(fill = Mutation_Status_DeleteriousMissense), alpha = 0.7, position = position_dodge(0.85)) +
+  geom_boxplot(mapping = aes(color = Mutation_Status_DeleteriousMissense), position = position_dodge(0.85), width = 0.1) +
+  scale_fill_manual(values = crispr_ptmuts_lvlA_color) +
+  scale_color_manual(values = c("black", "black")) +
+  guides(color = FALSE) +
+  theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+  labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
+crispr_ptmuts_lvlA_plot_faceted
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot_faceted.png", crispr_ptmuts_lvlA_plot_faceted, device = "png", width = 12, height = 5, units = "in")
 ```
 
 ## Figure 1D
 
 Match specific point mutations.
 
-```{r}
+```{r fig.height=5, fig.width=12}
 g2p_indications <- filter(read.delim("./data_munging/data_mutation_associations_appended.csv", sep = "\t", row.names = 1, header = TRUE), Evidence.Level == "A")
-
 maf_g2p_indications <- filter(maf_raw, Genome_Change %in% g2p_indications$MutationName)
+crispr_g2p_indications <- merge(maf_g2p_indications, crispr_data_ptmuts, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"))
+dup_g2p_indications <- filter(crispr_g2p_indications[, c("Hugo_Symbol", "CCLE_Name", "Broad_ID")] %>% group_by(Hugo_Symbol, CCLE_Name, Broad_ID) %>% tally(), n > 1)
+crispr_g2p_indications <- merge(crispr_g2p_indications, dup_g2p_indications, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
+crispr_g2p_indications <- filter(crispr_g2p_indications, is.na(n))
 
-test <- merge(maf_g2p_indications, crispr_data, by = c("Hugo_Symbol", "Broad_ID"))
+crispr_g2p_indications_plot <- ggplot(crispr_g2p_indications, aes(x = Hugo_Symbol, y = Score)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  geom_boxplot(alpha = 0.5, color = "lightgray", outlier.shape = NA) +
+  geom_jitter(width = 0.3, mapping = aes(color = group_general_lineage_name), size = 1) +
+  theme_light() +
+  theme(legend.title = element_blank()) +
+  labs(x = "Gene", y = "CERES Score")
+crispr_g2p_indications_plot
+
+# ggsave("./plots_18Q3/manuscript/crispr_g2p_indications_plot_test.png", crispr_g2p_indications_plot, width = 12, height = 5, units = "in")
 ```
 
 
