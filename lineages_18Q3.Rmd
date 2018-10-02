@@ -44,6 +44,8 @@ Load libraries.
 library(NMF)
 library(ggpubr)
 library(ggsignif)
+library(ggfortify)
+library(ggord)
 library(rowr)
 library(data.table)
 library(CePa)
@@ -385,6 +387,18 @@ crispr <- read.delim("./data_munging/gene_effect_18Q3.csv.gz", sep = ",", header
 # Remove Entrez gene IDs from colnames
 colnames(crispr) <- gsub(" .*", "", colnames(crispr))
 ```
+
+```{r fig.height=12, fig.width=12}
+crispr_pca_data <- merge(ccl_converter[, c("Broad_ID", "group_general_lineage_name")], crispr, by = "Broad_ID")
+crispr_lin <- crispr_pca_data[, 2]
+crispr_pca <- prcomp(data.matrix(crispr_pca_data[, 3:ncol(crispr_pca_data)]), scale. = TRUE, center = TRUE)
+plot(crispr_pca, type = "l")
+# autoplot(crispr_pca, data = crispr_pca_data, color = "group_general_lineage_name")
+summary(crispr_pca)
+biplot(crispr_pca, obs.scale = 1, var.scale = 1, groups = crispr_lin, ellipse = TRUE, circle = TRUE, )
+ggord(crispr_pca, crispr_pca_data$group_general_lineage_name)
+```
+
 
 Merge annotation data:
 ```{r, eval=FALSE}
