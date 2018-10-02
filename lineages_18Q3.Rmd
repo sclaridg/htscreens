@@ -478,7 +478,7 @@ crispr_signif_del <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleteriou
 knitr::kable(filter(crispr_signif_del, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_gene_plot <- ggplot(data = crispr_signif_del) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -534,7 +534,7 @@ crispr_signif_delmis <- readRDS("./data_munging/rds/crispr_signif_ptmuts_deleter
 knitr::kable(filter(crispr_signif_delmis, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_gene_delmis_plot <- ggplot(data = crispr_signif_delmis) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -564,7 +564,7 @@ crispr_signif_del_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts_de
 knitr::kable(filter(crispr_signif_del_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_lineage_plot <- ggplot(data = crispr_signif_del_lineage) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -592,7 +592,7 @@ crispr_signif_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_signif_ptm
 knitr::kable(filter(crispr_signif_nonsilent_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_lineage_nonsilent_plot <- ggplot(data = crispr_signif_nonsilent_lineage) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -620,7 +620,7 @@ crispr_signif_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif_ptmuts
 knitr::kable(filter(crispr_signif_delmis_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_gene_delmis_lineage_plot <- ggplot(data = crispr_signif_delmis_lineage) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -655,7 +655,7 @@ crispr_signif_allmut_del <- readRDS("./data_munging/rds/crispr_signif_allmut_del
 knitr::kable(filter(crispr_signif_allmut_del, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_gene_allmut_plot <- ggplot(data = crispr_signif_allmut_del) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -684,7 +684,7 @@ crispr_signif_allmut_nonsilent <- readRDS("./data_munging/rds/crispr_signif_allm
 knitr::kable(filter(crispr_signif_allmut_nonsilent, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_gene_allmut_nonsilent_plot <- ggplot(data = crispr_signif_allmut_nonsilent) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -712,7 +712,7 @@ crispr_signif_allmut_delmis <- readRDS("./data_munging/rds/crispr_signif_allmut_
 knitr::kable(filter(crispr_signif_allmut_delmis, p < 0.01)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious and missense mutant vs other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_gene_allmut_delmis_plot <- ggplot(data = crispr_signif_allmut_delmis) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -742,7 +742,7 @@ crispr_signif_allmut_del_lineage <- readRDS("./data_munging/rds/crispr_signif_al
 knitr::kable(filter(crispr_signif_allmut_del_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_lineage_allmut_plot <- ggplot(data = crispr_signif_allmut_del_lineage) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -770,7 +770,7 @@ crispr_signif_allmut_nonsilent_lineage <- readRDS("./data_munging/rds/crispr_sig
 knitr::kable(filter(crispr_signif_allmut_nonsilent_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_lineage_allmut_nonsilent_plot <- ggplot(data = crispr_signif_allmut_nonsilent_lineage) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -798,7 +798,7 @@ crispr_signif_allmut_delmis_lineage <- readRDS("./data_munging/rds/crispr_signif
 knitr::kable(filter(crispr_signif_allmut_delmis_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing deleterious vs missense mutant and other cell lines, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=4, fig.width=8}
+```{r fig.height=4, fig.width=8, eval=FALSE}
 wilcox_lineage_allmut_delmis_plot <- ggplot(data = crispr_signif_allmut_delmis_lineage) +
   geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
   geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
@@ -825,6 +825,10 @@ crispr_ptmuts_lvlA$Hugo_Symbol <- ordered(crispr_ptmuts_lvlA$Hugo_Symbol, levels
 crispr_ptmuts_lvlA_color <- as.character(crispr_ptmuts_lvlA$Color_Nonsilent)
 names(crispr_ptmuts_lvlA_color) <- crispr_ptmuts_lvlA$Mutation_Status_Nonsilent
 
+label_text <- data.frame(p.signif.adj = crispr_signif_nonsilent$p.signif.adj, Hugo_Symbol = crispr_signif_nonsilent$Hugo_Symbol)
+label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA)
+label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA)
+
 crispr_ptmuts_lvlA_plot <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Hugo_Symbol, y = Score)) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
@@ -833,7 +837,7 @@ crispr_ptmuts_lvlA_plot <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Hugo_Symbol
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.092, 0.8), legend.box.margin = margin(c(10, 10, 10, 10))) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Gene")
 crispr_ptmuts_lvlA_plot
-ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot.png", crispr_ptmuts_lvlA_plot, device = "png", width = 20, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot.png", crispr_ptmuts_lvlA_plot, device = "png", width = 20, height = 5, units = "in")
 
 crispr_ptmuts_lvlA_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Mutation_Status_Nonsilent, y = Score)) +
   facet_wrap(~ Hugo_Symbol, ncol = length(unique(crispr_ptmuts_lvlA$Hugo_Symbol))) +
@@ -841,26 +845,23 @@ crispr_ptmuts_lvlA_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Mut
   geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
   scale_fill_manual(values = crispr_ptmuts_lvlA_color) +
   guides(color = FALSE) +
-  theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.092, 0.8), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+  geom_text(data = label_text, mapping = aes(x = 1.5, y = 4.5, label = p.signif.adj)) +
+  theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.25, 0.8), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_ptmuts_lvlA_plot_faceted
-ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot_faceted.png", crispr_ptmuts_lvlA_plot_faceted, device = "png", width = 20, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot_faceted.png", crispr_ptmuts_lvlA_plot_faceted, device = "png", width = 20, height = 5, units = "in")
 
-# label_text <- crispr_signif_nonsilent$p.signif.adj
-# names(label_text) <- crispr_signif_nonsilent$Hugo_Symbol
-# label_text <- label_text[genes_lvlA]
-# 
-# crispr_ptmuts_lvlA_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Mutation_Status_Nonsilent, y = Score, fill = Mutation_Status_Nonsilent)) +
-#   facet_wrap(~ Hugo_Symbol, ncol = length(unique(crispr_ptmuts_lvlA$Hugo_Symbol))) +
-#   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-#   coord_cartesian(ylim = c(-2, 2)) +
-#   geom_boxplot(position = position_dodge(0.85)) +
-#   scale_fill_manual(values = crispr_ptmuts_lvlA_color) +
-#   geom_text(data = label_text, mapping = aes(label = p.signif.adj)) +
-#   guides(color = FALSE) +
-#   theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.092, 0.8), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
-#   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
-# crispr_ptmuts_lvlA_plot_faceted_truncated
+crispr_ptmuts_lvlA_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lvlA, aes(x = Mutation_Status_Nonsilent, y = Score)) +
+  facet_wrap(~ Hugo_Symbol, ncol = length(unique(crispr_ptmuts_lvlA$Hugo_Symbol))) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  coord_cartesian(ylim = c(-2, 2)) +
+  geom_boxplot(aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
+  scale_fill_manual(values = crispr_ptmuts_lvlA_color) +
+  geom_text(data = label_text, mapping = aes(x = 1.5, y = 2, label = p.signif.adj)) +
+  guides(color = FALSE) +
+  theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+  labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
+crispr_ptmuts_lvlA_plot_faceted_truncated
 # ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_plot_faceted_truncated.png", crispr_ptmuts_lvlA_plot_faceted_truncated, device = "png", width = 20, height = 5, units = "in")
 ```
 
@@ -890,8 +891,8 @@ crispr_g2p_indications_plot
 
 ### JSON
 
-```{r}
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset.tsv", sep = "\t", header = TRUE, encoding="UTF-8")
+```{r, eval=FALSE}
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset.tsv", sep = "\t", header = TRUE)
 test <- as.character(g2p$JSON[1])
 test2 <- fromJSON(test)
 ```
