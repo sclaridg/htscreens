@@ -882,7 +882,7 @@ saveRDS(crispr_signif_lvlA_lineage, "./data_munging/rds/crispr_signif_lvlA_linea
 # write.table(crispr_signif_lvlA_lineage, file = "~/Desktop/crispr_signif_lvlA_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 crispr_signif_lvlA_lineage <- readRDS("./data_munging/rds/crispr_signif_lvlA_lineage.rds")
 
 knitr::kable(filter(crispr_signif_lvlA_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
@@ -903,7 +903,7 @@ wilcox_lineage_lvlA_plot
 
 Mutation status boxplots for genes identified in G2P.
 
-```{r fig.height=5, fig.width=20}
+```{r fig.height=4, fig.width=20}
 genes_lvlA_filt <- c("ABL1", "ALK", "AR", "ATM", "BRAF", "BRCA1", "BRCA2", "CDKN2A", "DNMT3A", "DPYD", "EGFR", "ERBB2", "ERBB3", "FGFR2", "FLT3", "JAK2", "KIT", "KRAS", "MET", "NOTCH1", "NOTCH2", "NRAS", "PDGFRA", "PDGFRB", "PIK3CA", "PML", "PTCH1", "RET", "ROS1", "SF3B1", "SMO", "TP53", "TSC1")
 crispr_ptmuts_lvlA_filt <- filter(crispr_data_ptmuts, Hugo_Symbol %in% genes_lvlA_filt)
 crispr_ptmuts_lvlA_filt$Hugo_Symbol <- ordered(crispr_ptmuts_lvlA_filt$Hugo_Symbol, levels = genes_lvlA_filt)
@@ -925,7 +925,7 @@ crispr_ptmuts_lvlA_filt_plot
 # ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot.png", crispr_ptmuts_lvlA_filt_plot, device = "png", width = 20, height = 5, units = "in")
 
 crispr_ptmuts_lvlA_filt_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, ncol = length(unique(crispr_ptmuts_lvlA_filt$Hugo_Symbol))) +
+  facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
   scale_fill_manual(values = crispr_ptmuts_lvlA_filt_color) +
@@ -934,10 +934,10 @@ crispr_ptmuts_lvlA_filt_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA_filt, a
   theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.25, 0.8), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_ptmuts_lvlA_filt_plot_faceted
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted.png", crispr_ptmuts_lvlA_filt_plot_faceted, device = "png", width = 20, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted.png", crispr_ptmuts_lvlA_filt_plot_faceted, device = "png", width = 20, height = 4, units = "in")
 
 crispr_ptmuts_lvlA_filt_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, ncol = length(unique(crispr_ptmuts_lvlA_filt$Hugo_Symbol))) +
+  facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   coord_cartesian(ylim = c(-2, 2)) +
   geom_boxplot(aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
@@ -947,7 +947,7 @@ crispr_ptmuts_lvlA_filt_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lv
   theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_ptmuts_lvlA_filt_plot_faceted_truncated
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted_truncated.png", crispr_ptmuts_lvlA_filt_plot_faceted_truncated, device = "png", width = 20, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted_truncated.png", crispr_ptmuts_lvlA_filt_plot_faceted_truncated, device = "png", width = 20, height = 4, units = "in")
 ```
 
 ```{r fig.height=5, fig.width=12}
@@ -966,7 +966,7 @@ lvlA_signif_genes_plot <- ggplot(data = lvlA_genes_signif, aes(x = Mutation_Stat
   geom_jitter(aes(color = Mutation_Status_Nonsilent), alpha = 0.5, width = 0.3) +
   geom_boxplot(color = "black", fill = NA, outlier.shape = NA) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  scale_color_manual(values = lvlA_signif_color) + 
+  scale_color_manual(values = lvlA_genes_signif_color) + 
   geom_text(data = lvlA_genes_text, mapping = aes(x = 1.5, y = Text_y, label = p.signif.adj), nudge_y = 0.2) +
   theme(legend.position = "top", axis.text.x = element_text(angle = 65, hjust = 1, vjust = 1, size = 10)) +
   labs(y = "CERES Score",
