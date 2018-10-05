@@ -326,7 +326,7 @@ test %>% group_by(isDeleterious) %>% tally()
 ## CCLE copy number file
 
 ```{r, eval=FALSE}
-cn <- read.delim("./data_munging/public_18Q3_gene_cn.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
+cn <- read.delim("./data_munging/public_18Q3_gene_cn_v2.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 
 # Convert log2 ratios (log2(CN/2)) to CN
 cn[2:ncol(cn)] <- lapply(cn[2:ncol(cn)], function(x) 2 * (2 ^ x))
@@ -392,7 +392,7 @@ crispr_pca_data <- merge(ccl_converter[, c("Broad_ID", "group_general_lineage_na
 crispr_lin <- crispr_pca_data[, 2]
 crispr_pca <- prcomp(data.matrix(crispr_pca_data[, 3:ncol(crispr_pca_data)]), scale. = TRUE, center = TRUE)
 plot(crispr_pca, type = "l")
-biplot(crispr_pca, obs.scale = 1, var.scale = 1, groups = crispr_lin, ellipse = TRUE, circle = TRUE, )
+biplot(crispr_pca, obs.scale = 1, var.scale = 1, groups = crispr_lin, ellipse = TRUE, circle = TRUE)
 ggord(crispr_pca, crispr_pca_data$group_general_lineage_name)
 ```
 
@@ -446,7 +446,7 @@ levels(crispr_data$lineage_name) <- sort(levels(crispr_data$lineage_name), decre
 crispr_data <- merge(crispr_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
 
 # Gene expression (RPKM)
-ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol))
+ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol) & Broad_ID %in% unique(crispr_data$Broad_ID))
 crispr_data <- merge(crispr_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
 crispr_data$RPKM_log2 <- log2(crispr_data$RPKM + 0.0001)
 
@@ -939,10 +939,10 @@ crispr_ptmuts_lvlA_filt_plot_faceted
 crispr_ptmuts_lvlA_filt_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
   facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  coord_cartesian(ylim = c(-2, 2)) +
+  coord_cartesian(ylim = c(-2.5, 2.5)) +
   geom_boxplot(aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
   scale_fill_manual(values = crispr_ptmuts_lvlA_filt_color) +
-  geom_text(data = label_text, mapping = aes(x = 1.5, y = 2, label = p.signif.adj)) +
+  geom_text(data = label_text, mapping = aes(x = 1.5, y = 2.5, label = p.signif.adj)) +
   guides(color = FALSE) +
   theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
@@ -1033,6 +1033,11 @@ lvlA_signif_lineages_plot
 # ggsave("./plots_18Q3/manuscript/crispr_g2p_lvlA_signif_lineages_plot.png", lvlA_signif_lineages_plot, width = 12, height = 15, units = "in")
 ```
 
+```{r}
+lvlA_signif_summ <- lvlA_signif %>% group_by(Hugo_Symbol, group_general_lineage_name, Mutation_Status_Nonsilent) %>% tally()
+
+# write.table(lvlA_signif_summ, file = "~/Desktop/lvlA_signif_summ_20181005.tsv", quote = FALSE, sep = "\t")
+```
 
 
 # Heatmaps
