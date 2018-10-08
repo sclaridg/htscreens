@@ -41,29 +41,33 @@ options(mc.cores = num_cores, expressions = 5e5)
 
 Load libraries.
 ```{r}
-library(NMF)
+library(broom)
+library(bsselectR)
+library(caret)
+library(CePa)
+library(circlize)
+library(ComplexHeatmap)
+library(data.table)
+library(devtools)
 library(ggpubr)
 library(ggsignif)
 library(ggfortify)
 library(ggord)
-library(rowr)
-library(data.table)
-library(CePa)
-library(plyr)
-library(tidyverse)
+library(glmnet)
+library(gridExtra)
+# devtools::install_github("jeroen/jsonlite")
+# install.packages("jsonlite")
+library(jsonlite)
+library(jsonlite)
+library(kableExtra)
 library(magrittr)
 library(matrixStats)
+library(NMF)
 library(parallel)
-library(kableExtra)
-library(gridExtra)
-library(broom)
-library(glmnet)
-library(devtools)
+library(plyr)
 library(reshape2)
-library(caret)
-library(bsselectR)
-library(ComplexHeatmap)
-library(circlize)
+library(rowr)
+library(tidyverse)
 ```
 
 # Functions {.tabset .tabset-fade .tabset-pills}
@@ -922,7 +926,7 @@ crispr_ptmuts_lvlA_filt_plot <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = H
   theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.092, 0.8), legend.box.margin = margin(c(10, 10, 10, 10))) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Gene")
 crispr_ptmuts_lvlA_filt_plot
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot.png", crispr_ptmuts_lvlA_filt_plot, device = "png", width = 20, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot.png", crispr_ptmuts_lvlA_filt_plot, device = "png", width = 20, height = 6, units = "in")
 
 crispr_ptmuts_lvlA_filt_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
   facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
@@ -935,7 +939,7 @@ crispr_ptmuts_lvlA_filt_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA_filt, a
   theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_ptmuts_lvlA_filt_plot_faceted
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted.png", crispr_ptmuts_lvlA_filt_plot_faceted, device = "png", width = 20, height = 4, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted.png", crispr_ptmuts_lvlA_filt_plot_faceted, device = "png", width = 20, height = 5, units = "in")
 
 crispr_ptmuts_lvlA_filt_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
   facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
@@ -948,7 +952,7 @@ crispr_ptmuts_lvlA_filt_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lv
   theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_ptmuts_lvlA_filt_plot_faceted_truncated
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted_truncated.png", crispr_ptmuts_lvlA_filt_plot_faceted_truncated, device = "png", width = 20, height = 4, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted_truncated.png", crispr_ptmuts_lvlA_filt_plot_faceted_truncated, device = "png", width = 20, height = 5, units = "in")
 ```
 
 ```{r fig.height=5, fig.width=12}
@@ -984,7 +988,7 @@ lvlA_signif_genes_plot
 
 Match specific point mutations.
 
-```{r fig.height=5, fig.width=12}
+```{r fig.height=5, fig.width=20}
 g2p_indications <- filter(read.delim("./data_munging/data_mutation_associations_appended.csv", sep = "\t", header = TRUE), Evidence.Level == "A")
 maf_g2p_indications <- filter(maf_raw, Genome_Change %in% g2p_indications$MutationName)
 crispr_g2p_indications <- merge(maf_g2p_indications, crispr_data_ptmuts, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"))
@@ -1001,7 +1005,128 @@ crispr_g2p_indications_plot <- ggplot(crispr_g2p_indications, aes(x = Hugo_Symbo
   labs(x = "Gene", y = "CERES Score")
 crispr_g2p_indications_plot
 
+crispr_g2p_indications_muts_plot <- ggplot(crispr_g2p_indications, aes(x = Protein_Change, y = Score)) +
+  facet_grid(~ Hugo_Symbol, scales = "free_x", space = "free") +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  geom_boxplot(alpha = 0.5, color = "lightgray", outlier.shape = NA) +
+  geom_jitter(width = 0.1, mapping = aes(color = group_general_lineage_name), size = 1) +
+  theme_light() +
+  theme(legend.title = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Gene", y = "CERES Score")
+crispr_g2p_indications_muts_plot
+
 # ggsave("./plots_18Q3/manuscript/crispr_g2p_indications_plot_test.png", crispr_g2p_indications_plot, width = 12, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_g2p_indications_muts_plot_test.png", crispr_g2p_indications_muts_plot, width = 20, height = 5, units = "in")
+```
+
+```{r}
+g2pA <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_20181008.tsv", sep = "\t", header = TRUE, na.strings = "-1", quote = "")
+# g2pA[g2pA == "-1"] <- NA
+
+g2pA$JSON[1]
+fromJSON(as.character(g2pA$JSON[[1]]))
+```
+
+```{r}
+test <- '{"feature_names": "ALK positive", "tags": "test", "genes": "ALK"}'
+
+fromJSON(test)
+```
+
+```
+{
+'feature_names': 'ALK positive',
+'jax': '{\"responseType\": \"sensitive\", 
+        \"efficacyEvidence\": \"Zykadia (ceritinib) is FDA approved for the treatment of ALK-positive metastatic non-small cell lung cancer (NSCLC) in patients previously treated with crizotinib (FDA.gov).\",
+        \"molecularProfile\": {\"profileName\": \"ALK positive\",
+                               \"id\": 1772},
+        \"evidenceType\": \"Actionable\",
+        \"indication\": {\"source\": \"DOID\",
+                         \"id\": 3908,
+                         \"name\": \"non-small cell lung carcinoma\"},
+        \"references\": [{\"url\": \"http://www.fda.gov/\",
+                          \"id\": 286,
+                          \"pubMedId\": null,
+                          \"title\": \"FDA.gov\"}],
+        \"approvalStatus\": \"FDA approved\",
+        \"therapy\": {\"id\": 789,
+                      \"therapyName\": \"Ceritinib\"},
+        \"id\": 1481}',
+'tags': [],
+'genes': ['ALK'],
+'source_url': 'https://ckb.jax.org/therapy/show/789',
+'source': 'jax',
+'dev_tags': [],
+'gene_identifiers': [{'symbol': 'ALK',
+                      'entrez_id': '238',
+                      'ensembl_gene_id': 'ENSG00000171094'}],
+'association': {'drug_labels': 'CERITINIB',
+                'description': 'Zykadia (ceritinib) is FDA approved for the treatment of ALK-positive metastatic non-small cell lung cancer (NSCLC) in patients previously treated with crizotinib (FDA.gov).',
+                'publication_url': 'http://www.fda.gov/',
+                'source_link': 'https://ckb.jax.org/molecularProfile/show/1772',
+                'variant_name': [''],
+                'phenotypes': [{'source': 'http://purl.obolibrary.org/obo/DOID_3908',
+                                'term': 'non-small cell lung carcinoma',
+                                'description': 'non-small cell lung carcinoma',
+                                'family': 'lung cancer',
+                                'id': 'DOID:3908'}],
+                'evidence': [{'info': {'publications': ['http://www.fda.gov/']},
+                              'evidenceType': {'sourceName': 'jax'},
+                              'description': 'sensitive'}],
+                              'environmentalContexts': [{'term': 'CERITINIB',
+                                                          'description': 'CERITINIB',
+                                                          'taxonomy': {'kingdom': 'Chemical entities',
+                                                                       'direct-parent': 'Phenylpiperidines',
+                                                                       'class': 'Organoheterocyclic compounds',
+                                                                       'subclass': 'Piperidines',
+                                                                       'superclass': 'Organic compounds'},
+                                                          'source': 'http://rdf.ncbi.nlm.nih.gov/pubchem/compound',
+                                                          'usan_stem': 'tyrosine kinase inhibitors',
+                                                          'toxicity': 'There is not currently any data on carcinogenicity, effect on human fertility, or on early embryonic development. However, based on its mechanism of action, ceritinib may cause fetal harm when administered to pregnant women and should therefore be administered with effective contraception during treatment. Diarrhea, nausea, vomiting, or abdominal pain occurred in 96% of 255 patients including severe cases in 14% of patients. Drug-induced hepatotoxicity also occurred in 27% of 255 patients, presenting as alanine aminotransferase (ALT) levels greater than 5 times the upper limit of normal (ULN). Severe, life-threatening, or fatal interstitial lung disease (ILD)/pneumonitis, hyperglycaemia, and bradycardia have also been reported.',
+                                                          'approved_countries': ['Canada',
+                                                                                 'US'],
+                                                          'id': 'CID57379345'}],
+                'evidence_label': 'A',
+                'response_type': 'sensitive',
+                'evidence_level': 1},
+'features': [{'provenance_rule': 'default_feature',
+              'end': 29484957,
+              'description': 'ALK  positive',
+              'links': ['http://reg.genome.network/refseq/RS000050',
+                        'http://reg.genome.network/refseq/RS000026',
+                        'http://reg.genome.network/allele/CA425438613',
+                        'http://reg.genome.network/refseq/RS000002',
+                        'http://myvariant.info/v1/variant/chr2:g.29484957C>G?assembly=hg19',
+                        'http://reg.genome.network/refseq/RS001597'],
+              'sequence_ontology': {'hierarchy': ['SO:0000400',
+                                                  'SO:0000733',
+                                                  'SO:0000401',
+                                                  'SO:0000119',
+                                                  'SO:0000123',
+                                                  'SO:0000125'],
+                                    'soid': 'SO:0000475',
+                                    'root_name': 'sequence_attribute',
+                                    'name': 'positively_autoregulated',
+                                    'root_soid': 'SO:0000400'},
+              'provenance': ['http://myvariant.info/v1/query?q=ALK  positive',
+                             'http://reg.genome.network/allele?hgvs=NC_000002.11%3Ag.29484957C%3EG'], 
+              'start': 29484957,
+              'synonyms': ['NC_000002.11:g.29484957C>G',
+                           'NC_000002.10:g.29338461C>G',
+                           'LRG_488:g.664476G>C',
+                           'chr2:g.29484957C>G',
+                           'NG_009445.1:g.664476G>C',
+                           'NC_000002.12:g.29262091C>G',
+                           'CM000664.1:g.29484957C>G',
+                           'CM000664.2:g.29262091C>G'],
+              'biomarker_type': 'positive',
+              'referenceName': 'GRCh37',
+              'geneSymbol': 'ALK',
+              'alt': 'G',
+              'ref': 'C',
+              'chromosome': '2',
+              'name': 'ALK  positive'}]
+}
 ```
 
 ## Lineages
@@ -1036,7 +1161,7 @@ lvlA_signif_lineages_plot
 
 ```{r}
 lvlA_signif_summ <- lvlA_signif %>% group_by(Hugo_Symbol, group_general_lineage_name, Mutation_Status_Nonsilent) %>% tally()
-
+lvlA_signif_summ
 # write.table(lvlA_signif_summ, file = "~/Desktop/lvlA_signif_summ_20181005.tsv", quote = FALSE, sep = "\t")
 ```
 
