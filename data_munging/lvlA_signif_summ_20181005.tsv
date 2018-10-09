@@ -1,0 +1,295 @@
+Hugo_Symbol	group_general_lineage_name	Mutation_Status_Nonsilent	n
+1	TP53	bone cancer	Mutant	9
+2	TP53	bone cancer	Other	7
+3	TP53	breast cancer	Mutant	18
+4	TP53	breast cancer	Other	6
+5	TP53	cancer	Mutant	10
+6	TP53	cancer	Other	10
+7	TP53	central nervous system cancer	Mutant	31
+8	TP53	central nervous system cancer	Other	13
+9	TP53	colorectal cancer	Mutant	19
+10	TP53	colorectal cancer	Other	9
+11	TP53	head and neck cancer	Mutant	12
+12	TP53	head and neck cancer	Other	1
+13	TP53	kidney cancer	Mutant	9
+14	TP53	kidney cancer	Other	14
+15	TP53	leukemia	Mutant	13
+16	TP53	leukemia	Other	9
+17	TP53	liver cancer	Mutant	11
+18	TP53	liver cancer	Other	4
+19	TP53	lung cancer	Mutant	53
+20	TP53	lung cancer	Other	16
+21	TP53	lymphoma	Mutant	7
+22	TP53	lymphoma	Other	4
+23	TP53	malignant mesothelioma	Mutant	1
+24	TP53	malignant mesothelioma	Other	1
+25	TP53	multiple myeloma	Mutant	13
+26	TP53	multiple myeloma	Other	4
+27	TP53	ovarian cancer	Mutant	20
+28	TP53	ovarian cancer	Other	12
+29	TP53	pancreatic cancer	Mutant	19
+30	TP53	pancreatic cancer	Other	3
+31	TP53	peripheral nervous system neoplasm	Mutant	4
+32	TP53	peripheral nervous system neoplasm	Other	9
+33	TP53	rhabdomyosarcoma	Mutant	4
+34	TP53	rhabdomyosarcoma	Other	3
+35	TP53	skin cancer	Mutant	10
+36	TP53	skin cancer	Other	18
+37	TP53	stomach cancer	Mutant	13
+38	TP53	stomach cancer	Other	2
+39	TP53	urinary bladder cancer	Mutant	20
+40	TP53	urinary bladder cancer	Other	4
+41	TP53	uterine cancer	Mutant	16
+42	TP53	uterine cancer	Other	5
+43	KRAS	bone cancer	Mutant	1
+44	KRAS	bone cancer	Other	15
+45	KRAS	breast cancer	Mutant	2
+46	KRAS	breast cancer	Other	24
+47	KRAS	colorectal cancer	Mutant	14
+48	KRAS	colorectal cancer	Other	13
+49	KRAS	esophageal cancer	Mutant	1
+50	KRAS	esophageal cancer	Other	13
+51	KRAS	leukemia	Mutant	2
+52	KRAS	leukemia	Other	19
+53	KRAS	lung cancer	Mutant	22
+54	KRAS	lung cancer	Other	48
+55	KRAS	multiple myeloma	Mutant	4
+56	KRAS	multiple myeloma	Other	12
+57	KRAS	ovarian cancer	Mutant	9
+58	KRAS	ovarian cancer	Other	26
+59	KRAS	pancreatic cancer	Mutant	23
+60	KRAS	pancreatic cancer	Other	1
+61	KRAS	stomach cancer	Mutant	5
+62	KRAS	stomach cancer	Other	10
+63	KRAS	urinary bladder cancer	Mutant	2
+64	KRAS	urinary bladder cancer	Other	19
+65	KRAS	uterine cancer	Mutant	7
+66	KRAS	uterine cancer	Other	11
+67	NRAS	bone cancer	Mutant	1
+68	NRAS	bone cancer	Other	15
+69	NRAS	cancer	Mutant	2
+70	NRAS	cancer	Other	16
+71	NRAS	central nervous system cancer	Mutant	2
+72	NRAS	central nervous system cancer	Other	43
+73	NRAS	head and neck cancer	Mutant	1
+74	NRAS	head and neck cancer	Other	14
+75	NRAS	leukemia	Mutant	6
+76	NRAS	leukemia	Other	15
+77	NRAS	lung cancer	Mutant	5
+78	NRAS	lung cancer	Other	65
+79	NRAS	lymphoma	Mutant	2
+80	NRAS	lymphoma	Other	9
+81	NRAS	multiple myeloma	Mutant	6
+82	NRAS	multiple myeloma	Other	10
+83	NRAS	peripheral nervous system neoplasm	Mutant	2
+84	NRAS	peripheral nervous system neoplasm	Other	11
+85	NRAS	rhabdomyosarcoma	Mutant	1
+86	NRAS	rhabdomyosarcoma	Other	6
+87	NRAS	skin cancer	Mutant	5
+88	NRAS	skin cancer	Other	25
+89	NRAS	urinary bladder cancer	Mutant	4
+90	NRAS	urinary bladder cancer	Other	17
+91	NRAS	uterine cancer	Mutant	3
+92	NRAS	uterine cancer	Other	15
+93	BRAF	bone cancer	Mutant	1
+94	BRAF	bone cancer	Other	14
+95	BRAF	breast cancer	Mutant	3
+96	BRAF	breast cancer	Other	22
+97	BRAF	cancer	Mutant	2
+98	BRAF	cancer	Other	16
+99	BRAF	central nervous system cancer	Mutant	2
+100	BRAF	central nervous system cancer	Other	43
+101	BRAF	colorectal cancer	Mutant	16
+102	BRAF	colorectal cancer	Other	15
+103	BRAF	esophageal cancer	Mutant	2
+104	BRAF	esophageal cancer	Other	12
+105	BRAF	liver cancer	Mutant	1
+106	BRAF	liver cancer	Other	15
+107	BRAF	lung cancer	Mutant	3
+108	BRAF	lung cancer	Other	66
+109	BRAF	multiple myeloma	Mutant	2
+110	BRAF	multiple myeloma	Other	14
+111	BRAF	ovarian cancer	Mutant	3
+112	BRAF	ovarian cancer	Other	31
+113	BRAF	pancreatic cancer	Mutant	2
+114	BRAF	pancreatic cancer	Other	21
+115	BRAF	peripheral nervous system neoplasm	Mutant	1
+116	BRAF	peripheral nervous system neoplasm	Other	12
+117	BRAF	skin cancer	Mutant	24
+118	BRAF	skin cancer	Other	8
+119	BRAF	stomach cancer	Mutant	1
+120	BRAF	stomach cancer	Other	14
+121	BRAF	thyroid cancer	Mutant	1
+122	BRAF	thyroid cancer	Other	2
+123	BRAF	urinary bladder cancer	Mutant	1
+124	BRAF	urinary bladder cancer	Other	20
+125	BRAF	uterine cancer	Mutant	6
+126	BRAF	uterine cancer	Other	14
+127	PTEN	breast cancer	Mutant	7
+128	PTEN	breast cancer	Other	19
+129	PTEN	cancer	Mutant	1
+130	PTEN	cancer	Other	17
+131	PTEN	central nervous system cancer	Mutant	21
+132	PTEN	central nervous system cancer	Other	25
+133	PTEN	colorectal cancer	Mutant	3
+134	PTEN	colorectal cancer	Other	24
+135	PTEN	esophageal cancer	Mutant	1
+136	PTEN	esophageal cancer	Other	13
+137	PTEN	head and neck cancer	Mutant	1
+138	PTEN	head and neck cancer	Other	14
+139	PTEN	kidney cancer	Mutant	3
+140	PTEN	kidney cancer	Other	19
+141	PTEN	leukemia	Mutant	7
+142	PTEN	leukemia	Other	17
+143	PTEN	liver cancer	Mutant	1
+144	PTEN	liver cancer	Other	15
+145	PTEN	lung cancer	Mutant	6
+146	PTEN	lung cancer	Other	63
+147	PTEN	lymphoma	Mutant	1
+148	PTEN	lymphoma	Other	10
+149	PTEN	ovarian cancer	Mutant	5
+150	PTEN	ovarian cancer	Other	30
+151	PTEN	skin cancer	Mutant	5
+152	PTEN	skin cancer	Other	24
+153	PTEN	stomach cancer	Mutant	1
+154	PTEN	stomach cancer	Other	14
+155	PTEN	urinary bladder cancer	Mutant	2
+156	PTEN	urinary bladder cancer	Other	19
+157	PTEN	uterine cancer	Mutant	12
+158	PTEN	uterine cancer	Other	9
+159	PIK3CA	breast cancer	Mutant	7
+160	PIK3CA	breast cancer	Other	19
+161	PIK3CA	cancer	Mutant	1
+162	PIK3CA	cancer	Other	17
+163	PIK3CA	central nervous system cancer	Mutant	3
+164	PIK3CA	central nervous system cancer	Other	42
+165	PIK3CA	cervical cancer	Mutant	1
+166	PIK3CA	cervical cancer	Other	1
+167	PIK3CA	colorectal cancer	Mutant	8
+168	PIK3CA	colorectal cancer	Other	18
+169	PIK3CA	esophageal cancer	Mutant	3
+170	PIK3CA	esophageal cancer	Other	11
+171	PIK3CA	head and neck cancer	Mutant	3
+172	PIK3CA	head and neck cancer	Other	12
+173	PIK3CA	kidney cancer	Mutant	1
+174	PIK3CA	kidney cancer	Other	21
+175	PIK3CA	leukemia	Mutant	1
+176	PIK3CA	leukemia	Other	20
+177	PIK3CA	lung cancer	Mutant	4
+178	PIK3CA	lung cancer	Other	65
+179	PIK3CA	lymphoma	Mutant	1
+180	PIK3CA	lymphoma	Other	10
+181	PIK3CA	multiple myeloma	Mutant	1
+182	PIK3CA	multiple myeloma	Other	15
+183	PIK3CA	ovarian cancer	Mutant	9
+184	PIK3CA	ovarian cancer	Other	26
+185	PIK3CA	stomach cancer	Mutant	3
+186	PIK3CA	stomach cancer	Other	12
+187	PIK3CA	urinary bladder cancer	Mutant	8
+188	PIK3CA	urinary bladder cancer	Other	14
+189	PIK3CA	uterine cancer	Mutant	13
+190	PIK3CA	uterine cancer	Other	8
+191	CTNNB1	bone cancer	Mutant	1
+192	CTNNB1	bone cancer	Other	15
+193	CTNNB1	cancer	Mutant	1
+194	CTNNB1	cancer	Other	16
+195	CTNNB1	central nervous system cancer	Mutant	1
+196	CTNNB1	central nervous system cancer	Other	44
+197	CTNNB1	colorectal cancer	Mutant	6
+198	CTNNB1	colorectal cancer	Other	22
+199	CTNNB1	head and neck cancer	Mutant	1
+200	CTNNB1	head and neck cancer	Other	15
+201	CTNNB1	leukemia	Mutant	2
+202	CTNNB1	leukemia	Other	19
+203	CTNNB1	liver cancer	Mutant	2
+204	CTNNB1	liver cancer	Other	14
+205	CTNNB1	lung cancer	Mutant	6
+206	CTNNB1	lung cancer	Other	64
+207	CTNNB1	multiple myeloma	Mutant	1
+208	CTNNB1	multiple myeloma	Other	15
+209	CTNNB1	ovarian cancer	Mutant	2
+210	CTNNB1	ovarian cancer	Other	33
+211	CTNNB1	skin cancer	Mutant	1
+212	CTNNB1	skin cancer	Other	28
+213	CTNNB1	stomach cancer	Mutant	2
+214	CTNNB1	stomach cancer	Other	13
+215	CTNNB1	urinary bladder cancer	Mutant	1
+216	CTNNB1	urinary bladder cancer	Other	20
+217	CTNNB1	uterine cancer	Mutant	4
+218	CTNNB1	uterine cancer	Other	15
+219	HRAS	breast cancer	Mutant	3
+220	HRAS	breast cancer	Other	23
+221	HRAS	esophageal cancer	Mutant	1
+222	HRAS	esophageal cancer	Other	13
+223	HRAS	kidney cancer	Mutant	1
+224	HRAS	kidney cancer	Other	21
+225	HRAS	lung cancer	Mutant	1
+226	HRAS	lung cancer	Other	68
+227	HRAS	skin cancer	Mutant	2
+228	HRAS	skin cancer	Other	27
+229	HRAS	urinary bladder cancer	Mutant	1
+230	HRAS	urinary bladder cancer	Other	20
+231	HRAS	uterine cancer	Mutant	1
+232	HRAS	uterine cancer	Other	17
+233	FBXW7	breast cancer	Mutant	1
+234	FBXW7	breast cancer	Other	25
+235	FBXW7	colorectal cancer	Mutant	6
+236	FBXW7	colorectal cancer	Other	23
+237	FBXW7	head and neck cancer	Mutant	1
+238	FBXW7	head and neck cancer	Other	14
+239	FBXW7	kidney cancer	Mutant	2
+240	FBXW7	kidney cancer	Other	19
+241	FBXW7	leukemia	Mutant	1
+242	FBXW7	leukemia	Other	20
+243	FBXW7	lung cancer	Mutant	7
+244	FBXW7	lung cancer	Other	64
+245	FBXW7	lymphoma	Mutant	2
+246	FBXW7	lymphoma	Other	9
+247	FBXW7	ovarian cancer	Mutant	2
+248	FBXW7	ovarian cancer	Other	33
+249	FBXW7	pancreatic cancer	Mutant	1
+250	FBXW7	pancreatic cancer	Other	22
+251	FBXW7	peripheral nervous system neoplasm	Mutant	1
+252	FBXW7	peripheral nervous system neoplasm	Other	12
+253	FBXW7	skin cancer	Mutant	1
+254	FBXW7	skin cancer	Other	28
+255	FBXW7	stomach cancer	Mutant	1
+256	FBXW7	stomach cancer	Other	14
+257	FBXW7	urinary bladder cancer	Mutant	1
+258	FBXW7	urinary bladder cancer	Other	20
+259	FBXW7	uterine cancer	Mutant	9
+260	FBXW7	uterine cancer	Other	11
+261	EZH2	breast cancer	Mutant	1
+262	EZH2	breast cancer	Other	25
+263	EZH2	cancer	Mutant	1
+264	EZH2	cancer	Other	17
+265	EZH2	colorectal cancer	Mutant	3
+266	EZH2	colorectal cancer	Other	24
+267	EZH2	leukemia	Mutant	1
+268	EZH2	leukemia	Other	20
+269	EZH2	lung cancer	Mutant	2
+270	EZH2	lung cancer	Other	67
+271	EZH2	lymphoma	Mutant	3
+272	EZH2	lymphoma	Other	8
+273	EZH2	multiple myeloma	Mutant	1
+274	EZH2	multiple myeloma	Other	15
+275	EZH2	pancreatic cancer	Mutant	1
+276	EZH2	pancreatic cancer	Other	22
+277	EZH2	skin cancer	Mutant	3
+278	EZH2	skin cancer	Other	26
+279	EZH2	stomach cancer	Mutant	1
+280	EZH2	stomach cancer	Other	14
+281	EZH2	urinary bladder cancer	Mutant	1
+282	EZH2	urinary bladder cancer	Other	20
+283	EZH2	uterine cancer	Mutant	2
+284	EZH2	uterine cancer	Other	17
+285	VHL	breast cancer	Mutant	1
+286	VHL	breast cancer	Other	25
+287	VHL	cancer	Mutant	1
+288	VHL	cancer	Other	17
+289	VHL	kidney cancer	Mutant	11
+290	VHL	kidney cancer	Other	7
+291	VHL	lung cancer	Mutant	2
+292	VHL	lung cancer	Other	68
+293	VHL	uterine cancer	Mutant	2
+294	VHL	uterine cancer	Other	16

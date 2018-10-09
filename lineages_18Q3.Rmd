@@ -302,14 +302,15 @@ maf_raw <- filter(maf_raw, Broad_ID %in% unique(crispr_meta$Broad_ID))
 colnames(maf_raw)[colnames(maf_raw) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
 
 # Select columns
-maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Variant_Classification", "isDeleterious", "Reference_Allele"))
-maf_df$Var_Length <- nchar(as.character(maf_df$Reference_Allele))
+maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Variant_Classification", "isDeleterious", "Reference_Allele", "Tumor_Seq_Allele1"))
+maf_df$Reference_Allele_Length <- ifelse(maf_df$Reference_Allele == "-", 0, nchar(as.character(maf_df$Reference_Allele)))
+maf_df$Tumor_Seq_Allele1_Length <- nchar(as.character(maf_df$Tumor_Seq_Allele1))
 
 # Add Mutation_Status column
 maf_df$Mutation_Status_Deleterious <- ifelse(maf_df$isDeleterious == TRUE, "Mutant", "Other")
 maf_df$Mutation_Status_Nonsilent <- ifelse(maf_df$Variant_Classification == "Silent", "Other", "Mutant")
 maf_df$Mutation_Status_DeleteriousMissense <- ifelse(maf_df$isDeleterious == TRUE | maf_df$Variant_Classification == "Missense_Mutation", "Mutant", "Other")
-maf_df <- unique(subset(maf_df, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Mutation_Status_Deleterious", "Mutation_Status_Nonsilent", "Mutation_Status_DeleteriousMissense", "Var_Length")))
+maf_df <- unique(subset(maf_df, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Mutation_Status_Deleterious", "Mutation_Status_Nonsilent", "Mutation_Status_DeleteriousMissense", "Reference_Allele_Length", "Tumor_Seq_Allele1_Length")))
 
 # Whole MAF summary table
 maf_summ <- maf_raw[, c("Variant_Classification", "isDeleterious")] %>% group_by(Variant_Classification, isDeleterious) %>% tally()
@@ -401,7 +402,6 @@ ggord(crispr_pca, crispr_pca_data$group_general_lineage_name)
 ```
 
 
-
 Merge annotation data:
 ```{r, eval=FALSE}
 # Melt CRISPR dataset for merging
@@ -470,7 +470,12 @@ crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
 
 Filter for point mutations:
 ```{r}
-crispr_data_ptmuts <- filter(crispr_data, Var_Length == 1 | is.na(Var_Length))
+crispr_data_ptmuts <- filter(crispr_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+
+crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele_Length == 1 | is.na(crispr_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+
+crispr_data_ptmuts <- filter(crispr_data_ptmuts, Keep_PtMut_Tests == TRUE)
+
 test_ptmuts <- filter(crispr_data_ptmuts, is.na(group_general_lineage_name))
 test_ptmuts <- filter(crispr_data_ptmuts, Hugo_Symbol == "KRAS")
 ```
@@ -1023,8 +1028,7 @@ crispr_g2p_indications_muts_plot
 g2pA <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_20181008.tsv", sep = "\t", header = TRUE, na.strings = "-1", quote = "")
 # g2pA[g2pA == "-1"] <- NA
 
-g2pA$JSON[1]
-fromJSON(as.character(g2pA$JSON[[1]]))
+g2pA_JSON <- data.frame(JSON = g2pA$JSON)
 ```
 
 ```{r}
