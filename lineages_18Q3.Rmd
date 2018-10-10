@@ -1025,10 +1025,18 @@ crispr_g2p_indications_muts_plot
 ```
 
 ```{r}
-g2pA <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_20181008.tsv", sep = "\t", header = TRUE, na.strings = "-1", quote = "")
+g2pA <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.csv", sep = "\t", header = TRUE, na.strings = "-1", quote = "")
 # g2pA[g2pA == "-1"] <- NA
+g2pA$X <- NULL
 
 g2pA_JSON <- data.frame(JSON = g2pA$JSON)
+
+g2pA_noJSON <- g2pA
+g2pA_noJSON$JSON <- NULL
+
+# write.table(g2pA, file = "./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
+# write.table(g2pA_noJSON, file = "./data_munging/g2pA_noJSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
+# write.table(g2pA_JSON, file = "./data_munging/g2pA_JSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
 ```
 
 ```{r}
