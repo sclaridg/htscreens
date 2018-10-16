@@ -55,8 +55,6 @@ library(ggfortify)
 library(ggord)
 library(glmnet)
 library(gridExtra)
-# devtools::install_github("jeroen/jsonlite")
-# install.packages("jsonlite")
 library(jsonlite)
 library(jsonlite)
 library(kableExtra)
@@ -91,7 +89,7 @@ adj_signif <- function(df) {
 }
 ```
 
-## Make CRISPR grobs
+## Make CRISPR grouped plots
 
 ```{r}
 makeCRISPRgrob <- function(g, filt_method) {
@@ -171,7 +169,7 @@ makeCRISPRgrob <- function(g, filt_method) {
 }
 ```
 
-## Make lineage plot
+## Make sorted lineage plots
 
 ```{r}
 makeCRISPRlinplot <- function(g) {
@@ -205,8 +203,53 @@ makeCRISPRlinplot <- function(g) {
 }
 ```
 
+## Make drug screen boxplots
+```{r}
+makeDrugBoxplots <- function(drug, dataset) {
+  if(dataset == "CCLE" | dataset == "ccle") {
+    use_data <- filter(ccle_ptmuts_lvlA_filt, Drug == drug)
+    use_color <- as.character(use_data$Color_Nonsilent)
+    names(use_color) <- use_data$Mutation_Status_Nonsilent
+    sig <- filter(ccle_signif_lvlA, Drug == drug)
+    label_text <- data.frame(p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
+    label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
+    label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
+  }
+  else if(dataset == "CTRP" | dataset == "ctrp") {
+    use_data <- filter(ctrp_ptmuts_lvlA_filt, Drug == drug)
+    use_color <- as.character(use_data$Color_Nonsilent)
+    names(use_color) <- use_data$Mutation_Status_Nonsilent
+    sig <- filter(ctrp_signif_lvlA, Drug == drug)
+    label_text <- data.frame(p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
+    label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
+    label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
+  }
+  else if(dataset == "GDSC" | dataset == "gdsc") {
+    use_data <- filter(gdsc_ptmuts_lvlA_filt, Drug == drug)
+    use_color <- as.character(use_data$Color_Nonsilent)
+    names(use_color) <- use_data$Mutation_Status_Nonsilent
+    sig <- filter(gdsc_signif_lvlA, Drug == drug)
+    label_text <- data.frame(p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
+    label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
+    label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
+  }
+  else { return("Error: Invalid dataset.") }
+    
+  plot <- ggplot(data = use_data, aes(x = Mutation_Status_Nonsilent, y = AUC)) +
+    facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(genes_lvlA_filt)) +
+    geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+    geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
+    scale_fill_manual(values = use_color) +
+    guides(color = FALSE) +
+    geom_text(data = label_text, mapping = aes(x = 1.5, y = max(use_data$AUC), label = p.signif.adj)) +
+    theme(legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+    labs(fill = "Mutation Status", y = "AUC", x = "Mutation Status", title = paste0(dataset, ": ", drug))
+  return(plot)
+}
+```
 
-# Data management
+
+# Data management {.tabset .tabset-fade .tabset-pills}
 
 --------------------------------------------------------------------------------
 
@@ -216,7 +259,6 @@ This comprehensive cancer cell line information curated by Daniel Charytonowicz.
 ```{r}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 ```
-
 
 ```{r, eval=FALSE, include=FALSE}
 # Editing CCL DB
@@ -277,7 +319,7 @@ maf_raw <- filter(maf_raw, Broad_ID %in% unique(crispr_meta$Broad_ID))
 colnames(maf_raw)[colnames(maf_raw) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
 
 # Select columns
-maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Variant_Classification", "isDeleterious", "Reference_Allele", "Tumor_Seq_Allele1"))
+maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "Broad_ID", "Variant_Classification", "Reference_Allele", "Tumor_Seq_Allele1"))
 maf_df$Reference_Allele_Length <- ifelse(maf_df$Reference_Allele == "-", 0, nchar(as.character(maf_df$Reference_Allele)))
 maf_df$Tumor_Seq_Allele1_Length <- nchar(as.character(maf_df$Tumor_Seq_Allele1))
 
@@ -293,7 +335,7 @@ maf_summ$isDeleterious <- ifelse(maf_summ$isDeleterious == "TRUE", "Yes", "No")
 knitr::kable(maf_summ, caption = "Distribution of variant classifications in the MAF file") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
-```{r, eval=FALSE}
+```{r, eval=FALSE, include=FALSE}
 max(nchar(as.character(maf_raw$Reference_Allele)))
 maf_raw %>% group_by(Variant_Type, isTCGAhotspot) %>% tally()
 
@@ -319,7 +361,7 @@ cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:nc
 saveRDS(cn_melt, "./data_munging/rds/cn_melt_18Q3.rds", compress = "xz")
 ```
 
-```{r}
+```{r, eval=FALSE}
 cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q3.rds")
 ```
 
@@ -343,7 +385,7 @@ ge_melt$Broad_ID <- gsub("\\(|\\)", "", ge_melt$Broad_ID)
 saveRDS(ge_melt, "./../crispr_lineages_giant_files/ge_melt_18Q3.rds", compress = "xz")
 ```
 
-```{r}
+```{r, eval=FALSE}
 ge_melt <- readRDS("./../crispr_lineages_giant_files/ge_melt_18Q3.rds")
 ```
 
@@ -366,59 +408,39 @@ crispr <- read.delim("./data_munging/gene_effect_18Q3.csv.gz", sep = ",", header
 colnames(crispr) <- gsub(" .*", "", colnames(crispr))
 ```
 
-```{r fig.height=12, fig.width=12, eval=FALSE}
-crispr_pca_data <- merge(ccl_converter[, c("Broad_ID", "group_general_lineage_name")], crispr, by = "Broad_ID")
-crispr_lin <- crispr_pca_data[, 2]
-crispr_pca <- prcomp(data.matrix(crispr_pca_data[, 3:ncol(crispr_pca_data)]), scale. = TRUE, center = TRUE)
-plot(crispr_pca, type = "l")
-biplot(crispr_pca, obs.scale = 1, var.scale = 1, groups = crispr_lin, ellipse = TRUE, circle = TRUE)
-ggord(crispr_pca, crispr_pca_data$group_general_lineage_name)
-```
-
 Merge annotation data:
 ```{r, eval=FALSE}
 # Melt CRISPR dataset for merging
 crispr_melt <- melt(crispr, id.vars = "Broad_ID", measure.vars = colnames(crispr)[2:ncol(crispr)], variable.name = "Hugo_Symbol", value.name = "Score")
-
 # Melt dependency probabilities dataset for merging
 dep_melt <- melt(dep, id.vars = "Broad_ID", measure.vars = colnames(dep)[2:ncol(dep)], variable.name = "Hugo_Symbol", value.name = "Dep_Prob")
-
 # Merge dependency probabilities
 crispr_melt <- merge(crispr_melt, dep_melt, by = c("Broad_ID", "Hugo_Symbol"), all.x = TRUE)
-
 # Merge cell line metadata
 crispr_melt <- merge(crispr_melt, ccl_info, by = "Broad_ID", all.x = TRUE)
 crispr_melt <- merge(crispr_melt, crispr_meta, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
-
 # Merge mutation annotations
 crispr_muts <- merge(crispr_melt, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
 crispr_muts$Hugo_Symbol <- factor(crispr_muts$Hugo_Symbol)
 crispr_muts <- crispr_muts %>% mutate(Mutation_Status_Nonsilent = if_else(is.na(Mutation_Status_Nonsilent), "Other", Mutation_Status_Nonsilent))
-
 # Summarize number of mutant and Other cell lines
 crispr_muts_summ <- crispr_muts %>% group_by(Hugo_Symbol) %>%
   summarize(N_Nonsilent_Other = sum(Mutation_Status_Nonsilent == "Other"),
             N_Nonsilent_Mutant = sum(Mutation_Status_Nonsilent == "Mutant"))
-
 # Merge test results back into full dataset, which restores information lost in the summarization
 crispr_data <- merge(crispr_muts_summ, crispr_muts, by = "Hugo_Symbol")
-
 # Add Color columns
 crispr_data$Color_Nonsilent <- ifelse(crispr_data$Mutation_Status_Nonsilent == "Other", "thistle", "darkorchid")
 crispr_data$Color_Nonsilent <- factor(crispr_data$Color_Nonsilent)
-
 # Cell line lineages
 crispr_data <- merge(crispr_data, ccl_converter, by = c("CCLE_Name", "Broad_ID"), all.x = TRUE)
 levels(crispr_data$lineage_name) <- sort(levels(crispr_data$lineage_name), decreasing = TRUE)
-
 # Copy number
 crispr_data <- merge(crispr_data, cn_melt, by = c("Hugo_Symbol", "Broad_ID"), all.x = TRUE)
-
 # Gene expression (RPKM)
 ge_filt <- filter(ge_melt, Hugo_Symbol %in% unique(crispr_data$Hugo_Symbol) & Broad_ID %in% unique(crispr_data$Broad_ID))
 crispr_data <- merge(crispr_data, ge_filt, by = c("Hugo_Symbol", "Broad_ID", "CCLE_Name"), all.x = TRUE)
 crispr_data$RPKM_log2 <- log2(crispr_data$RPKM + 0.0001)
-
 saveRDS(crispr_data, "./../crispr_lineages_giant_files/crispr_data_18Q3.rds", compress = "xz")
 ```
 
@@ -439,43 +461,92 @@ ggplot(data = test, aes(x = Mutation_Status_Nonsilent, y = Score, fill = Mutatio
   scale_fill_manual(values = c("turquoise4", "paleturquoise3"))
 ```
 
+```{r fig.height=12, fig.width=12, eval=FALSE, include=FALSE}
+# Test dimensional scaling
+crispr_pca_data <- merge(ccl_converter[, c("Broad_ID", "group_general_lineage_name")], crispr, by = "Broad_ID")
+crispr_lin <- crispr_pca_data[, 2]
+crispr_pca <- prcomp(data.matrix(crispr_pca_data[, 3:ncol(crispr_pca_data)]), scale. = TRUE, center = TRUE)
+plot(crispr_pca, type = "l")
+biplot(crispr_pca, obs.scale = 1, var.scale = 1, groups = crispr_lin, ellipse = TRUE, circle = TRUE)
+ggord(crispr_pca, crispr_pca_data$group_general_lineage_name)
+```
+
 ## Drug screens
+
+```{r}
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.tsv", sep = "\t", header = TRUE)
+genes_lvlA_df <- data.frame(Hugo_Symbol = unique(g2p$Gene))
+genes_lvlA <- unique(g2p$Gene)
+```
 
 ```{r, eval=FALSE}
 # Drug metadata
 drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv", sep = "\t", header = FALSE)
 colnames(drug_meta) <- c("CID", "Drug")
 drug_meta$Drug <- tolower(drug_meta$Drug)
+maf_df_lvlA <- filter(maf_df, Hugo_Symbol %in% genes_lvlA)
 
 # CCLE
 ccle <- read.delim("./data_munging/data_drug_auc_ccle_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
 ccle <- merge(drug_meta, ccle, by = "CID")
-ccle_melt <- melt(ccle, id.vars = c("CID", "Drug"), measure.vars = colnames(ccle)[3:ncol(ccle)], variable.name = "accession_id", value.name = "AUC_CCLE")
+ccle_melt <- melt(ccle, id.vars = c("CID", "Drug"), measure.vars = colnames(ccle)[3:ncol(ccle)], variable.name = "accession_id", value.name = "AUC")
+ccle_grid <- expand.grid("accession_id" = unique(ccle_melt$accession_id), "Hugo_Symbol" = genes_lvlA)
+ccle_data <- merge(ccle_grid, ccle_melt, by = "accession_id", all.x = TRUE)
+ccle_data <- merge(ccle_data, ccl_converter, by = "accession_id", all.x = TRUE)
+ccle_data <- merge(ccle_data, maf_df_lvlA, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+ccle_data$Mutation_Status_Nonsilent <- ifelse(is.na(ccle_data$Mutation_Status_Nonsilent), "Other", ccle_data$Mutation_Status_Nonsilent)
+ccle_data$Hugo_Symbol <- factor(ccle_data$Hugo_Symbol)
+ccle_data$AUC <- as.numeric(ccle_data$AUC)
+ccle_data$Color_Nonsilent <- ifelse(ccle_data$Mutation_Status_Nonsilent == "Other", "palegreen3", "springgreen4")
+ccle_data$Color_Nonsilent <- factor(ccle_data$Color_Nonsilent)
+ccle_data <- filter(ccle_data, !is.na(ccle_data$AUC))
+saveRDS(ccle_data, "./data_munging/rds/ccle_data_18Q3.rds", compress = "xz")
 
 # CTRP
 ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
 ctrp <- merge(drug_meta, ctrp, by = "CID")
-ctrp_melt <- melt(ctrp, id.vars = c("CID", "Drug"), measure.vars = colnames(ctrp)[3:ncol(ctrp)], variable.name = "accession_id", value.name = "AUC_CTRP")
+ctrp_melt <- melt(ctrp, id.vars = c("CID", "Drug"), measure.vars = colnames(ctrp)[3:ncol(ctrp)], variable.name = "accession_id", value.name = "AUC")
+ctrp_grid <- expand.grid("accession_id" = unique(ctrp_melt$accession_id), "Hugo_Symbol" = genes_lvlA)
+ctrp_data <- merge(ctrp_grid, ctrp_melt, by = "accession_id", all.x = TRUE)
+ctrp_data <- merge(ctrp_data, ccl_converter, by = "accession_id", all.x = TRUE)
+ctrp_data <- merge(ctrp_data, maf_df_lvlA, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+ctrp_data$Mutation_Status_Nonsilent <- ifelse(is.na(ctrp_data$Mutation_Status_Nonsilent), "Other", ctrp_data$Mutation_Status_Nonsilent)
+ctrp_data$Hugo_Symbol <- factor(ctrp_data$Hugo_Symbol)
+ctrp_data$AUC <- as.numeric(ctrp_data$AUC)
+ctrp_data$Color_Nonsilent <- ifelse(ctrp_data$Mutation_Status_Nonsilent == "Other", "slategray3", "steelblue4")
+ctrp_data$Color_Nonsilent <- factor(ctrp_data$Color_Nonsilent)
+ctrp_data <- filter(ctrp_data, !is.na(ctrp_data$AUC))
+saveRDS(ctrp_data, "./data_munging/rds/ctrp_data_18Q3.rds", compress = "xz")
 
 # GDSC
 gdsc <- read.delim("./data_munging/data_drug_auc_gdsc_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
 gdsc <- merge(drug_meta, gdsc, by = "CID")
-gdsc_melt <- melt(gdsc, id.vars = c("CID", "Drug"), measure.vars = colnames(gdsc)[3:ncol(gdsc)], variable.name = "accession_id", value.name = "AUC_GDSC")
-
-# Merge all data
-drug_data <- merge(merge(ccle_melt, ctrp_melt, by = c("accession_id", "CID", "Drug"), all = TRUE), gdsc_melt, by = c("accession_id", "CID", "Drug"), all = TRUE)
-drug_data <- merge(drug_data, ccl_converter, by = "accession_id", all.x = TRUE)
-drug_data <- merge(drug_data, maf_df, by = c("CCLE_Name", "Broad_ID"))
-drug_data$Hugo_Symbol <- factor(drug_data$Hugo_Symbol)
-
-saveRDS(drug_data, "./data_munging/drug_data_18Q3.rds", compress = "xz")
+gdsc_melt <- melt(gdsc, id.vars = c("CID", "Drug"), measure.vars = colnames(gdsc)[3:ncol(gdsc)], variable.name = "accession_id", value.name = "AUC")
+gdsc_grid <- expand.grid("accession_id" = unique(gdsc_melt$accession_id), "Hugo_Symbol" = genes_lvlA)
+gdsc_data <- merge(gdsc_grid, gdsc_melt, by = "accession_id", all.x = TRUE)
+gdsc_data <- merge(gdsc_data, ccl_converter, by = "accession_id", all.x = TRUE)
+gdsc_data <- merge(gdsc_data, maf_df_lvlA, by = c("Hugo_Symbol", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+gdsc_data$Mutation_Status_Nonsilent <- ifelse(is.na(gdsc_data$Mutation_Status_Nonsilent), "Other", gdsc_data$Mutation_Status_Nonsilent)
+gdsc_data$Hugo_Symbol <- factor(gdsc_data$Hugo_Symbol)
+gdsc_data$AUC <- as.numeric(gdsc_data$AUC)
+gdsc_data$Color_Nonsilent <- ifelse(gdsc_data$Mutation_Status_Nonsilent == "Other", "paleturquoise3", "turquoise4")
+gdsc_data$Color_Nonsilent <- factor(gdsc_data$Color_Nonsilent)
+gdsc_data <- filter(gdsc_data, !is.na(gdsc_data$AUC))
+saveRDS(gdsc_data, "./data_munging/rds/ctrp_data_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-drug_data <- readRDS("./data_munging/drug_data_18Q3.rds")
+ccle_data <- readRDS("./data_munging/rds/ccle_data_18Q3.rds")
+ctrp_data <- readRDS("./data_munging/rds/ctrp_data_18Q3.rds")
+gdsc_data <- readRDS("./data_munging/rds/gdsc_data_18Q3.rds")
 ```
 
-# Wilcoxon tests
+```{r}
+test_gdsc <- gdsc_data %>% group_by(Drug, Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
+```
+
+
+# Wilcoxon tests: All genes
 
 --------------------------------------------------------------------------------
 
@@ -484,9 +555,7 @@ drug_data <- readRDS("./data_munging/drug_data_18Q3.rds")
 Filter for point mutations:
 ```{r}
 crispr_data_ptmuts <- filter(crispr_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
-
 crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele_Length == 1 | is.na(crispr_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
-
 crispr_data_ptmuts <- filter(crispr_data_ptmuts, Keep_PtMut_Tests == TRUE)
 
 test_ptmuts <- filter(crispr_data_ptmuts, is.na(group_general_lineage_name))
@@ -550,14 +619,9 @@ wilcox_lineage_nonsilent_plot
 ```
 
 
-# Paper outline: G2P data
+# G2P project
 
 --------------------------------------------------------------------------------
-
-```{r}
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.tsv", sep = "\t", header = TRUE)
-genes_lvlA <- unique(g2p$Gene)
-```
 
 ## Gene mutation frequency
 
@@ -572,7 +636,8 @@ crispr_data_lvlA_summ$Percent_Mutant <- crispr_data_lvlA_summ$Fraction_Mutant * 
 
 ## Wilcoxon tests
 
-### Gene
+### CRISPR: Gene
+
 ```{r, eval=FALSE}
 crispr_signif_lvlA <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol"), data = crispr_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_lvlA <- adj_signif(crispr_signif_lvlA)
@@ -583,9 +648,9 @@ saveRDS(crispr_signif_lvlA, "./data_munging/rds/crispr_signif_lvlA_gene.rds")
 ```{r, eval=TRUE}
 crispr_signif_lvlA <- readRDS("./data_munging/rds/crispr_signif_lvlA_gene.rds")
 
-crispr_signif_genes_lvlA <- as.character(filter(crispr_signif_lvlA, !is.na(p.signif.adj))$Hugo_Symbol)
+crispr_signif_genes_lvlA <- as.character(crispr_signif_lvlA$Hugo_Symbol[0:20])
 
-knitr::kable(filter(crispr_signif_lvlA, p < 0.05)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_lvlA, p < 0.1)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -599,7 +664,36 @@ wilcox_gene_lvlA_plot <- ggplot(data = crispr_signif_lvlA) +
 wilcox_gene_lvlA_plot
 ```
 
-### Gene and lineage
+```{r fig.height=7, fig.width=12}
+lvlA_genes_signif <- filter(crispr_data_ptmuts, Hugo_Symbol %in% crispr_signif_genes_lvlA)
+lvlA_genes_signif <- merge(lvlA_genes_signif, crispr_signif_lvlA, by = "Hugo_Symbol")
+lvlA_genes_signif$Hugo_Symbol <- ordered(lvlA_genes_signif$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
+lvlA_genes_signif_color <- as.character(lvlA_genes_signif$Color_Nonsilent)
+names(lvlA_genes_signif_color) <- lvlA_genes_signif$Mutation_Status_Nonsilent
+lvlA_genes_signif <- merge(lvlA_genes_signif, lvlA_genes_signif %>% group_by(Hugo_Symbol) %>% summarize(Text_y = max(Score)), by = "Hugo_Symbol")
+
+lvlA_genes_text <- unique(data.frame(p.signif.adj = lvlA_genes_signif$p.signif.adj, Hugo_Symbol = lvlA_genes_signif$Hugo_Symbol, Text_y = lvlA_genes_signif$Text_y))
+lvlA_genes_text$Hugo_Symbol <- factor(lvlA_genes_text$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
+
+lvlA_signif_genes_plot <- ggplot(data = lvlA_genes_signif, aes(x = Mutation_Status_Nonsilent, y = Score)) +
+  facet_wrap(~ Hugo_Symbol, nrow = 2, scales = "free_y") +
+  geom_jitter(aes(color = Mutation_Status_Nonsilent), alpha = 0.5, width = 0.3) +
+  geom_boxplot(color = "black", fill = NA, outlier.shape = NA) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  scale_color_manual(values = lvlA_genes_signif_color) + 
+  geom_text(data = lvlA_genes_text, mapping = aes(x = 1.5, y = Text_y, label = p.signif.adj), nudge_y = 0.2) +
+  theme(legend.position = "top") +
+  labs(y = "CERES Score",
+       x = "Lineage",
+       color = "Mutation Status",
+       title = "CERES scores for select Level A G2P genes",
+       subtitle = "Genes with adjusted p-values < 0.3 are shown.\nBH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing p-value.")
+lvlA_signif_genes_plot
+
+# ggsave("./plots_18Q3/manuscript/crispr_g2p_lvlA_signif_genes_plot.png", lvlA_signif_genes_plot, width = 12, height = 7, units = "in")
+```
+
+### CRISPR: Gene and lineage
 
 ```{r, eval=FALSE}
 crispr_signif_lvlA_lineage <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
@@ -627,12 +721,157 @@ wilcox_lineage_lvlA_plot <- ggplot(data = crispr_signif_lvlA_lineage) +
 wilcox_lineage_lvlA_plot
 ```
 
-## Figure 1C plots
+```{r fig.height=15, fig.width=15}
+lvlA_signif <- filter(crispr_data_ptmuts, Hugo_Symbol %in% crispr_signif_genes_lvlA)
+lvlA_signif <- merge(lvlA_signif, crispr_signif_lvlA_lineage, by = c("Hugo_Symbol", "group_general_lineage_name"))
+lvlA_signif$Hugo_Symbol <- ordered(lvlA_signif$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
+lvlA_signif_color <- as.character(lvlA_signif$Color_Nonsilent)
+names(lvlA_signif_color) <- lvlA_signif$Mutation_Status_Nonsilent
+lvlA_signif <- merge(lvlA_signif, lvlA_signif %>% group_by(Hugo_Symbol) %>% summarize(Text_y = max(Score)), by = "Hugo_Symbol")
+
+lvlA_text <- unique(data.frame(p.signif.adj = lvlA_signif$p.signif.adj, group_general_lineage_name = lvlA_signif$group_general_lineage_name, Hugo_Symbol = lvlA_signif$Hugo_Symbol, Text_y = lvlA_signif$Text_y))
+lvlA_text$Hugo_Symbol <- factor(lvlA_text$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
+
+lvlA_signif_lineages_plot <- ggplot(data = lvlA_signif, aes(x = group_general_lineage_name, y = Score)) +
+  facet_wrap(~ Hugo_Symbol, nrow = 4, scales = "free_y") +
+  geom_point(aes(color = Mutation_Status_Nonsilent), alpha = 0.5) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  scale_color_manual(values = lvlA_signif_color) +
+  geom_text(data = lvlA_text, mapping = aes(x = group_general_lineage_name, y = Text_y, label = p.signif.adj), nudge_y = 0.1) +
+  theme(legend.position = "top", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 1, size = 10)) +
+  labs(y = "CERES Score",
+       x = "Lineage",
+       color = "Mutation Status",
+       title = "CERES score by cell line lineage for significant Level A G2P genes",
+       subtitle = "Genes with adjusted p-values < 0.3 are shown.\nBH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing lineage-agnostic p-value.")
+lvlA_signif_lineages_plot
+
+# ggsave("./plots_18Q3/manuscript/crispr_g2p_lvlA_signif_lineages_plot.png", lvlA_signif_lineages_plot, width = 12, height = 15, units = "in")
+```
+
+```{r}
+lvlA_signif_summ <- lvlA_signif %>% group_by(Hugo_Symbol, group_general_lineage_name, Mutation_Status_Nonsilent) %>% tally()
+# write.table(lvlA_signif_summ, file = "~/Desktop/lvlA_signif_summ_20181005.tsv", quote = FALSE, sep = "\t")
+
+knitr::kable(lvlA_signif_summ, caption = "Mutant/Other counts for gene-lineage combinations") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+### CCLE: Gene and drug
+
+```{r}
+ccle_data_ptmuts <- filter(ccle_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele_Length == 1 | is.na(ccle_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ccle_data_lvlA <- filter(ccle_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
+```
+
+```{r, eval=FALSE}
+ccle_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Drug", "Hugo_Symbol"), data = ccle_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
+ccle_signif_lvlA <- adj_signif(ccle_signif_lvlA)
+ccle_signif_lvlA <- ccle_signif_lvlA[order(ccle_signif_lvlA$p),]
+saveRDS(ccle_signif_lvlA, "./data_munging/rds/ccle_signif_lvlA_gene.rds")
+```
+
+```{r, eval=TRUE}
+ccle_signif_lvlA <- readRDS("./data_munging/rds/ccle_signif_lvlA_gene.rds")
+
+# ccle_signif_genes_lvlA <- as.character(ccle_signif_lvlA$Hugo_Symbol[0:20])
+
+knitr::kable(ccle_signif_lvlA[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r fig.height=4, fig.width=8}
+wilcox_ccle_gene_lvlA_plot <- ggplot(data = ccle_signif_lvlA) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_ccle_gene_lvlA_plot
+```
+
+### CTRP: Gene and drug
+
+```{r}
+ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele_Length == 1 | is.na(ctrp_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ctrp_data_lvlA <- filter(ctrp_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
+```
+
+```{r, eval=FALSE}
+ctrp_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = ctrp_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
+ctrp_signif_lvlA <- adj_signif(ctrp_signif_lvlA)
+ctrp_signif_lvlA <- ctrp_signif_lvlA[order(ctrp_signif_lvlA$p),]
+saveRDS(ctrp_signif_lvlA, "./data_munging/rds/ctrp_signif_lvlA_gene.rds")
+```
+
+```{r, eval=TRUE}
+ctrp_signif_lvlA <- readRDS("./data_munging/rds/ctrp_signif_lvlA_gene.rds")
+
+# ctrp_signif_genes_lvlA <- as.character(ctrp_signif_lvlA$Hugo_Symbol[0:20])
+
+knitr::kable(ctrp_signif_lvlA[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r fig.height=4, fig.width=8}
+wilcox_ctrp_gene_lvlA_plot <- ggplot(data = ctrp_signif_lvlA) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_ctrp_gene_lvlA_plot
+```
+
+### GDSC: Gene and drug
+
+```{r}
+gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele_Length == 1 | is.na(gdsc_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
+gdsc_data_lvlA <- filter(gdsc_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
+```
+
+```{r, eval=FALSE}
+gdsc_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = gdsc_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
+gdsc_signif_lvlA <- adj_signif(gdsc_signif_lvlA)
+gdsc_signif_lvlA <- gdsc_signif_lvlA[order(gdsc_signif_lvlA$p),]
+saveRDS(gdsc_signif_lvlA, "./data_munging/rds/gdsc_signif_lvlA_gene.rds")
+```
+
+```{r, eval=TRUE}
+gdsc_signif_lvlA <- readRDS("./data_munging/rds/gdsc_signif_lvlA_gene.rds")
+
+# gdsc_signif_genes_lvlA <- as.character(gdsc_signif_lvlA$Hugo_Symbol[0:20])
+
+knitr::kable(gdsc_signif_lvlA[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r fig.height=4, fig.width=8}
+wilcox_gdsc_gene_lvlA_plot <- ggplot(data = gdsc_signif_lvlA) +
+  geom_histogram(aes(x = p, fill = "chartreuse4"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  geom_histogram(aes(x = p.adj, fill = "darkslategray3"), breaks = seq(0, 1, by = 0.025), color = "black", alpha = 0.7) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), labels = seq(0, 1, by = 0.05)) +
+  scale_fill_manual(name = "P-values", values = c("chartreuse4" = "chartreuse4", "darkslategray3" = "darkslategray3"), labels = c("Unadjusted", "BH-adjusted")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = c(0.1, 0.85)) +
+  labs(x = "BH-adjusted p-values", y = "Frequency")
+wilcox_gdsc_gene_lvlA_plot
+```
+
+## Screen boxplots
 
 Mutation status boxplots for genes identified in G2P.
+```{r}
+genes_lvlA_filt <- c("KRAS", "EGFR", "MET", "ALK", "BRAF", "ERBB2", "ABL1", "ROS1", "KIT", "DPYD", "PDGFRA", "RET", "BRCA1", "UGT1A1", "IDH2", "ESR1", "TPMT", "BRCA2", "PDGFRB", "G6PD", "PML", "TSC1", "FLT3", "ERBB3", "CYP19A1", "AKT1", "PTCH1", "MGMT", "DNMT3A", "MYD88", "PDGFB", "TSC2", "NPM1", "JAK2")
+```
 
-```{r fig.height=4, fig.width=20}
-genes_lvlA_filt <- c("ABL1", "ALK", "AR", "ATM", "BRAF", "BRCA1", "BRCA2", "CDKN2A", "DNMT3A", "DPYD", "EGFR", "ERBB2", "ERBB3", "FGFR2", "FLT3", "JAK2", "KIT", "KRAS", "MET", "NOTCH1", "NOTCH2", "NRAS", "PDGFRA", "PDGFRB", "PIK3CA", "PML", "PTCH1", "RET", "ROS1", "SF3B1", "SMO", "TP53", "TSC1")
+
+### CRISPR
+
+```{r fig.height=7, fig.width=12}
 crispr_ptmuts_lvlA_filt <- filter(crispr_data_ptmuts, Hugo_Symbol %in% genes_lvlA_filt)
 crispr_ptmuts_lvlA_filt$Hugo_Symbol <- ordered(crispr_ptmuts_lvlA_filt$Hugo_Symbol, levels = genes_lvlA_filt)
 crispr_ptmuts_lvlA_filt_color <- as.character(crispr_ptmuts_lvlA_filt$Color_Nonsilent)
@@ -642,76 +881,88 @@ label_text <- data.frame(p.signif.adj = crispr_signif_lvlA$p.signif.adj, Hugo_Sy
 label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
 label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
 
-crispr_ptmuts_lvlA_filt_plot <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Hugo_Symbol, y = Score)) +
-  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
-  scale_fill_manual(values = crispr_ptmuts_lvlA_filt_color) +
-  guides(color = FALSE) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.092, 0.8), legend.box.margin = margin(c(10, 10, 10, 10))) +
-  labs(fill = "Mutation Status", y = "CERES Score", x = "Gene")
-crispr_ptmuts_lvlA_filt_plot
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot.png", crispr_ptmuts_lvlA_filt_plot, device = "png", width = 20, height = 6, units = "in")
-
 crispr_ptmuts_lvlA_filt_plot_faceted <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
+  facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(genes_lvlA)) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
-  coord_cartesian(ylim = c(-3, 5)) +
   scale_fill_manual(values = crispr_ptmuts_lvlA_filt_color) +
   guides(color = FALSE) +
-  geom_text(data = label_text, mapping = aes(x = 1.5, y = 5, label = p.signif.adj)) +
-  theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+  geom_text(data = label_text, mapping = aes(x = 1.5, y = 2, label = p.signif.adj)) +
+  theme(legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_ptmuts_lvlA_filt_plot_faceted
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted.png", crispr_ptmuts_lvlA_filt_plot_faceted, device = "png", width = 20, height = 5, units = "in")
-
-crispr_ptmuts_lvlA_filt_plot_faceted_truncated <- ggplot(data = crispr_ptmuts_lvlA_filt, aes(x = Mutation_Status_Nonsilent, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, drop = FALSE, ncol = length(unique(genes_lvlA_filt))) +
-  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  coord_cartesian(ylim = c(-2.5, 2.5)) +
-  geom_boxplot(aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
-  scale_fill_manual(values = crispr_ptmuts_lvlA_filt_color) +
-  geom_text(data = label_text, mapping = aes(x = 1.5, y = 2.5, label = p.signif.adj)) +
-  guides(color = FALSE) +
-  theme(legend.direction = "horizontal", legend.justification = c(0.5, 0), legend.position = c(0.5, 0), legend.box.margin = margin(c(10, 10, 10, 10)), axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
-  labs(fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
-crispr_ptmuts_lvlA_filt_plot_faceted_truncated
-# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted_truncated.png", crispr_ptmuts_lvlA_filt_plot_faceted_truncated, device = "png", width = 20, height = 5, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_ptmuts_lvlA_filt_plot_faceted.png", crispr_ptmuts_lvlA_filt_plot_faceted, device = "png", dpi = 450, width = 20, height = 4, units = "in")
 ```
 
-```{r fig.height=5, fig.width=12}
-lvlA_genes_signif <- filter(crispr_data_ptmuts, Hugo_Symbol %in% crispr_signif_genes_lvlA)
-lvlA_genes_signif <- merge(lvlA_genes_signif, crispr_signif_lvlA, by = "Hugo_Symbol")
-lvlA_genes_signif$Hugo_Symbol <- ordered(lvlA_genes_signif$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
-lvlA_genes_signif_color <- as.character(lvlA_genes_signif$Color_Nonsilent)
-names(lvlA_genes_signif_color) <- lvlA_genes_signif$Mutation_Status_Nonsilent
-lvlA_genes_signif <- merge(lvlA_genes_signif, lvlA_genes_signif %>% group_by(Hugo_Symbol) %>% summarize(Text_y = max(Score)), by = "Hugo_Symbol")
+### CCLE
 
-lvlA_genes_text <- unique(data.frame(p.signif.adj = lvlA_genes_signif$p.signif.adj, Hugo_Symbol = lvlA_genes_signif$Hugo_Symbol, Text_y = lvlA_genes_signif$Text_y))
-lvlA_genes_text$Hugo_Symbol <- factor(lvlA_genes_text$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
-
-lvlA_signif_genes_plot <- ggplot(data = lvlA_genes_signif, aes(x = Mutation_Status_Nonsilent, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, nrow = 1, scales = "free_y") +
-  geom_jitter(aes(color = Mutation_Status_Nonsilent), alpha = 0.5, width = 0.3) +
-  geom_boxplot(color = "black", fill = NA, outlier.shape = NA) +
-  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  scale_color_manual(values = lvlA_genes_signif_color) + 
-  geom_text(data = lvlA_genes_text, mapping = aes(x = 1.5, y = Text_y, label = p.signif.adj), nudge_y = 0.2) +
-  theme(legend.position = "top") +
-  labs(y = "CERES Score",
-       x = "Lineage",
-       color = "Mutation Status",
-       title = "CERES scores for significant Level A G2P genes",
-       subtitle = "BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing p-value.")
-lvlA_signif_genes_plot
-
-# ggsave("./plots_18Q3/manuscript/crispr_g2p_lvlA_signif_genes_plot.png", lvlA_signif_genes_plot, width = 12, height = 5, units = "in")
+```{r fig.height=4, fig.width=20}
+ccle_ptmuts_lvlA_filt <- filter(ccle_data_ptmuts, Hugo_Symbol %in% genes_lvlA_filt)
+ccle_ptmuts_lvlA_filt$Hugo_Symbol <- ordered(ccle_ptmuts_lvlA_filt$Hugo_Symbol, levels = genes_lvlA_filt)
+ccle_drugs <- as.character(unique(ccle_ptmuts_lvlA_filt$Drug))
 ```
 
-## Figure 1D plots
+Plot code:
+```{r, eval=FALSE}
+ccle_lvlA_drugboxplots <- lapply(ccle_drugs, makeDrugBoxplots, dataset = "CCLE")
+ccle_lvlA_drugboxplot_paths <- paste0(ccle_drugs, "_ccle_boxplots.png")
+pwalk(list(ccle_lvlA_drugboxplot_paths, ccle_lvlA_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_lvlA_boxplots", dpi = 450, width = 20, height = 4, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+ccle_lvlA_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/ccle_lvlA_boxplots", full.names = TRUE))
+names(ccle_lvlA_drugboxplots) <- str_replace_all(ccle_lvlA_drugboxplots, c("_ccle_boxplots.png" = "", "./plots_18Q3/manuscript/ccle_lvlA_boxplots/" = ""))
+bsselect(ccle_lvlA_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+### CTRP
+
+```{r fig.height=4, fig.width=20}
+ctrp_ptmuts_lvlA_filt <- filter(ctrp_data_ptmuts, Hugo_Symbol %in% genes_lvlA_filt)
+ctrp_ptmuts_lvlA_filt$Hugo_Symbol <- ordered(ctrp_ptmuts_lvlA_filt$Hugo_Symbol, levels = genes_lvlA_filt)
+ctrp_drugs <- as.character(unique(ctrp_ptmuts_lvlA_filt$Drug))
+```
+
+Plot code:
+```{r, eval=FALSE}
+ctrp_lvlA_drugboxplots <- lapply(ctrp_drugs, makeDrugBoxplots, dataset = "CTRP")
+ctrp_lvlA_drugboxplot_paths <- paste0(ctrp_drugs, "_ctrp_boxplots.png")
+pwalk(list(ctrp_lvlA_drugboxplot_paths, ctrp_lvlA_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ctrp_lvlA_boxplots", dpi = 450, width = 20, height = 4, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+ctrp_lvlA_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/ctrp_lvlA_boxplots", full.names = TRUE))
+names(ctrp_lvlA_drugboxplots) <- str_replace_all(ctrp_lvlA_drugboxplots, c("_ctrp_boxplots.png" = "", "./plots_18Q3/manuscript/ctrp_lvlA_boxplots/" = ""))
+bsselect(ctrp_lvlA_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+### GDSC
+
+```{r fig.height=4, fig.width=20}
+gdsc_ptmuts_lvlA_filt <- filter(gdsc_data_ptmuts, Hugo_Symbol %in% genes_lvlA_filt)
+gdsc_ptmuts_lvlA_filt$Hugo_Symbol <- ordered(gdsc_ptmuts_lvlA_filt$Hugo_Symbol, levels = genes_lvlA_filt)
+gdsc_drugs <- as.character(unique(gdsc_ptmuts_lvlA_filt$Drug))
+```
+
+Plot code:
+```{r, eval=FALSE}
+gdsc_lvlA_drugboxplots <- lapply(gdsc_drugs, makeDrugBoxplots, dataset = "GDSC")
+gdsc_lvlA_drugboxplot_paths <- paste0(gdsc_drugs, "_gdsc_boxplots.png")
+pwalk(list(gdsc_lvlA_drugboxplot_paths, gdsc_lvlA_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/gdsc_lvlA_boxplots", dpi = 450, width = 20, height = 4, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+gdsc_lvlA_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/gdsc_lvlA_boxplots", full.names = TRUE))
+names(gdsc_lvlA_drugboxplots) <- str_replace_all(gdsc_lvlA_drugboxplots, c("_gdsc_boxplots.png" = "", "./plots_18Q3/manuscript/gdsc_lvlA_boxplots/" = ""))
+bsselect(gdsc_lvlA_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+## CRISPR: Point mutation mapping
 
 Match specific point mutations.
-
 ```{r fig.height=5, fig.width=20}
 g2p_indications <- filter(read.delim("./data_munging/data_mutation_associations_appended.csv", sep = "\t", header = TRUE), Evidence.Level == "A")
 maf_g2p_indications <- filter(maf_raw, Genome_Change %in% g2p_indications$MutationName)
@@ -743,21 +994,6 @@ crispr_g2p_indications_muts_plot
 # ggsave("./plots_18Q3/manuscript/crispr_g2p_indications_muts_plot_test.png", crispr_g2p_indications_muts_plot, width = 20, height = 5, units = "in")
 ```
 
-```{r}
-g2pA <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.csv", sep = "\t", header = TRUE, na.strings = "-1", quote = "")
-# g2pA[g2pA == "-1"] <- NA
-g2pA$X <- NULL
-
-g2pA_JSON <- data.frame(JSON = g2pA$JSON)
-
-g2pA_noJSON <- g2pA
-g2pA_noJSON$JSON <- NULL
-
-# write.table(g2pA, file = "./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
-# write.table(g2pA_noJSON, file = "./data_munging/g2pA_noJSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
-# write.table(g2pA_JSON, file = "./data_munging/g2pA_JSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
-```
-
 ## Level A: Per-gene grouped plots
 
 Plot code:
@@ -776,25 +1012,40 @@ crispr_lvlA_bygene <- crispr_lvlA_bygene[match(crispr_lvlA_order, names(crispr_l
 bsselect(crispr_lvlA_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
 ```
 
-## All genes: Per-gene grouped plots
+<!-- ## All genes: Per-gene grouped plots -->
 
-Plot code:
-```{r, eval=FALSE}
-crispr_all_groups <- lapply(unique(crispr_data_ptmuts$Hugo_Symbol), makeCRISPRgrob, filt_method = "all")
-crispr_all_groups_paths <- paste0(unique(crispr_data_ptmuts$Hugo_Symbol), "_crispr_grouped.png")
-pwalk(list(crispr_lvlA_groups_paths, crispr_lvlA_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots", dpi = 300, width = 12, height = 12, units = "in")
+<!-- Plot code: -->
+<!-- ```{r, eval=FALSE} -->
+<!-- crispr_all_groups <- lapply(unique(crispr_data_ptmuts$Hugo_Symbol), makeCRISPRgrob, filt_method = "all") -->
+<!-- crispr_all_groups_paths <- paste0(unique(crispr_data_ptmuts$Hugo_Symbol), "_crispr_grouped.png") -->
+<!-- pwalk(list(crispr_lvlA_groups_paths, crispr_lvlA_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots", dpi = 300, width = 12, height = 12, units = "in") -->
+<!-- ``` -->
+
+<!-- Data management: -->
+<!-- ```{r, eval=FALSE} -->
+<!-- crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots", full.names = TRUE)) -->
+<!-- names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots_lvlA/" = "")) -->
+<!-- crispr_all_order <- c(intersect(crispr_signif_nonsilent$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif_nonsilent$Hugo_Symbol)) -->
+<!-- crispr_all_bygene <- crispr_all_bygene[match(crispr_all_order, names(crispr_all_bygene))] -->
+<!-- bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275) -->
+<!-- ``` -->
+
+## JSON testing
+
+```{r}
+g2pA <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.csv", sep = "\t", header = TRUE, na.strings = "-1", quote = "")
+# g2pA[g2pA == "-1"] <- NA
+g2pA$X <- NULL
+
+g2pA_JSON <- data.frame(JSON = g2pA$JSON)
+
+g2pA_noJSON <- g2pA
+g2pA_noJSON$JSON <- NULL
+
+# write.table(g2pA, file = "./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
+# write.table(g2pA_noJSON, file = "./data_munging/g2pA_noJSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
+# write.table(g2pA_JSON, file = "./data_munging/g2pA_JSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
 ```
-
-Data management:
-```{r, eval=TRUE}
-crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots", full.names = TRUE))
-names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots_lvlA/" = ""))
-crispr_all_order <- c(intersect(crispr_signif_nonsilent$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif_nonsilent$Hugo_Symbol))
-crispr_all_bygene <- crispr_all_bygene[match(crispr_all_order, names(crispr_all_bygene))]
-bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
-```
-
-## JSON
 
 ```
 {
@@ -891,43 +1142,6 @@ bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE,
               'name': 'ALK  positive'}]
 }
 ```
-
-## Lineages
-
-```{r fig.height=15, fig.width=12}
-lvlA_signif <- filter(crispr_data_ptmuts, Hugo_Symbol %in% crispr_signif_genes_lvlA)
-lvlA_signif <- merge(lvlA_signif, crispr_signif_lvlA_lineage, by = c("Hugo_Symbol", "group_general_lineage_name"))
-lvlA_signif$Hugo_Symbol <- ordered(lvlA_signif$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
-lvlA_signif_color <- as.character(lvlA_signif$Color_Nonsilent)
-names(lvlA_signif_color) <- lvlA_signif$Mutation_Status_Nonsilent
-lvlA_signif <- merge(lvlA_signif, lvlA_signif %>% group_by(Hugo_Symbol) %>% summarize(Text_y = max(Score)), by = "Hugo_Symbol")
-
-lvlA_text <- unique(data.frame(p.signif.adj = lvlA_signif$p.signif.adj, group_general_lineage_name = lvlA_signif$group_general_lineage_name, Hugo_Symbol = lvlA_signif$Hugo_Symbol, Text_y = lvlA_signif$Text_y))
-lvlA_text$Hugo_Symbol <- factor(lvlA_text$Hugo_Symbol, levels = crispr_signif_genes_lvlA)
-
-lvlA_signif_lineages_plot <- ggplot(data = lvlA_signif, aes(x = group_general_lineage_name, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, nrow = 4, scales = "free_y") +
-  geom_point(aes(color = Mutation_Status_Nonsilent), alpha = 0.5) +
-  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  scale_color_manual(values = lvlA_signif_color) +
-  geom_text(data = lvlA_text, mapping = aes(x = group_general_lineage_name, y = Text_y, label = p.signif.adj), nudge_y = 0.1) +
-  theme(legend.position = "top", axis.text.x = element_text(angle = 65, hjust = 1, vjust = 1, size = 10)) +
-  labs(y = "CERES Score",
-       x = "Lineage",
-       color = "Mutation Status",
-       title = "CERES score by cell line lineage for significant Level A G2P genes",
-       subtitle = "BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing lineage-agnostic p-value.")
-lvlA_signif_lineages_plot
-
-# ggsave("./plots_18Q3/manuscript/crispr_g2p_lvlA_signif_lineages_plot.png", lvlA_signif_lineages_plot, width = 12, height = 15, units = "in")
-```
-
-```{r}
-lvlA_signif_summ <- lvlA_signif %>% group_by(Hugo_Symbol, group_general_lineage_name, Mutation_Status_Nonsilent) %>% tally()
-lvlA_signif_summ
-# write.table(lvlA_signif_summ, file = "~/Desktop/lvlA_signif_summ_20181005.tsv", quote = FALSE, sep = "\t")
-```
-
 
 # Heatmaps
 
@@ -1358,12 +1572,12 @@ bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE,
 
 ##  Metadata
 
-```{r}
+```{r, eval=FALSE}
 tissue_summ <- crispr_meta %>% group_by(primary_tissue) %>% tally()
 disease_summ <- ccl_info %>% group_by(Primary.Disease) %>% tally()
 ```
 
-```{r fig.height=12, fig.width=3}
+```{r fig.height=12, fig.width=3, eval=FALSE}
 ggplot(data = tissue_summ) + 
   aes(x = 0, y = n, fill = primary_tissue, label = primary_tissue) +
   geom_histogram(color = "black", stat = "identity") +
