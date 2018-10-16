@@ -94,15 +94,21 @@ adj_signif <- function(df) {
 ## Make CRISPR grobs
 
 ```{r}
-makeCRISPRgrob <- function(g) {
-  
-  gene <- filter(crispr_data, Hugo_Symbol == g)
+makeCRISPRgrob <- function(g, filt_method) {
+  if(filt_method == "lvlA") {
+    gene <- filter(crispr_data_lvlA, Hugo_Symbol == g)
+    sig <- filter(crispr_signif_lvlA, Hugo_Symbol == g)
+  }
+  if(filt_method == "all") {
+    gene <- filter(crispr_data_ptmuts, Hugo_Symbol == g)
+    sig <- filter(crispr_signif_nonsilent, Hugo_Symbol == g)
+  }
   
   # Mutation status
-  crispr_color <- as.character(gene$Color)
-  names(crispr_color) <- gene$Mutation_Status
-  sig <- filter(crispr_signif, Hugo_Symbol == g)
-  plot_mut <- ggplot(data = gene, aes(x = Mutation_Status, y = Score, color = Mutation_Status)) +
+  crispr_color <- as.character(gene$Color_Nonsilent)
+  names(crispr_color) <- gene$Mutation_Status_Nonsilent
+
+  plot_mut <- ggplot(data = gene, aes(x = Mutation_Status_Nonsilent, y = Score, color = Mutation_Status_Nonsilent)) +
     geom_boxplot(outlier.shape = NA) +
     geom_jitter(alpha = 0.3, size = 0.7, position = position_jitter(w = 0.05)) +
     scale_color_manual(values = crispr_color) +
@@ -111,13 +117,13 @@ makeCRISPRgrob <- function(g) {
     theme(legend.position = "none") +
     labs(x = paste0(g, " Mutation Status"), y = "CERES Score",
          title = "Mutation Status",
-         subtitle = paste0("Wilcoxon test:\n- BH-corrected p-value: ", sig$p.adj.short, "\n- Uncorrected p-value: ", sig$p.short, "\nMutant lines harbor deleterious mutations."))
+         subtitle = paste0("Wilcoxon test:\n- BH-corrected p-value: ", sig$p.adj.short, "\n- Uncorrected p-value: ", sig$p.short))
   
   # Copy number
   lo_cn <- range(gene$Copy_Number[!is.na(gene$Copy_Number)])[1]
   hi_cn <- range(gene$Copy_Number[!is.na(gene$Copy_Number)])[2]
   mid_cn <- (hi_cn - lo_cn) / 2
-  plot_cn <- ggplot(data = gene, aes(x = Copy_Number, y = Score, color = Mutation_Status)) +
+  plot_cn <- ggplot(data = gene, aes(x = Copy_Number, y = Score, color = Mutation_Status_Nonsilent)) +
     geom_point(size = 0.5, alpha = 0.5) +
     geom_smooth(method = "lm", size = 0.5) +
     geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
@@ -132,7 +138,7 @@ makeCRISPRgrob <- function(g) {
   lo_ge <- range(gene$RPKM_log2[!is.na(gene$RPKM_log2)])[1]
   hi_ge <- range(gene$RPKM_log2[!is.na(gene$RPKM_log2)])[2]
   mid_ge <- (hi_ge - lo_ge) / 2
-  plot_ge <- ggplot(data = gene, aes(x = RPKM_log2, y = Score, color = Mutation_Status)) +
+  plot_ge <- ggplot(data = gene, aes(x = RPKM_log2, y = Score, color = Mutation_Status_Nonsilent)) +
     geom_point(size = 0.5, alpha = 0.5) +
     geom_smooth(method = "lm", size = 0.5) +
     geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
@@ -145,7 +151,7 @@ makeCRISPRgrob <- function(g) {
          subtitle = "r: Pearson correlation coeffcient")
   
   # Cell line lineage
-  plot_tissue <- ggplot(data = gene, aes(x = primary_tissue, y = Score, color = Mutation_Status)) +
+  plot_tissue <- ggplot(data = gene, aes(x = primary_tissue, y = Score, color = Mutation_Status_Nonsilent)) +
     geom_point(alpha = 0.5) +
     scale_color_manual(values = crispr_color) +
     geom_hline(yintercept = 0, linetype = 2, lwd = 0.3) +
@@ -199,39 +205,6 @@ makeCRISPRlinplot <- function(g) {
 }
 ```
 
-## Make tissue plot
-
-```{r}
-makeCRISPRtissueplot <- function(g) {
-  sig <- filter(crispr_signif_tissue, Hugo_Symbol == g)
-  if(nrow(sig) == 0) {
-    return(NULL)
-  }
-  else {
-    gene <- filter(crispr_data, Hugo_Symbol == g)
-    gene <- merge(gene, sig, by = c("Hugo_Symbol", "primary_tissue"))
-    gene <- mutate(gene, primary_tissue = reorder(primary_tissue, p, mean))
-    crispr_color <- as.character(gene$Color)
-    names(crispr_color) <- gene$Mutation_Status
-    score_range <- abs(range(gene$Score)[2] - range(gene$Score)[1])
-    round_accuracy <- ifelse(score_range <= 2, 0.25,
-                             ifelse(score_range <= 3, 0.5, 1.0))
-    
-    plot <- ggplot(data = gene, aes(x = primary_tissue, y = Score)) +
-      geom_point(alpha = 0.5, mapping = aes(color = Mutation_Status)) +
-      scale_color_manual(values = crispr_color) +
-      coord_cartesian(y = c(min(gene$Score), round_any(x = max(gene$Score), accuracy = round_accuracy, f = ceiling))) +
-      geom_signif(data = gene, mapping = aes(xmin = primary_tissue, xmax = primary_tissue, annotations = paste(p.short, "\n", p.adj.short), y_position = max(gene$Score)), manual = TRUE, tip_length   = 0, size = 0, textsize = 3) +
-      theme(legend.position = "top", axis.text.x = element_text(angle = 70, hjust = 1, size = 10)) +
-      labs(y = "CERES Score",
-           x = "Primary Tissue",
-           color = "Mutation Status",
-           title = paste0(g, ": CERES score by cell line primary tissue"),
-           subtitle = "Primary tissues sorted by increasing p-value; labels indicate unadjusted p-value / BH-corrected p-value.\nMutant lines harbor deleterious mutations.")
-    return(plot)
-  }
-}
-```
 
 # Data management
 
@@ -266,6 +239,30 @@ test2 <- filter(ccl_converter, is.na(grouped_general_doid))
 Select genes from the Cancer Gene Census (CGC). The list was pulled from the [International Cancer Genome Consortium (ICGC) data portal](https://dcc.icgc.org/search/g?filters=%7B%22gene%22:%7B%22curatedSetId%22:%7B%22is%22:%5B%22GS1%22%5D%7D%7D%7D) (Advaced Search > Genes > Curated Gene Set > Cancer Gene Census).
 ```{r}
 cgc <- data_frame("Hugo_Symbol" = read.delim("./data_munging/gene-ids-for-set-Cancer Gene Census.tsv", header = FALSE, sep = "\t")[, 2])
+```
+
+## DepMap cell line metadata
+
+```{r}
+ccl_info <- read.delim("./data_munging/DepMap-2018q3-celllines.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+ccl_info$Primary.Disease <- gsub("\\\\", "", ccl_info$Primary.Disease)
+ccl_info$Primary.Disease <- gsub("Ewings", "Ewing's", ccl_info$Primary.Disease)
+
+# From figshare
+crispr_meta <- read.delim("./data_munging/sample_info_18Q3_crispr.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+colnames(crispr_meta)[7] <- "CCLE_Name"
+```
+
+```{r, include=FALSE}
+dan_test <- select(ccl_converter, CCLE_Name, Broad_ID, cell_line_name)
+dan_test <- dan_test[-which(dan_test$CCLE_Name == ""), ]
+ccl_test <- select(ccl_info, CCLE_Name, Broad_ID)
+
+test <- merge(ccl_test, dan_test, by = "CCLE_Name", all = TRUE, suffixes = c("_DepMap", "_Daniel"))
+test$BroadIDs_match <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
+
+test_false <- filter(test, BroadIDs_match == FALSE)
+# write.table(ccl_converter, file = "~/Desktop/cell_line_database_v1_20180907.tsv", quote = FALSE, sep = "\t")
 ```
 
 ## Genomic annotations
@@ -358,30 +355,6 @@ ge_melt <- readRDS("./../crispr_lineages_giant_files/ge_melt_18Q3.rds")
 dep <- read.delim("./data_munging/gene_dependency_18Q3.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(dep) <- gsub(" .*", "", colnames(dep))
-```
-
-### DepMap cell line metadata
-
-```{r}
-ccl_info <- read.delim("./data_munging/DepMap-2018q3-celllines.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-ccl_info$Primary.Disease <- gsub("\\\\", "", ccl_info$Primary.Disease)
-ccl_info$Primary.Disease <- gsub("Ewings", "Ewing's", ccl_info$Primary.Disease)
-
-# From figshare
-crispr_meta <- read.delim("./data_munging/sample_info_18Q3_crispr.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-colnames(crispr_meta)[7] <- "CCLE_Name"
-```
-
-```{r, include=FALSE}
-dan_test <- select(ccl_converter, CCLE_Name, Broad_ID, cell_line_name)
-dan_test <- dan_test[-which(dan_test$CCLE_Name == ""), ]
-ccl_test <- select(ccl_info, CCLE_Name, Broad_ID)
-
-test <- merge(ccl_test, dan_test, by = "CCLE_Name", all = TRUE, suffixes = c("_DepMap", "_Daniel"))
-test$BroadIDs_match <- ifelse(as.character(test$Broad_ID_DepMap) == as.character(test$Broad_ID_Daniel), TRUE, FALSE)
-
-test_false <- filter(test, BroadIDs_match == FALSE)
-# write.table(ccl_converter, file = "~/Desktop/cell_line_database_v1_20180907.tsv", quote = FALSE, sep = "\t")
 ```
 
 ### Merge CRISPR data and annotations
@@ -493,15 +466,13 @@ gdsc_melt <- melt(gdsc, id.vars = c("CID", "Drug"), measure.vars = colnames(gdsc
 drug_data <- merge(merge(ccle_melt, ctrp_melt, by = c("accession_id", "CID", "Drug"), all = TRUE), gdsc_melt, by = c("accession_id", "CID", "Drug"), all = TRUE)
 drug_data <- merge(drug_data, ccl_converter, by = "accession_id", all.x = TRUE)
 drug_data <- merge(drug_data, maf_df, by = c("CCLE_Name", "Broad_ID"))
-drug_data$Hugo_Symbol <- factor(drug_muts$Hugo_Symbol)
+drug_data$Hugo_Symbol <- factor(drug_data$Hugo_Symbol)
 
-saveRDS(drug_data, "./../crispr_lineages_giant_files/drug_data_18Q3.rds", compress = "xz")
+saveRDS(drug_data, "./data_munging/drug_data_18Q3.rds", compress = "xz")
 ```
 
 ```{r}
-crispr_data <- readRDS("./../crispr_lineages_giant_files/crispr_data_18Q3.rds")
-crispr_ccl <- data.frame("Broad_ID" = crispr_data$Broad_ID)
-# write.table(crispr_data, file = "~/Desktop/crispr_data.tsv", quote = FALSE, sep = "\t")
+drug_data <- readRDS("./data_munging/drug_data_18Q3.rds")
 ```
 
 # Wilcoxon tests
@@ -550,7 +521,7 @@ wilcox_gene_nonsilent_plot <- ggplot(data = crispr_signif_nonsilent) +
 wilcox_gene_nonsilent_plot
 ```
 
-### Grouped by gene and lineage: Non-silent mutant vs. Other
+### Grouped by gene and lineage
 
 ```{r, eval=FALSE}
 crispr_signif_nonsilent_lineage <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
@@ -726,7 +697,7 @@ lvlA_signif_genes_plot <- ggplot(data = lvlA_genes_signif, aes(x = Mutation_Stat
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   scale_color_manual(values = lvlA_genes_signif_color) + 
   geom_text(data = lvlA_genes_text, mapping = aes(x = 1.5, y = Text_y, label = p.signif.adj), nudge_y = 0.2) +
-  theme(legend.position = "top", axis.text.x = element_text(angle = 65, hjust = 1, vjust = 1, size = 10)) +
+  theme(legend.position = "top") +
   labs(y = "CERES Score",
        x = "Lineage",
        color = "Mutation Status",
@@ -787,11 +758,43 @@ g2pA_noJSON$JSON <- NULL
 # write.table(g2pA_JSON, file = "./data_munging/g2pA_JSON_v2_10_10_2018.tsv", quote = FALSE, sep = "\t", row.names = FALSE)
 ```
 
-```{r}
-test <- '{"feature_names": "ALK positive", "tags": "test", "genes": "ALK"}'
+## Level A: Per-gene grouped plots
 
-fromJSON(test)
+Plot code:
+```{r, eval=FALSE}
+crispr_lvlA_groups <- lapply(as.character(genes_lvlA), makeCRISPRgrob, filt_method = "lvlA")
+crispr_lvlA_groups_paths <- paste0(genes_lvlA, "_crispr_grouped.png")
+pwalk(list(crispr_lvlA_groups_paths, crispr_lvlA_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots_lvlA", dpi = 300, width = 12, height = 12, units = "in")
 ```
+
+Data management:
+```{r, eval=TRUE}
+crispr_lvlA_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots_lvlA", full.names = TRUE))
+names(crispr_lvlA_bygene) <- str_replace_all(crispr_lvlA_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots_lvlA/" = ""))
+crispr_lvlA_order <- c(intersect(crispr_signif_lvlA$Hugo_Symbol, names(crispr_lvlA_bygene)), setdiff(names(crispr_lvlA_bygene), crispr_signif_lvlA$Hugo_Symbol))
+crispr_lvlA_bygene <- crispr_lvlA_bygene[match(crispr_lvlA_order, names(crispr_lvlA_bygene))]
+bsselect(crispr_lvlA_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+## All genes: Per-gene grouped plots
+
+Plot code:
+```{r, eval=FALSE}
+crispr_all_groups <- lapply(unique(crispr_data_ptmuts$Hugo_Symbol), makeCRISPRgrob, filt_method = "all")
+crispr_all_groups_paths <- paste0(unique(crispr_data_ptmuts$Hugo_Symbol), "_crispr_grouped.png")
+pwalk(list(crispr_lvlA_groups_paths, crispr_lvlA_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots", dpi = 300, width = 12, height = 12, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_grouped_plots", full.names = TRUE))
+names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_grouped.png" = "", "./plots_18Q3/crispr_grouped_plots_lvlA/" = ""))
+crispr_all_order <- c(intersect(crispr_signif_nonsilent$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif_nonsilent$Hugo_Symbol))
+crispr_all_bygene <- crispr_all_bygene[match(crispr_all_order, names(crispr_all_bygene))]
+bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+## JSON
 
 ```
 {
@@ -1304,13 +1307,12 @@ dev.off()
 ## Grouped plots
 
 ```{r fig.height=12, fig.width=12, include=FALSE, eval=FALSE}
-makeCRISPRgrob("KRAS")
+makeCRISPRgrob("KRAS", filt_method = "all")
 ```
 
 Plot code:
 ```{r, eval=FALSE}
-crispr_data_cgc <- filter(crispr_data, Hugo_Symbol %in% cgc$Hugo_Symbol)
-crispr_all_genes <- unique(crispr_data_cgc$Hugo_Symbol)
+crispr_lvlA_genes <- unique(crispr_data_cgc$Hugo_Symbol)
 crispr_all_groups <- lapply(crispr_all_genes, makeCRISPRgrob)
 crispr_all_groups_paths <- paste0(crispr_all_genes, "_crispr_grouped.png")
 pwalk(list(crispr_all_groups_paths, crispr_all_groups), ggsave, path = "./plots_18Q3/crispr_grouped_plots_cgc", dpi = 300, width = 12, height = 12, units = "in")
@@ -1348,31 +1350,6 @@ crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_b
 crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
 bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
 ```
-
-## Sorted tissue plots
-
-```{r fig.height=12, fig.width=12, include=FALSE, eval=FALSE}
-makeCRISPRtissueplot("KRAS")
-```
-
-Plot code:
-```{r, eval=FALSE}
-crispr_data_cgc <- filter(crispr_data, Hugo_Symbol %in% cgc$Hugo_Symbol)
-crispr_all_genes <- unique(crispr_data_cgc$Hugo_Symbol)
-crispr_all_lins <- lapply(crispr_all_genes, makeCRISPRtissueplot)
-crispr_all_lins_paths <- paste0(crispr_all_genes, "_crispr_tissue.png")
-pwalk(list(crispr_all_lins_paths, crispr_all_lins), ggsave, path = "./plots_18Q3/crispr_tissue_plots_cgc", dpi = 300, width = 12, height = 12, units = "in")
-```
-
-Data management:
-```{r, eval=FALSE}
-crispr_all_bygene <- paste0(list.files("./plots_18Q3/crispr_tissue_plots_cgc", full.names = TRUE))
-names(crispr_all_bygene) <- str_replace_all(crispr_all_bygene, c("_crispr_tissue.png" = "", "./plots_18Q3/crispr_tissue_plots_cgc/" = ""))
-crispr_bygene_order <- c(intersect(crispr_signif$Hugo_Symbol, names(crispr_all_bygene)), setdiff(names(crispr_all_bygene), crispr_signif$Hugo_Symbol))
-crispr_all_bygene <- crispr_all_bygene[match(crispr_bygene_order, names(crispr_all_bygene))]
-bsselect(crispr_all_bygene, type = "img", selected = "KRAS", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
-```
-
 
 
 # Report #2
