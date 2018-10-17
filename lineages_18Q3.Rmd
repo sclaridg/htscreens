@@ -203,6 +203,20 @@ makeCRISPRlinplot <- function(g) {
 }
 ```
 
+## Wilcoxon tests by drug
+
+```{r}
+WilcoxonByDrug <- function(drug, dataset, data_name) {
+  use_data <- filter(dataset, Drug == drug)
+  sig <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Hugo_Symbol", data = use_data, method = "wilcox.test", p.adjust.method = "BH")
+  sig <- adj_signif(sig)
+  sig <- sig[order(sig$p),]
+  sig$Drug <- drug
+  sig$Dataset <- data_name
+  return(sig)
+}
+```
+
 ## Make drug screen boxplots
 ```{r}
 makeDrugBoxplots <- function(drug, dataset) {
@@ -210,7 +224,8 @@ makeDrugBoxplots <- function(drug, dataset) {
     use_data <- filter(ccle_ptmuts_lvlA_filt, Drug == drug)
     use_color <- as.character(use_data$Color_Nonsilent)
     names(use_color) <- use_data$Mutation_Status_Nonsilent
-    sig <- filter(ccle_signif_lvlA, Drug == drug)
+    sig <- ccle_signif_lvlA_ByDrug[[drug]]
+    # sig <- filter(ccle_signif_lvlA, Drug == drug)
     label_text <- data.frame(p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
     label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
     label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
@@ -219,7 +234,8 @@ makeDrugBoxplots <- function(drug, dataset) {
     use_data <- filter(ctrp_ptmuts_lvlA_filt, Drug == drug)
     use_color <- as.character(use_data$Color_Nonsilent)
     names(use_color) <- use_data$Mutation_Status_Nonsilent
-    sig <- filter(ctrp_signif_lvlA, Drug == drug)
+    sig <- ctrp_signif_lvlA_ByDrug[[drug]]
+    # sig <- filter(ctrp_signif_lvlA, Drug == drug)
     label_text <- data.frame(p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
     label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
     label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
@@ -228,7 +244,8 @@ makeDrugBoxplots <- function(drug, dataset) {
     use_data <- filter(gdsc_ptmuts_lvlA_filt, Drug == drug)
     use_color <- as.character(use_data$Color_Nonsilent)
     names(use_color) <- use_data$Mutation_Status_Nonsilent
-    sig <- filter(gdsc_signif_lvlA, Drug == drug)
+    sig <- gdsc_signif_lvlA_ByDrug[[drug]]
+    # sig <- filter(gdsc_signif_lvlA, Drug == drug)
     label_text <- data.frame(p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
     label_text <- filter(label_text, Hugo_Symbol %in% genes_lvlA_filt)
     label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = genes_lvlA_filt)
@@ -247,6 +264,7 @@ makeDrugBoxplots <- function(drug, dataset) {
   return(plot)
 }
 ```
+
 
 
 # Data management {.tabset .tabset-fade .tabset-pills}
@@ -766,6 +784,10 @@ ccle_data_lvlA <- filter(ccle_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
 ```
 
 ```{r, eval=FALSE}
+ccle_signif_lvlA_ByDrug <- lapply(unique(ccle_data_lvlA$Drug), WilcoxonByDrug, dataset = ccle_data_lvlA, data_name = "CCLE")
+names(ccle_signif_lvlA_ByDrug) <- unique(ccle_data_lvlA$Drug)
+saveRDS(ccle_signif_lvlA_ByDrug, "./data_munging/rds/ccle_signif_lvlA_ByDrug.rds")
+
 ccle_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Drug", "Hugo_Symbol"), data = ccle_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
 ccle_signif_lvlA <- adj_signif(ccle_signif_lvlA)
 ccle_signif_lvlA <- ccle_signif_lvlA[order(ccle_signif_lvlA$p),]
@@ -775,9 +797,15 @@ saveRDS(ccle_signif_lvlA, "./data_munging/rds/ccle_signif_lvlA_gene.rds")
 ```{r, eval=TRUE}
 ccle_signif_lvlA <- readRDS("./data_munging/rds/ccle_signif_lvlA_gene.rds")
 
-# ccle_signif_genes_lvlA <- as.character(ccle_signif_lvlA$Hugo_Symbol[0:20])
-
 knitr::kable(ccle_signif_lvlA[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r}
+ccle_signif_lvlA_ByDrug <- readRDS("./data_munging/rds/ccle_signif_lvlA_ByDrug.rds")
+ccle_signif_lvlA_ByDrug_all <- rbindlist(ccle_signif_lvlA_ByDrug, use.names = TRUE)
+ccle_signif_lvlA_ByDrug_all <- ccle_signif_lvlA_ByDrug_all[order(ccle_signif_lvlA_ByDrug_all$p.adj),]
+
+knitr::kable(ccle_signif_lvlA_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -801,7 +829,11 @@ ctrp_data_lvlA <- filter(ctrp_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
 ```
 
 ```{r, eval=FALSE}
-ctrp_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = ctrp_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
+ctrp_signif_lvlA_ByDrug <- lapply(unique(ctrp_data_lvlA$Drug), WilcoxonByDrug, dataset = ctrp_data_lvlA, data_name = "CTRP")
+names(ctrp_signif_lvlA_ByDrug) <- unique(ctrp_data_lvlA$Drug)
+saveRDS(ctrp_signif_lvlA_ByDrug, "./data_munging/rds/ctrp_signif_lvlA_ByDrug.rds")
+
+ctrp_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Drug", "Hugo_Symbol"), data = ctrp_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
 ctrp_signif_lvlA <- adj_signif(ctrp_signif_lvlA)
 ctrp_signif_lvlA <- ctrp_signif_lvlA[order(ctrp_signif_lvlA$p),]
 saveRDS(ctrp_signif_lvlA, "./data_munging/rds/ctrp_signif_lvlA_gene.rds")
@@ -810,9 +842,15 @@ saveRDS(ctrp_signif_lvlA, "./data_munging/rds/ctrp_signif_lvlA_gene.rds")
 ```{r, eval=TRUE}
 ctrp_signif_lvlA <- readRDS("./data_munging/rds/ctrp_signif_lvlA_gene.rds")
 
-# ctrp_signif_genes_lvlA <- as.character(ctrp_signif_lvlA$Hugo_Symbol[0:20])
-
 knitr::kable(ctrp_signif_lvlA[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r}
+ctrp_signif_lvlA_ByDrug <- readRDS("./data_munging/rds/ctrp_signif_lvlA_ByDrug.rds")
+ctrp_signif_lvlA_ByDrug_all <- rbindlist(ctrp_signif_lvlA_ByDrug, use.names = TRUE)
+ctrp_signif_lvlA_ByDrug_all <- ctrp_signif_lvlA_ByDrug_all[order(ctrp_signif_lvlA_ByDrug_all$p.adj),]
+
+knitr::kable(ctrp_signif_lvlA_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=4, fig.width=8}
@@ -836,7 +874,11 @@ gdsc_data_lvlA <- filter(gdsc_data_ptmuts, Hugo_Symbol %in% genes_lvlA)
 ```
 
 ```{r, eval=FALSE}
-gdsc_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = gdsc_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
+gdsc_signif_lvlA_ByDrug <- lapply(unique(gdsc_data_lvlA$Drug), WilcoxonByDrug, dataset = gdsc_data_lvlA, data_name = "GDSC")
+names(gdsc_signif_lvlA_ByDrug) <- unique(gdsc_data_lvlA$Drug)
+saveRDS(gdsc_signif_lvlA_ByDrug, "./data_munging/rds/gdsc_signif_lvlA_ByDrug.rds")
+
+gdsc_signif_lvlA <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Drug", "Hugo_Symbol"), data = gdsc_data_lvlA, method = "wilcox.test", p.adjust.method = "BH")
 gdsc_signif_lvlA <- adj_signif(gdsc_signif_lvlA)
 gdsc_signif_lvlA <- gdsc_signif_lvlA[order(gdsc_signif_lvlA$p),]
 saveRDS(gdsc_signif_lvlA, "./data_munging/rds/gdsc_signif_lvlA_gene.rds")
@@ -845,10 +887,17 @@ saveRDS(gdsc_signif_lvlA, "./data_munging/rds/gdsc_signif_lvlA_gene.rds")
 ```{r, eval=TRUE}
 gdsc_signif_lvlA <- readRDS("./data_munging/rds/gdsc_signif_lvlA_gene.rds")
 
-# gdsc_signif_genes_lvlA <- as.character(gdsc_signif_lvlA$Hugo_Symbol[0:20])
-
 knitr::kable(gdsc_signif_lvlA[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
+
+```{r}
+gdsc_signif_lvlA_ByDrug <- readRDS("./data_munging/rds/gdsc_signif_lvlA_ByDrug.rds")
+gdsc_signif_lvlA_ByDrug_all <- rbindlist(gdsc_signif_lvlA_ByDrug, use.names = TRUE)
+gdsc_signif_lvlA_ByDrug_all <- gdsc_signif_lvlA_ByDrug_all[order(gdsc_signif_lvlA_ByDrug_all$p.adj),]
+
+knitr::kable(gdsc_signif_lvlA_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
 
 ```{r fig.height=4, fig.width=8}
 wilcox_gdsc_gene_lvlA_plot <- ggplot(data = gdsc_signif_lvlA) +
@@ -861,6 +910,7 @@ wilcox_gdsc_gene_lvlA_plot <- ggplot(data = gdsc_signif_lvlA) +
 wilcox_gdsc_gene_lvlA_plot
 ```
 
+
 ## Screen boxplots
 
 Mutation status boxplots for genes identified in G2P.
@@ -871,7 +921,7 @@ genes_lvlA_filt <- c("KRAS", "EGFR", "MET", "ALK", "BRAF", "ERBB2", "ABL1", "ROS
 
 ### CRISPR
 
-```{r fig.height=7, fig.width=12}
+```{r fig.height=4, fig.width=20}
 crispr_ptmuts_lvlA_filt <- filter(crispr_data_ptmuts, Hugo_Symbol %in% genes_lvlA_filt)
 crispr_ptmuts_lvlA_filt$Hugo_Symbol <- ordered(crispr_ptmuts_lvlA_filt$Hugo_Symbol, levels = genes_lvlA_filt)
 crispr_ptmuts_lvlA_filt_color <- as.character(crispr_ptmuts_lvlA_filt$Color_Nonsilent)
