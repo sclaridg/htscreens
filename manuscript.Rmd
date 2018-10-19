@@ -1,0 +1,47 @@
+---
+title: "Manuscript"
+author: "Sally Claridge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+    code_folding: hide
+    pandoc_args: [
+      "+RTS", "-K2048m",
+      "-RTS"
+    ]
+---
+
+Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017) and the Broad and Dana-Farber Cancer Institite's Achilles shRNA (MacFarland et al. 2018, Data Science 2018).
+
+The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meyers et al. 2017) ([GitHub](https://github.com/cancerdatasci/ceres)), which generates gene dependency scores from sgRNA depletion scores from gene essentiality screens and eliminates bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes.
+
+All annotation files (copy number, mutation status, and gene expression) (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/).
+
+```{r, include=FALSE, eval=FALSE}
+# In a previous version of the shRNA screen, DEMETER ([GitHub](https://github.com/cancerdatasci/demeter)) was used to compute a dependency score for each gene by using the depletion values from each shRNA to infer the effect of target knockdown (on-target) and of expressing a given miRNA seed (off-target) in each cell line. More negative values indicate increased dependency, while more positive values indicate lower dependency. Zero represents the avergae dependency across all cell lines.
+# 
+# In the new data release, [DEMETER2](https://depmap.org/R2-D2/) ([GitHub repository](https://github.com/cancerdatasci/demeter2)), developed by McFarland et al. (2018) was used to analyze the Achilles screen. DEMETER2 expands on DEMETER by including parameters for cell-line-specific screen effects and noisy data, correcting for global differences in shRNA levels across cell lines, pooling data acorss cell lines via hierarchical modeling, and using Bayesian inference to compute uncertainty estimates. Now, a score of zero represents no dependency.
+```
+
+
+# Set up
+
+--------------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+set.seed(1234)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+num_cores <- parallel::detectCores()
+options(mc.cores = num_cores, expressions = 5e5)
+```
+
+
+
+
