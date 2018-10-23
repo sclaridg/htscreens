@@ -7,7 +7,7 @@ output:
     theme: cerulean
     number_sections: true
     toc: true
-    toc_depth: 3
+    toc_depth: 4
     toc_float:
       collapsed: true
     code_folding: hide
@@ -76,6 +76,47 @@ WilcoxonByDrug <- function(drug, dataset, data_name) {
   sig$Drug <- drug
   sig$Dataset <- data_name
   return(sig)
+}
+```
+
+## Make per-drug boxplots
+```{r}
+makeDrugBoxplots <- function(drug, dataset) {
+  if(dataset == "CCLE" | dataset == "ccle") {
+    use_data <- filter(ccle_data_g2p_genesfilt, Drug == drug)
+    use_color <- as.character(use_data$Color_Nonsilent)
+    names(use_color) <- use_data$Mutation_Status_Nonsilent
+    sig <- ccle_signif_g2p_ByDrug[[drug]]
+    label_text <- data.frame(p.signif = sig$p.signif, p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
+    label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = g2p_genes)
+  }
+  else if(dataset == "CTRP" | dataset == "ctrp") {
+    use_data <- filter(ctrp_data_g2p_genesfilt, Drug == drug)
+    use_color <- as.character(use_data$Color_Nonsilent)
+    names(use_color) <- use_data$Mutation_Status_Nonsilent
+    sig <- ctrp_signif_g2p_ByDrug[[drug]]
+    label_text <- data.frame(p.signif = sig$p.signif, p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
+    label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = g2p_genes)
+  }
+  else if(dataset == "GDSC" | dataset == "gdsc") {
+    use_data <- filter(gdsc_data_g2p_genesfilt, Drug == drug)
+    use_color <- as.character(use_data$Color_Nonsilent)
+    names(use_color) <- use_data$Mutation_Status_Nonsilent
+    sig <- gdsc_signif_g2p_ByDrug[[drug]]
+    label_text <- data.frame(p.signif = sig$p.signif, p.signif.adj = sig$p.signif.adj, Hugo_Symbol = sig$Hugo_Symbol)
+    label_text$Hugo_Symbol <- factor(label_text$Hugo_Symbol, levels = g2p_genes)
+  }
+  else { return("Error: Invalid dataset.") }
+    
+  plot <- ggplot(data = use_data, aes(x = Mutation_Status_Nonsilent, y = AUC)) +
+    facet_wrap(~ Hugo_Symbol, drop = FALSE, nrow = 1) +
+    geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85), outlier.shape = 3, outlier.size = 0.5) +
+    scale_fill_manual(values = use_color) +
+    guides(color = FALSE) +
+    geom_text(data = label_text, mapping = aes(x = 1.5, y = max(use_data$AUC), label = p.signif), nudge_y = 0.2) +
+    theme(legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+    labs(fill = "Mutation Status", y = "AUC", x = "Mutation Status", title = paste0(toupper(dataset), ": ", drug))
+  return(plot)
 }
 ```
 
@@ -185,7 +226,7 @@ g2p_drugs <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function
 g2p_genes
 g2p_drugs
 # Order and genes taken from pink heatmapo from Daniel's analyses
-# g2p_genes_filt <- c("KRAS", "EGFR", "MET", "ALK", "BRAF", "ERBB2", "ABL1", "ROS1", "KIT", "DPYD", "PDGFRA", "RET", "BRCA1", "UGT1A1", "IDH2", "ESR1", "TPMT", "BRCA2", "PDGFRB", "G6PD", "PML", "TSC1", "FLT3", "ERBB3", "CYP19A1", "AKT1", "PTCH1", "MGMT", "DNMT3A", "MYD88", "PDGFB", "TSC2", "NPM1", "JAK2")
+g2p_genes <- c("KRAS", "EGFR", "MET", "ALK", "BRAF", "ERBB2", "ABL1", "ROS1", "KIT", "DPYD", "PDGFRA", "RET", "BRCA1", "UGT1A1", "IDH2", "ESR1", "TPMT", "BRCA2", "PDGFRB", "G6PD", "PML", "TSC1", "FLT3", "ERBB3", "CYP19A1", "AKT1", "PTCH1", "MGMT", "DNMT3A", "MYD88", "PDGFB", "TSC2", "NPM1", "JAK2")
 ```
 
 ## CRISPR
@@ -336,8 +377,15 @@ gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
 ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
 ctrp_data_g2p <- filter(ctrp_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
 gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
-```
 
+# Filter drug screen datasets for G2P genes in drug-gene associations
+ccle_data_g2p_genesfilt <- filter(ccle_data_ptmuts, Hugo_Symbol %in% g2p_genes)
+ccle_data_g2p_genesfilt$Hugo_Symbol <- ordered(ccle_data_g2p_genesfilt$Hugo_Symbol, levels = g2p_genes)
+ctrp_data_g2p_genesfilt <- filter(ctrp_data_ptmuts, Hugo_Symbol %in% g2p_genes)
+ctrp_data_g2p_genesfilt$Hugo_Symbol <- ordered(ctrp_data_g2p_genesfilt$Hugo_Symbol, levels = g2p_genes)
+gdsc_data_g2p_genesfilt <- filter(gdsc_data_ptmuts, Hugo_Symbol %in% g2p_genes)
+gdsc_data_g2p_genesfilt$Hugo_Symbol <- ordered(gdsc_data_g2p_genesfilt$Hugo_Symbol, levels = g2p_genes)
+```
 
 # Gene mutation frequency
 
@@ -416,7 +464,7 @@ crispr_signif_g2p_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_linea
 knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=15, fig.width=15, eval=FALSE}
+```{r fig.height=15, fig.width=15}
 crispr_data_signif_g2p_lineage <- merge(crispr_data_signif_g2p_gene_filt, crispr_signif_g2p_lineage, by = c("Hugo_Symbol", "group_general_lineage_name"))
 crispr_data_signif_g2p_lineage$Hugo_Symbol <- ordered(crispr_data_signif_g2p_lineage$Hugo_Symbol, levels = crispr_signif_g2p_20gene)
 crispr_data_signif_g2p_lineage_color <- as.character(crispr_data_signif_g2p_lineage$Color_Nonsilent)
@@ -456,12 +504,24 @@ ccle_signif_g2p <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Dr
 ccle_signif_g2p <- adj_signif(ccle_signif_g2p)
 ccle_signif_g2p <- ccle_signif_g2p[order(ccle_signif_g2p$p),]
 saveRDS(ccle_signif_g2p, "./data_munging/rds/ccle_signif_g2p_gene.rds")
+
+ccle_signif_g2p_ByDrug <- lapply(unique(ccle_data_g2p_genesfilt$Drug), WilcoxonByDrug, dataset = ccle_data_g2p_genesfilt, data_name = "ccle")
+names(ccle_signif_g2p_ByDrug) <- unique(ccle_data_g2p_genesfilt$Drug)
+saveRDS(ccle_signif_g2p_ByDrug, "./data_munging/rds/ccle_signif_g2p_ByDrug.rds")
 ```
 
 ```{r, eval=TRUE}
 ccle_signif_g2p <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
 
 knitr::kable(ccle_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r}
+ccle_signif_g2p_ByDrug <- readRDS("./data_munging/rds/ccle_signif_g2p_ByDrug.rds")
+ccle_signif_g2p_ByDrug_all <- rbindlist(ccle_signif_g2p_ByDrug, use.names = TRUE)
+ccle_signif_g2p_ByDrug_all <- ccle_signif_g2p_ByDrug_all[order(ccle_signif_g2p_ByDrug_all$p),]
+
+knitr::kable(ccle_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## CTRP: G2P gene and drug
@@ -471,12 +531,24 @@ ctrp_signif_g2p <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Dr
 ctrp_signif_g2p <- adj_signif(ctrp_signif_g2p)
 ctrp_signif_g2p <- ctrp_signif_g2p[order(ctrp_signif_g2p$p),]
 saveRDS(ctrp_signif_g2p, "./data_munging/rds/ctrp_signif_g2p_gene.rds")
+
+ctrp_signif_g2p_ByDrug <- lapply(unique(ctrp_data_g2p_genesfilt$Drug), WilcoxonByDrug, dataset = ctrp_data_g2p_genesfilt, data_name = "CTRP")
+names(ctrp_signif_g2p_ByDrug) <- unique(ctrp_data_g2p_genesfilt$Drug)
+saveRDS(ctrp_signif_g2p_ByDrug, "./data_munging/rds/ctrp_signif_g2p_ByDrug.rds")
 ```
 
-```{r, eval=TRUE}
+```{r}
 ctrp_signif_g2p <- readRDS("./data_munging/rds/ctrp_signif_g2p_gene.rds")
 
 knitr::kable(ctrp_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+```{r}
+ctrp_signif_g2p_ByDrug <- readRDS("./data_munging/rds/ctrp_signif_g2p_ByDrug.rds")
+ctrp_signif_g2p_ByDrug_all <- rbindlist(ctrp_signif_g2p_ByDrug, use.names = TRUE)
+ctrp_signif_g2p_ByDrug_all <- ctrp_signif_g2p_ByDrug_all[order(ctrp_signif_g2p_ByDrug_all$p),]
+
+knitr::kable(ctrp_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## GDSC: G2P gene and drug
@@ -486,13 +558,26 @@ gdsc_signif_g2p <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Dr
 gdsc_signif_g2p <- adj_signif(gdsc_signif_g2p)
 gdsc_signif_g2p <- gdsc_signif_g2p[order(gdsc_signif_g2p$p),]
 saveRDS(gdsc_signif_g2p, "./data_munging/rds/gdsc_signif_g2p_gene.rds")
+
+gdsc_signif_g2p_ByDrug <- lapply(unique(gdsc_data_g2p_genesfilt$Drug), WilcoxonByDrug, dataset = gdsc_data_g2p_genesfilt, data_name = "gdsc")
+names(gdsc_signif_g2p_ByDrug) <- unique(gdsc_data_g2p_genesfilt$Drug)
+saveRDS(gdsc_signif_g2p_ByDrug, "./data_munging/rds/gdsc_signif_g2p_ByDrug.rds")
 ```
 
-```{r, eval=TRUE}
+```{r}
 gdsc_signif_g2p <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
 
 knitr::kable(gdsc_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
+
+```{r}
+gdsc_signif_g2p_ByDrug <- readRDS("./data_munging/rds/gdsc_signif_g2p_ByDrug.rds")
+gdsc_signif_g2p_ByDrug_all <- rbindlist(gdsc_signif_g2p_ByDrug, use.names = TRUE)
+gdsc_signif_g2p_ByDrug_all <- gdsc_signif_g2p_ByDrug_all[order(gdsc_signif_g2p_ByDrug_all$p),]
+
+knitr::kable(gdsc_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
 
 
 # Boxplots
@@ -501,9 +586,14 @@ knitr::kable(gdsc_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signi
 
 Mutation status boxplots for genes identified in G2P.
 
-## CRISPR
+## Figure 1
 
-```{r fig.height=5, fig.width=12, eval=FALSE}
+Boxplots ordered by gene based on frequency of G2P associations.
+
+### CRISPR
+
+```{r fig.height=4, fig.width=20}
+crispr_data_g2p$Hugo_Symbol <- factor(crispr_data_g2p$Hugo_Symbol, levels = g2p_genes)
 crispr_data_g2p_color <- as.character(crispr_data_g2p$Color_Nonsilent)
 names(crispr_data_g2p_color) <- crispr_data_g2p$Mutation_Status_Nonsilent
 
@@ -512,10 +602,10 @@ crispr_label_text <- filter(crispr_label_text, Hugo_Symbol %in% g2p_genes)
 crispr_label_text$Hugo_Symbol <- factor(crispr_label_text$Hugo_Symbol, levels = g2p_genes)
 
 crispr_data_g2p_plot <- ggplot(data = crispr_data_g2p, aes(x = Mutation_Status_Nonsilent, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, drop = FALSE, nrow = 2) +
+  facet_wrap(~ Hugo_Symbol, drop = FALSE, nrow = 1) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   geom_boxplot(mapping = aes(fill = Mutation_Status_Nonsilent), position = position_dodge(0.85)) +
-  scale_fill_manual(values = crispr_ptmuts_g2p_filt_color) +
+  scale_fill_manual(values = crispr_data_g2p_color) +
   guides(color = FALSE) +
   geom_text(data = crispr_label_text, mapping = aes(x = 1.5, y = 2, label = p.signif), nudge_y = 0.1) +
   theme(legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
@@ -525,7 +615,61 @@ crispr_data_g2p_plot
 # ggsave("./plots_18Q3/manuscript/crispr_data_g2p_plot.png", crispr_data_g2p_plot, device = "png", dpi = 450, width = 20, height = 4, units = "in")
 ```
 
-## CCLE
+### CCLE
+
+Plot code:
+```{r, eval=FALSE}
+ccle_drugs <- as.character(unique(ccle_data_g2p_genesfilt$Drug))
+ccle_g2p_drugboxplots <- lapply(ccle_drugs, makeDrugBoxplots, dataset = "CCLE")
+ccle_g2p_drugboxplots_paths <- paste0(ccle_drugs, "_ccle_drugboxplots.png")
+pwalk(list(ccle_g2p_drugboxplots_paths, ccle_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_g2p_drugboxplots", dpi = 450, width = 20, height = 4, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+ccle_g2p_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/ccle_g2p_drugboxplots", full.names = TRUE))
+names(ccle_g2p_drugboxplots) <- str_replace_all(ccle_g2p_drugboxplots, c("_ccle_drugboxplots.png" = "", "./plots_18Q3/manuscript/ccle_g2p_drugboxplots/" = ""))
+bsselect(ccle_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+### CTRP
+
+Plot code:
+```{r, eval=FALSE}
+ctrp_drugs <- as.character(unique(ctrp_data_g2p_genesfilt$Drug))
+ctrp_g2p_drugboxplots <- lapply(ctrp_drugs, makeDrugBoxplots, dataset = "ctrp")
+ctrp_g2p_drugboxplots_paths <- paste0(ctrp_drugs, "_ctrp_drugboxplots.png")
+pwalk(list(ctrp_g2p_drugboxplots_paths, ctrp_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ctrp_g2p_drugboxplots", dpi = 450, width = 20, height = 4, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+ctrp_g2p_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/ctrp_g2p_drugboxplots", full.names = TRUE))
+names(ctrp_g2p_drugboxplots) <- str_replace_all(ctrp_g2p_drugboxplots, c("_ctrp_drugboxplots.png" = "", "./plots_18Q3/manuscript/ctrp_g2p_drugboxplots/" = ""))
+bsselect(ctrp_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+### GDSC
+
+Plot code:
+```{r, eval=FALSE}
+gdsc_drugs <- as.character(unique(gdsc_data_g2p_genesfilt$Drug))
+gdsc_g2p_drugboxplots <- lapply(gdsc_drugs, makeDrugBoxplots, dataset = "gdsc")
+gdsc_g2p_drugboxplots_paths <- paste0(gdsc_drugs, "_gdsc_drugboxplots.png")
+pwalk(list(gdsc_g2p_drugboxplots_paths, gdsc_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/gdsc_g2p_drugboxplots", dpi = 450, width = 20, height = 4, units = "in")
+```
+
+Data management:
+```{r, eval=TRUE}
+gdsc_g2p_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/gdsc_g2p_drugboxplots", full.names = TRUE))
+names(gdsc_g2p_drugboxplots) <- str_replace_all(gdsc_g2p_drugboxplots, c("_gdsc_drugboxplots.png" = "", "./plots_18Q3/manuscript/gdsc_g2p_drugboxplots/" = ""))
+bsselect(gdsc_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+```
+
+
+## Gene-drug associations only
+
+### CCLE
 
 ```{r fig.height=4, fig.width=12}
 ccle_g2p_order <- as.character(ccle_signif_g2p$Drug_Gene)
@@ -550,8 +694,7 @@ ccle_data_g2p_plot
 # ggsave("./plots_18Q3/manuscript/ccle_data_g2p_plot.png", ccle_data_g2p_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
 ```
 
-
-## CTRP
+### CTRP
 
 ```{r fig.height=7, fig.width=12}
 ctrp_g2p_order <- as.character(ctrp_signif_g2p$Drug_Gene)
@@ -576,7 +719,7 @@ ctrp_data_g2p_plot
 # ggsave("./plots_18Q3/manuscript/ctrp_data_g2p_plot.png", ctrp_data_g2p_plot, device = "png", dpi = 450, width = 12, height = 7, units = "in")
 ```
 
-## GDSC
+### GDSC
 
 ```{r fig.height=7, fig.width=12}
 gdsc_g2p_order <- as.character(gdsc_signif_g2p$Drug_Gene)
