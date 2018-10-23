@@ -7,7 +7,7 @@ output:
     theme: cerulean
     number_sections: true
     toc: true
-    toc_depth: 4
+    toc_depth: 3
     toc_float:
       collapsed: true
     code_folding: hide
@@ -114,7 +114,7 @@ makeDrugBoxplots <- function(drug, dataset) {
     scale_fill_manual(values = use_color) +
     guides(color = FALSE) +
     geom_text(data = label_text, mapping = aes(x = 1.5, y = max(use_data$AUC), label = p.signif), nudge_y = 0.2) +
-    theme(legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+    theme(strip.text.x = element_text(size = 10, angle = 45), legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
     labs(fill = "Mutation Status", y = "AUC", x = "Mutation Status", title = paste0(toupper(dataset), ": ", drug))
   return(plot)
 }
@@ -416,7 +416,7 @@ crispr_signif_g2p_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds
 
 crispr_signif_g2p_20gene <- as.character(crispr_signif_g2p_gene$Hugo_Symbol[0:20])
 
-knitr::kable(filter(crispr_signif_g2p_gene, p < 0.1)[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=7, fig.width=12}
@@ -461,7 +461,7 @@ saveRDS(crispr_signif_g2p_lineage, "./data_munging/rds/crispr_signif_g2p_lineage
 ```{r, eval=TRUE}
 crispr_signif_g2p_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
-knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.01)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs other cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r fig.height=15, fig.width=15}
@@ -484,7 +484,7 @@ crispr_data_signif_g2p_lineage_plot <- ggplot(data = crispr_data_signif_g2p_line
        x = "Lineage",
        color = "Mutation Status",
        title = "CERES score by cell line lineage for significant Level A G2P genes",
-       subtitle = "Genes with adjusted p-values < 0.3 are shown.\nBH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing lineage-agnostic p-value.")
+       subtitle = "* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing lineage-agnostic p-value.")
 crispr_data_signif_g2p_lineage_plot
 
 # ggsave("./plots_18Q3/manuscript/crispr_crispr_data_signif_g2p_lineage_plot.png", crispr_data_signif_g2p_lineage_plot, width = 12, height = 15, units = "in")
@@ -513,7 +513,7 @@ saveRDS(ccle_signif_g2p_ByDrug, "./data_munging/rds/ccle_signif_g2p_ByDrug.rds")
 ```{r, eval=TRUE}
 ccle_signif_g2p <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
 
-knitr::kable(ccle_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(ccle_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r}
@@ -521,7 +521,7 @@ ccle_signif_g2p_ByDrug <- readRDS("./data_munging/rds/ccle_signif_g2p_ByDrug.rds
 ccle_signif_g2p_ByDrug_all <- rbindlist(ccle_signif_g2p_ByDrug, use.names = TRUE)
 ccle_signif_g2p_ByDrug_all <- ccle_signif_g2p_ByDrug_all[order(ccle_signif_g2p_ByDrug_all$p),]
 
-knitr::kable(ccle_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(ccle_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: By-drug Wilcoxon test results for point mutations in level A G2P genes (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## CTRP: G2P gene and drug
@@ -540,7 +540,7 @@ saveRDS(ctrp_signif_g2p_ByDrug, "./data_munging/rds/ctrp_signif_g2p_ByDrug.rds")
 ```{r}
 ctrp_signif_g2p <- readRDS("./data_munging/rds/ctrp_signif_g2p_gene.rds")
 
-knitr::kable(ctrp_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(ctrp_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r}
@@ -548,7 +548,7 @@ ctrp_signif_g2p_ByDrug <- readRDS("./data_munging/rds/ctrp_signif_g2p_ByDrug.rds
 ctrp_signif_g2p_ByDrug_all <- rbindlist(ctrp_signif_g2p_ByDrug, use.names = TRUE)
 ctrp_signif_g2p_ByDrug_all <- ctrp_signif_g2p_ByDrug_all[order(ctrp_signif_g2p_ByDrug_all$p),]
 
-knitr::kable(ctrp_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(ctrp_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: By-drug Wilcoxon test results for point mutations in level A G2P genes (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## GDSC: G2P gene and drug
@@ -567,7 +567,7 @@ saveRDS(gdsc_signif_g2p_ByDrug, "./data_munging/rds/gdsc_signif_g2p_ByDrug.rds")
 ```{r}
 gdsc_signif_g2p <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
 
-knitr::kable(gdsc_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for Level A point mutations, p < 0.01 (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(gdsc_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ```{r}
@@ -575,7 +575,7 @@ gdsc_signif_g2p_ByDrug <- readRDS("./data_munging/rds/gdsc_signif_g2p_ByDrug.rds
 gdsc_signif_g2p_ByDrug_all <- rbindlist(gdsc_signif_g2p_ByDrug, use.names = TRUE)
 gdsc_signif_g2p_ByDrug_all <- gdsc_signif_g2p_ByDrug_all[order(gdsc_signif_g2p_ByDrug_all$p),]
 
-knitr::kable(gdsc_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: by-drug Wilcoxon test results for Level A point mutations, (BH-adjusted p-values: * p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(gdsc_signif_g2p_ByDrug_all[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: by-drug Wilcoxon test results for point mutations in level A G2P genes (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 
@@ -592,7 +592,7 @@ Boxplots ordered by gene based on frequency of G2P associations.
 
 ### CRISPR
 
-```{r fig.height=4, fig.width=20}
+```{r fig.height=5, fig.width=20}
 crispr_data_g2p$Hugo_Symbol <- factor(crispr_data_g2p$Hugo_Symbol, levels = g2p_genes)
 crispr_data_g2p_color <- as.character(crispr_data_g2p$Color_Nonsilent)
 names(crispr_data_g2p_color) <- crispr_data_g2p$Mutation_Status_Nonsilent
@@ -608,11 +608,11 @@ crispr_data_g2p_plot <- ggplot(data = crispr_data_g2p, aes(x = Mutation_Status_N
   scale_fill_manual(values = crispr_data_g2p_color) +
   guides(color = FALSE) +
   geom_text(data = crispr_label_text, mapping = aes(x = 1.5, y = 2, label = p.signif), nudge_y = 0.1) +
-  theme(legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
+  theme(strip.text.x = element_text(size = 10, angle = 45), legend.position = "top", axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.x = element_blank()) +
   labs(title = "CRISPR", fill = "Mutation Status", y = "CERES Score", x = "Mutation Status")
 crispr_data_g2p_plot
 
-# ggsave("./plots_18Q3/manuscript/crispr_data_g2p_plot.png", crispr_data_g2p_plot, device = "png", dpi = 450, width = 20, height = 4, units = "in")
+# ggsave("./plots_18Q3/manuscript/crispr_data_g2p_plot.png", crispr_data_g2p_plot, device = "png", dpi = 450, width = 20, height = 5, units = "in")
 ```
 
 ### CCLE
@@ -622,14 +622,14 @@ Plot code:
 ccle_drugs <- as.character(unique(ccle_data_g2p_genesfilt$Drug))
 ccle_g2p_drugboxplots <- lapply(ccle_drugs, makeDrugBoxplots, dataset = "CCLE")
 ccle_g2p_drugboxplots_paths <- paste0(ccle_drugs, "_ccle_drugboxplots.png")
-pwalk(list(ccle_g2p_drugboxplots_paths, ccle_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_g2p_drugboxplots", dpi = 450, width = 20, height = 4, units = "in")
+pwalk(list(ccle_g2p_drugboxplots_paths, ccle_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_g2p_drugboxplots", dpi = 450, width = 20, height = 5, units = "in")
 ```
 
 Data management:
 ```{r, eval=TRUE}
 ccle_g2p_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/ccle_g2p_drugboxplots", full.names = TRUE))
 names(ccle_g2p_drugboxplots) <- str_replace_all(ccle_g2p_drugboxplots, c("_ccle_drugboxplots.png" = "", "./plots_18Q3/manuscript/ccle_g2p_drugboxplots/" = ""))
-bsselect(ccle_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+bsselect(ccle_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 100)
 ```
 
 ### CTRP
@@ -639,14 +639,14 @@ Plot code:
 ctrp_drugs <- as.character(unique(ctrp_data_g2p_genesfilt$Drug))
 ctrp_g2p_drugboxplots <- lapply(ctrp_drugs, makeDrugBoxplots, dataset = "ctrp")
 ctrp_g2p_drugboxplots_paths <- paste0(ctrp_drugs, "_ctrp_drugboxplots.png")
-pwalk(list(ctrp_g2p_drugboxplots_paths, ctrp_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ctrp_g2p_drugboxplots", dpi = 450, width = 20, height = 4, units = "in")
+pwalk(list(ctrp_g2p_drugboxplots_paths, ctrp_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ctrp_g2p_drugboxplots", dpi = 450, width = 20, height = 5, units = "in")
 ```
 
 Data management:
 ```{r, eval=TRUE}
 ctrp_g2p_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/ctrp_g2p_drugboxplots", full.names = TRUE))
 names(ctrp_g2p_drugboxplots) <- str_replace_all(ctrp_g2p_drugboxplots, c("_ctrp_drugboxplots.png" = "", "./plots_18Q3/manuscript/ctrp_g2p_drugboxplots/" = ""))
-bsselect(ctrp_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+bsselect(ctrp_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 100)
 ```
 
 ### GDSC
@@ -656,18 +656,18 @@ Plot code:
 gdsc_drugs <- as.character(unique(gdsc_data_g2p_genesfilt$Drug))
 gdsc_g2p_drugboxplots <- lapply(gdsc_drugs, makeDrugBoxplots, dataset = "gdsc")
 gdsc_g2p_drugboxplots_paths <- paste0(gdsc_drugs, "_gdsc_drugboxplots.png")
-pwalk(list(gdsc_g2p_drugboxplots_paths, gdsc_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/gdsc_g2p_drugboxplots", dpi = 450, width = 20, height = 4, units = "in")
+pwalk(list(gdsc_g2p_drugboxplots_paths, gdsc_g2p_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/gdsc_g2p_drugboxplots", dpi = 450, width = 20, height = 5, units = "in")
 ```
 
 Data management:
 ```{r, eval=TRUE}
 gdsc_g2p_drugboxplots <- paste0(list.files("./plots_18Q3/manuscript/gdsc_g2p_drugboxplots", full.names = TRUE))
 names(gdsc_g2p_drugboxplots) <- str_replace_all(gdsc_g2p_drugboxplots, c("_gdsc_drugboxplots.png" = "", "./plots_18Q3/manuscript/gdsc_g2p_drugboxplots/" = ""))
-bsselect(gdsc_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 300, frame_height = 275)
+bsselect(gdsc_g2p_drugboxplots, type = "img", live_search = TRUE, show_tick = TRUE, height = 100)
 ```
 
 
-## Gene-drug associations only
+## G2P level A gene-drug associations only
 
 ### CCLE
 
