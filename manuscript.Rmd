@@ -622,6 +622,14 @@ system.time({ ccle_data_allgenes <- WilcoxonByDrugAllGenes(ccle_melt, ccle_grid,
 saveRDS(ccle_data_allgenes, "./data_munging/rds/ccle_data_18Q3_allgenes.rds", compress = "xz")
 ```
 
+```{r}
+ccle_data_allgenes <- readRDS("./data_munging/rds/ccle_data_18Q3_allgenes.rds")
+ccle_data_allgenes <- ccle_data_allgenes[order(ccle_data_allgenes$p),]
+
+knitr::kable(ccle_data_allgenes[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: by-drug Wilcoxon test results for point mutations in genes targeted in CRISPR screen (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+
 CTRP:
 ```{r, eval=FALSE}
 ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
@@ -638,8 +646,15 @@ gdsc <- read.delim("./data_munging/data_drug_auc_gdsc_10_12_2018.csv", sep = "\t
 gdsc <- merge(drug_meta, gdsc, by = "CID")
 gdsc_melt <- melt(gdsc, id.vars = c("CID", "Drug"), measure.vars = colnames(gdsc)[3:ncol(gdsc)], variable.name = "accession_id", value.name = "AUC")
 gdsc_grid <- expand.grid("accession_id" = unique(gdsc_melt$accession_id), "Hugo_Symbol" = as.character(unique(crispr_data$Hugo_Symbol)))
-gdsc_data_allgenes <- WilcoxonByDrugAllGenes(gdsc_melt, gdsc_grid, "GDSC")
+system.time({ gdsc_data_allgenes <- WilcoxonByDrugAllGenes(gdsc_melt, gdsc_grid, "GDSC") })
 saveRDS(gdsc_data_allgenes, "./data_munging/rds/gdsc_data_18Q3_allgenes.rds", compress = "xz")
+```
+
+```{r}
+gdsc_data_allgenes <- readRDS("./data_munging/rds/gdsc_data_18Q3_allgenes.rds")
+gdsc_data_allgenes <- gdsc_data_allgenes[order(gdsc_data_allgenes$p),]
+
+knitr::kable(gdsc_data_allgenes[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: by-drug Wilcoxon test results for point mutations in genes targeted in CRISPR screen (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 # Dataset summaries
