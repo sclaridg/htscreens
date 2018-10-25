@@ -609,12 +609,16 @@ drug_meta$Drug <- tolower(drug_meta$Drug)
 ```
 
 CCLE:
+
+user   system  elapsed 
+1483.399  262.649 1901.698 
+
 ```{r, eval=FALSE}
 ccle <- read.delim("./data_munging/data_drug_auc_ccle_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
 ccle <- merge(drug_meta, ccle, by = "CID")
 ccle_melt <- melt(ccle, id.vars = c("CID", "Drug"), measure.vars = colnames(ccle)[3:ncol(ccle)], variable.name = "accession_id", value.name = "AUC")
 ccle_grid <- expand.grid("accession_id" = unique(ccle_melt$accession_id), "Hugo_Symbol" = as.character(unique(crispr_data$Hugo_Symbol)))
-ccle_data_allgenes <- WilcoxonByDrugAllGenes(ccle_melt, ccle_grid, "CCLE")
+system.time({ ccle_data_allgenes <- WilcoxonByDrugAllGenes(ccle_melt, ccle_grid, "CCLE") })
 saveRDS(ccle_data_allgenes, "./data_munging/rds/ccle_data_18Q3_allgenes.rds", compress = "xz")
 ```
 
@@ -629,7 +633,7 @@ saveRDS(ctrp_data_allgenes, "./data_munging/rds/ctrp_data_18Q3_allgenes.rds", co
 ```
 
 GDSC:
-```{r, eal=FALSE}
+```{r, eval=FALSE}
 gdsc <- read.delim("./data_munging/data_drug_auc_gdsc_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
 gdsc <- merge(drug_meta, gdsc, by = "CID")
 gdsc_melt <- melt(gdsc, id.vars = c("CID", "Drug"), measure.vars = colnames(gdsc)[3:ncol(gdsc)], variable.name = "accession_id", value.name = "AUC")
