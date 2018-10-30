@@ -37,10 +37,12 @@ options(mc.cores = parallel::detectCores(), expressions = 5e5)
 
 ```{r}
 library(bsselectR)
+install.packages("cowplot")
 library(data.table)
-library(ggExtra)
 library(ggpubr)
 library(ggsignif)
+library(grid)
+library(gridExtra)
 library(kableExtra)
 library(reshape2)
 library(tidyverse)
@@ -738,23 +740,16 @@ gdsc_mad_ttest <- t.test(gdsc_druggene_summ$MAD ~ gdsc_druggene_summ$InG2P)
 gdsc_mad_ttest_res <- paste0("t = ", round(gdsc_mad_ttest$statistic, 3), ", df = ", round(gdsc_mad_ttest$parameter, 3), ", p = ", round(gdsc_mad_ttest$p.value, 3))
 ```
 
-```{r fig.height=4, fig.width=12}
-g2p_druggene_all_summ <- rbind(ccle_druggene_summ, ctrp_druggene_summ, gdsc_druggene_summ)
-g2p_druggene_all_summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), 
-                                         Test_Results_p = c(ccle_p_ttest_res, ctrp_p_ttest_res, gdsc_p_ttest_res),
-                                         Test_Results_MAD = c(ccle_mad_ttest_res, ctrp_mad_ttest_res, gdsc_mad_ttest_res))
-
-g2p_druggene_all_mad_summ_plot <- ggplot(data = g2p_druggene_all_summ) +
+```{r, eval=FALSE, include=FALSE}
+plot_mad_ccle_a <- ggplot(data = g2p_druggene_all_summ) +
   facet_wrap(~ Dataset, scales = "free_x") +
   geom_point(mapping = aes(color = InG2P, x = MAD, y = n), alpha = 0.5) +
   scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
   geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = c(0.75, 4, 0.2), y = 110, label = Test_Results_MAD)) +
   labs(x = "Gene-drug association difference in mean AUC between mutation groups", y = "Number of level A G2P associations", color = "Does the gene-drug combination have level A G2P indication?") +
-  geom_rug(size = 1) +
   theme(legend.position = "top")
-g2p_druggene_all_mad_summ_plot
 
-g2p_druggene_all_p_summ_plot <- ggplot(data = g2p_druggene_all_summ) +
+plot_p_a <- ggplot(data = g2p_druggene_all_summ) +
   facet_wrap(~ Dataset, scales = "free_x") +
   geom_point(mapping = aes(color = InG2P, x = p, y = n), alpha = 0.5) +
   scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
@@ -762,10 +757,73 @@ g2p_druggene_all_p_summ_plot <- ggplot(data = g2p_druggene_all_summ) +
   geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = 0.5, y = 110, label = Test_Results_p)) +
   labs(x = "Gene-drug association p-value by mutation status", y = "Number of level A G2P associations", color = "Does the gene-drug combination have level A G2P indication?") +
   theme(legend.position = "top")
-g2p_druggene_all_p_summ_plot
+```
 
-# ggsave("./plots_18Q3/manuscript/g2p_druggene_all_mad_summ_plot.png", g2p_druggene_all_mad_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
-# ggsave("./plots_18Q3/manuscript/g2p_druggene_all_p_summ_plot.png", g2p_druggene_all_p_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
+```{r}
+g2p_druggene_all_summ <- rbind(ccle_druggene_summ, ctrp_druggene_summ, gdsc_druggene_summ)
+g2p_druggene_all_summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), 
+                                         Test_Results_p = c(ccle_p_ttest_res, ctrp_p_ttest_res, gdsc_p_ttest_res),
+                                         Test_Results_MAD = c(ccle_mad_ttest_res, ctrp_mad_ttest_res, gdsc_mad_ttest_res))
+```
+
+```{r fig.height=7, fig.width=12}
+## MAD
+plot_mad_point <- ggplot(data = g2p_druggene_all_summ) +
+  facet_wrap(~ Dataset, scales = "free_x") +
+  geom_point(mapping = aes(color = InG2P, x = MAD, y = n), alpha = 0.5) +
+  scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
+  geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = c(0.75, 4, 0.19), y = 110, label = Test_Results_MAD)) +
+  labs(x = "Gene-drug association difference in mean AUC between mutation groups", y = "Number of level A G2P associations", color = "Does the gene-drug combination have level A G2P indication?") +
+  theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
+
+plot_mad_box <- ggplot(data = g2p_druggene_all_summ) +
+  facet_wrap(~ Dataset, scales = "free_x") +
+  geom_boxplot(mapping = aes(color = InG2P, y = MAD, x = InG2P), alpha = 0.5) +
+  coord_flip() +
+  labs(x = "Level A G2P\nassociation") +
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
+
+plot_mad_point <- ggplot_gtable(ggplot_build(plot_mad_point))
+plot_mad_box <- ggplot_gtable(ggplot_build(plot_mad_box))
+mad_maxWidth <-  grid::unit.pmax(plot_mad_point$widths, plot_mad_box$widths)
+plot_mad_point$widths <- as.list(mad_maxWidth)
+plot_mad_box$widths <- as.list(mad_maxWidth)
+
+g2p_druggene_all_mad_summ_plot <- cowplot::plot_grid(plot_mad_box,
+                   plot_mad_point,
+                   nrow = 2,
+                   rel_heights = c(1, 4))
+g2p_druggene_all_mad_summ_plot
+# ggsave("./plots_18Q3/manuscript/g2p_druggene_all_mad_summ_plot.png", g2p_druggene_all_mad_summ_plot, device = "png", dpi = 450, width = 12, height = 7, units = "in")
+
+## P-value
+plot_p_point <- ggplot(data = g2p_druggene_all_summ) +
+  facet_wrap(~ Dataset, scales = "free_x") +
+  geom_point(mapping = aes(color = InG2P, x = p, y = n), alpha = 0.5) +
+  scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
+  geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = 0.5, y = 110, label = Test_Results_p)) +
+  labs(x = "Gene-drug association difference in mean AUC between mutation groups", y = "Number of level A G2P associations", color = "Does the gene-drug combination have level A G2P indication?") +
+  theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
+
+plot_p_box <- ggplot(data = g2p_druggene_all_summ) +
+  facet_wrap(~ Dataset, scales = "free_x") +
+  geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.5) +
+  coord_flip() +
+  labs(x = "Level A G2P\nassociation") +
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
+
+plot_p_point <- ggplot_gtable(ggplot_build(plot_p_point))
+plot_p_box <- ggplot_gtable(ggplot_build(plot_p_box))
+p_maxWidth <-  grid::unit.pmax(plot_p_point$widths, plot_p_box$widths)
+plot_p_point$widths <- as.list(p_maxWidth)
+plot_p_box$widths <- as.list(p_maxWidth)
+
+g2p_druggene_all_p_summ_plot <- cowplot::plot_grid(plot_p_box,
+                   plot_p_point,
+                   nrow = 2,
+                   rel_heights = c(1, 4))
+g2p_druggene_all_p_summ_plot
+# ggsave("./plots_18Q3/manuscript/g2p_druggene_all_p_summ_plot.png", g2p_druggene_all_p_summ_plot, device = "png", dpi = 450, width = 12, height = 7, units = "in")
 ```
 
 
