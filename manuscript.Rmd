@@ -246,10 +246,11 @@ ge_melt <- readRDS("./../crispr_lineages_giant_files/ge_melt_18Q3.rds")
 ## G2P
 
 ```{r}
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_v2_10_10_2018.tsv", sep = "\t", header = TRUE)
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_withPositions_10_23_2018.csv", sep = "\t", header = TRUE, row.names = 1)
 g2p$Drug <- tolower(g2p$Drug)
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
 g2p <- subset(g2p, grepl("^CID", g2p$DrugID))
+g2p[g2p == -1] <- NA
 
 g2p_drug_genes <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
 g2p_genes <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[2]))
