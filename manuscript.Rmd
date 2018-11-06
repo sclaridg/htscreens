@@ -224,29 +224,29 @@ make_G2Plineage_plotly <- function(lineage_name) {
   g2p_druggenelin_all_summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results_p = c(ccle_lin_p_ttest_res, ctrp_lin_p_ttest_res, gdsc_lin_p_ttest_res))
   
 
-  plot_p_point <- ggplot(data = use_data) +
+  plot_point <- ggplot(data = use_data) +
     facet_wrap(~ Dataset, drop = FALSE) +
     coord_cartesian(xlim = c(0, 1), ylim = c(0, y_value)) +
     scale_x_continuous(breaks = seq(0, 1, by = 0.1), labels = seq(0, 1, by = 0.1)) +
     scale_y_continuous(breaks = pretty_breaks()) +
     geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = p, y = n), alpha = 0.5, position = position_jitter(width = 0, height = 0.15)) +
     geom_text(data = g2p_druggenelin_all_summ_text, mapping = aes(x = 0.5, y = y_value, label = Test_Results_p), nudge_y = 0.1) +
-    labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations", color = "Does the gene-drug combination have level A G2P indication?") +
+    labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations") +
     theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
-  plot_p_box <- ggplot(data = use_data) +
+  plot_box <- ggplot(data = use_data) +
     facet_wrap(~ Dataset, drop = FALSE) +
     coord_cartesian(ylim = c(0, 1)) +
     scale_y_continuous(breaks = seq(0, 1, by = 0.1), labels = seq(0, 1, by = 0.1)) +
     geom_violin(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.5) +
-    geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.75, width = 0.25) +
+    geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.75, width = 0.5) +
     coord_flip() +
     labs(x = "Level A G2P\nassociation") +
     theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
 
-  plot <- subplot(plot_p_box, plot_p_point, nrows = 2, titleX = TRUE, titleY = TRUE) %>% layout(title = lineage_name, margin = list(t = 75, l = 75), xaxis5 = list(title = "Gene-drug association p-value between mutation groups"), yaxis = list(title = "Level A G2P\nassociation", domain = c(0.8, 1)), yaxis2 = list(title = "Number of level A G2P associations", domain = c(0, 0.79)))
+  plot <- subplot(plot_box, plot_point, nrows = 2, titleX = TRUE, titleY = TRUE) %>% layout(title = lineage_name, margin = list(t = 75, l = 75), xaxis5 = list(title = "Gene-drug association p-value between mutation groups"), yaxis = list(title = "Level A G2P\nassociation", domain = c(0.8, 1)), yaxis2 = list(title = "Number of level A G2P associations", domain = c(0, 0.79)))
 
-  saveWidgetFix(widget = plot, file = paste0("./plots_18Q3/manuscript/plotlys_by_lineage/", lineage_name, "_g2p_evidence_plotly.html"))
+  saveWidgetFix(widget = plot, file = paste0("./plots_18Q3/manuscript/plotlys_p_by_lineage/", lineage_name, "_g2p_evidence_p_plotly.html"))
 }
 ```
 
@@ -443,7 +443,6 @@ drug_meta$Drug <- tolower(drug_meta$Drug)
 maf_df_g2p <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
 ge_filt <- filter(ge_melt, Hugo_Symbol %in% g2p_genes)
 
-
 # CCLE
 ccle <- read.delim("./data_munging/data_drug_auc_ccle_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
 ccle <- merge(drug_meta, ccle, by = "CID")
@@ -504,16 +503,19 @@ ccle_data <- readRDS("./data_munging/rds/ccle_data_18Q3_g2pgenes.rds")
 ccle_data_ptmuts <- filter(ccle_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele_Length == 1 | is.na(ccle_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ccle_data_ptmuts$Dataset <- "CCLE"
 
 ctrp_data <- readRDS("./data_munging/rds/ctrp_data_18Q3_g2pgenes.rds")
 ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele_Length == 1 | is.na(ctrp_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ctrp_data_ptmuts$Dataset <- "CTRP"
 
 gdsc_data <- readRDS("./data_munging/rds/gdsc_data_18Q3_g2pgenes.rds")
 gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele_Length == 1 | is.na(gdsc_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
+gdsc_data_ptmuts$Dataset <- "GDSC"
 
 # Filter drug screen datasets for G2P drug-gene associations
 ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
@@ -829,13 +831,6 @@ knitr::kable(gdsc_data_allgenes[1:1000, c("Hugo_Symbol", "Drug", "p", "p.adj", "
 ```
 
 
-# Gene expression
-
---------------------------------------------------------------------------------
-
-
-
-
 # Dataset summaries
 
 --------------------------------------------------------------------------------
@@ -853,10 +848,13 @@ knitr::kable(crispr_data_g2p_summ, caption = "CRISPR: Level A G2P genes mutation
 
 ## Drugscreen G2P evidence
 
+```{r}
+g2p_druggene_p_tally <- g2p %>% group_by(Drug_Gene) %>% tally()
+```
+
 ### By gene
 
 ```{r fig.height=4, fig.width=8}
-g2p_druggene_p_tally <- g2p %>% group_by(Drug_Gene) %>% tally()
 g2p_druggene_p_summ <- merge(g2p_druggene_p_tally, ccle_signif_g2p[, c("Drug_Gene", "p")], by = "Drug_Gene", all.x = TRUE)
 g2p_druggene_p_summ <- merge(g2p_druggene_p_summ, ctrp_signif_g2p[, c("Drug_Gene", "p")], by = "Drug_Gene", all.x = TRUE, suffixes = c("_CCLE", "_CTRP"))
 g2p_druggene_p_summ <- merge(g2p_druggene_p_summ, gdsc_signif_g2p[, c("Drug_Gene", "p")], by = "Drug_Gene", all.x = TRUE)
@@ -935,7 +933,7 @@ plot_mad_point <- ggplot(data = g2p_druggene_all_summ) +
 plot_mad_box <- ggplot(data = g2p_druggene_all_summ) +
   facet_wrap(~ Dataset, scales = "free_x") +
   geom_violin(mapping = aes(color = InG2P, y = MAD, x = InG2P), alpha = 0.5) +
-  geom_boxplot(mapping = aes(color = InG2P, y = MAD, x = InG2P), alpha = 0.75, width = 0.25) +
+  geom_boxplot(mapping = aes(color = InG2P, y = MAD, x = InG2P), alpha = 0.75, width = 0.5) +
   coord_flip() +
   labs(x = "Level A G2P\nassociation") +
   theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -949,7 +947,7 @@ plot_mad_box$widths <- as.list(mad_maxWidth)
 g2p_druggene_all_mad_summ_plot <- cowplot::plot_grid(plot_mad_box,
                    plot_mad_point,
                    nrow = 2,
-                   rel_heights = c(1, 4))
+                   rel_heights = c(1.5, 4))
 g2p_druggene_all_mad_summ_plot
 # ggsave("./plots_18Q3/manuscript/g2p_druggene_all_mad_summ_plot.png", g2p_druggene_all_mad_summ_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 
@@ -979,12 +977,12 @@ plot_p_box$widths <- as.list(p_maxWidth)
 g2p_druggene_all_p_summ_plot <- cowplot::plot_grid(plot_p_box,
                    plot_p_point,
                    nrow = 2,
-                   rel_heights = c(1, 4))
+                   rel_heights = c(1.5, 4))
 g2p_druggene_all_p_summ_plot
 # ggsave("./plots_18Q3/manuscript/g2p_druggene_all_p_summ_plot.png", g2p_druggene_all_p_summ_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
-```{r}
+```{r, eval=FALSE}
 plot_p_point <- ggplot(data = g2p_druggene_all_summ) +
   facet_wrap(~ Dataset, scales = "free_x") +
   geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = p, y = n), alpha = 0.5) +
@@ -1009,8 +1007,6 @@ saveWidgetFix(widget = plot, file = "./plots_18Q3/manuscript/g2p_druggene_all_p_
 ### By lineage
 
 ```{r}
-g2p_druggenelin_p_tally <- g2p %>% group_by(Drug_Gene, group_general_lineage_name) %>% tally()
-
 ccle_druggenelin_p_summ <- ccle_signif_g2p_lineage
 ccle_druggenelin_p_summ$Drug_Gene <- paste0(ccle_druggenelin_p_summ$Drug, "_", ccle_druggenelin_p_summ$Hugo_Symbol)
 ccle_druggenelin_summ <- merge(g2p_druggenelin_p_tally, ccle_druggenelin_p_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
@@ -1051,6 +1047,174 @@ lapply(as.character(unique(g2p_druggenelin_all_summ$group_general_lineage_name))
 # test3_summ <- test3 %>% count(group_general_lineage_name, InG2P)
 ```
 
+### Gene expression
+
+```{r}
+drugscreen_ptmuts <- rbind(ccle_data_ptmuts, ctrp_data_ptmuts, gdsc_data_ptmuts)
+```
+
+```{r}
+summ <- ccle_data_ptmuts %>% count(group_general_lineage_name, Drug_Gene)
+```
+
+```{r}
+PearsonByLineage <- function(lineage, dataset) {
+  use_data <- filter(dataset, group_general_lineage_name == lineage)
+  if(nrow(use_data) == 0) {
+    use_data <- NA
+  }
+  # use_data_summ <- use_data %>% count(Drug_Gene)
+  # use_data_summ <- filter(use_data_summ, n >= 3)
+  # use_data <- filter(use_data, Drug_Gene %in% as.character(unique(use_data_summ$Drug_Gene)))
+  # 
+  # pearson_res <- use_data %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
+  # pearson_res <- merge(g2p_druggene_p_tally, pearson_res, all.y = TRUE)
+  # pearson_res$group_general_lineage_name <- lineage
+  
+  return(use_data)
+}
+
+# test <- PearsonByLineage("breast cancer", ccle_data_ptmuts)
+
+# ccle_signif_pearson <- lapply(as.character(unique(ccle_data_ptmuts$group_general_lineage_name)), PearsonByLineage, dataset = ccle_data_ptmuts)
+```
+
+```{r}
+PearsonPlotlyByLineage <- function(lineage) {
+  
+  ticker <- 0
+  
+  use_data_ccle <- filter(use_data, Dataset == "CCLE")
+  use_data_ccle_summ <- use_data_ccle %>% count(InG2P)
+  if(nrow(use_data_ccle_summ) <= 1) {
+    ccle_ttest_res <-  NA
+    ticker <- ticker + 1
+    }
+  else if(use_data_ccle_summ[use_data_ccle_summ$InG2P == "Yes",]$nn < 2) { ccle_ttest_res <-  NA }
+  else if(use_data_ccle_summ[use_data_ccle_summ$InG2P == "Yes",]$nn >= 2) {
+    ccle_lin_p_ttest <- t.test(use_data_ccle$p ~ use_data_ccle$InG2P)
+    ccle_ttest_res <- paste0("t = ", round(ccle_lin_p_ttest$statistic, 3), ", df = ", round(ccle_lin_p_ttest$parameter, 3), ", p = ", round(ccle_lin_p_ttest$p.value, 3))
+  }
+  
+  use_data_ctrp <- filter(use_data, Dataset == "CTRP")
+  use_data_ctrp_summ <- use_data_ctrp %>% count(InG2P)
+  if(nrow(use_data_ctrp_summ) <= 1) {
+    ctrp_ttest_res <-  NA
+    ticker <- ticker + 1
+    }
+  else if(use_data_ctrp_summ[use_data_ctrp_summ$InG2P == "Yes",]$nn < 2) { ctrp_ttest_res <-  NA }
+  else if(use_data_ctrp_summ[use_data_ctrp_summ$InG2P == "Yes",]$nn >= 2) {
+    ctrp_lin_p_ttest <- t.test(use_data_ctrp$p ~ use_data_ctrp$InG2P)
+    ctrp_ttest_res <- paste0("t = ", round(ctrp_lin_p_ttest$statistic, 3), ", df = ", round(ctrp_lin_p_ttest$parameter, 3), ", p = ", round(ctrp_lin_p_ttest$p.value, 3))
+  }
+  
+  use_data_gdsc <- filter(use_data, Dataset == "GDSC")
+  use_data_gdsc_summ <- use_data_gdsc %>% count(InG2P)
+  if(nrow(use_data_gdsc_summ) <= 1) {
+    gdsc_ttest_res <-  NA
+    ticker <- t                                                                                                                                                                                                                icker + 1
+    }
+  else if(use_data_gdsc_summ[use_data_gdsc_summ$InG2P == "Yes",]$nn < 2) { gdsc_ttest_res <-  NA }
+  else if(use_data_gdsc_summ[use_data_gdsc_summ$InG2P == "Yes",]$nn >= 2) {
+    gdsc_lin_p_ttest <- t.test(use_data_gdsc$p ~ use_data_gdsc$InG2P)
+    gdsc_ttest_res <- paste0("t = ", round(gdsc_lin_p_ttest$statistic, 3), ", df = ", round(gdsc_lin_p_ttest$parameter, 3), ", p = ", round(gdsc_lin_p_ttest$p.value, 3))
+  }
+  
+  y_value <- ifelse(ticker == 3, 10, max(use_data$n) + 1)
+
+  g2p_druggenelin_all_summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results_p = c(ccle_ttest_res, ctrp_ttest_res, gdsc_ttest_res))
+  # use_data_summ <- use_data %>% count(InG2P)
+  # if(nrow(use_data_ccle_summ) <= 1) { ttest_res <- NA }
+  # else if(use_data_summ[use_data_summ$InG2P == "Yes",]$nn < 2) { ttest_res <- NA }
+  # else if(use_data_summ[use_data_summ$InG2P == "Yes",]$nn >= 2) {
+  #   ttest <- t.test(use_data$p ~ use_data$InG2P)
+  #   ttest_res <- paste0("t = ", round(ttest$statistic, 3), ", df = ", round(ttest$parameter, 3), ", p = ", round(ttest$p.value, 3))
+  # }
+}
+```
+
+
+
+```{r}
+ccle_pearson_res <- ccle_data_ptmuts %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
+ccle_pearson_res <- merge(g2p_druggene_p_tally, ccle_pearson_res, by = "Drug_Gene", all.y = TRUE)
+ccle_pearson_res$n <- ifelse(is.na(ccle_pearson_res$n), 0, ccle_pearson_res$n)
+ccle_pearson_res$InG2P <- ifelse(ccle_pearson_res$n != 0, "Yes", "No")
+ccle_pearson_res$Dataset <- "CCLE"
+ccle_pearson_ttest <- t.test(ccle_pearson_res$Pearson_Corr ~ ccle_pearson_res$InG2P)
+ccle_pearson_ttest_res <- paste0("t = ", round(ccle_pearson_ttest$statistic, 3), ", df = ", round(ccle_pearson_ttest$parameter, 3), ", p = ", round(ccle_pearson_ttest$p.value, 3))
+
+ctrp_pearson_res <- ctrp_data_ptmuts %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
+ctrp_pearson_res <- merge(g2p_druggene_p_tally, ctrp_pearson_res, by = "Drug_Gene", all.y = TRUE)
+ctrp_pearson_res$n <- ifelse(is.na(ctrp_pearson_res$n), 0, ctrp_pearson_res$n)
+ctrp_pearson_res$InG2P <- ifelse(ctrp_pearson_res$n != 0, "Yes", "No")
+ctrp_pearson_res$Dataset <- "CTRP"
+ctrp_pearson_ttest <- t.test(ctrp_pearson_res$Pearson_Corr ~ ctrp_pearson_res$InG2P)
+ctrp_pearson_ttest_res <- paste0("t = ", round(ctrp_pearson_ttest$statistic, 3), ", df = ", round(ctrp_pearson_ttest$parameter, 3), ", p = ", round(ctrp_pearson_ttest$p.value, 3))
+
+gdsc_pearson_res <- gdsc_data_ptmuts %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
+gdsc_pearson_res <- merge(g2p_druggene_p_tally, gdsc_pearson_res, by = "Drug_Gene", all.y = TRUE)
+gdsc_pearson_res$n <- ifelse(is.na(gdsc_pearson_res$n), 0, gdsc_pearson_res$n)
+gdsc_pearson_res$InG2P <- ifelse(gdsc_pearson_res$n != 0, "Yes", "No")
+gdsc_pearson_res$Dataset <- "GDSC"
+gdsc_pearson_ttest <- t.test(gdsc_pearson_res$Pearson_Corr ~ gdsc_pearson_res$InG2P)
+gdsc_pearson_ttest_res <- paste0("t = ", round(gdsc_pearson_ttest$statistic, 3), ", df = ", round(gdsc_pearson_ttest$parameter, 3), ", p = ", round(gdsc_pearson_ttest$p.value, 3))
+
+g2p_druggene_pearson <- rbind(ccle_pearson_res, ctrp_pearson_res, gdsc_pearson_res)
+g2p_druggene_pearson_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results_PearCorr = c(ccle_pearson_ttest_res, ctrp_pearson_ttest_res, gdsc_pearson_ttest_res))
+```
+
+```{r fig.height=5, fig.width=12}
+plot_pearson_point <- ggplot(data = g2p_druggene_pearson) +
+  facet_wrap(~ Dataset) +
+  geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = Pearson_Corr, y = n), alpha = 0.5) +
+  scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  geom_text(data = g2p_druggene_pearson_text, mapping = aes(x = -0.05, y = 110, label = Test_Results_PearCorr)) +
+  labs(x = "Pearson correlation coefficient between gene-drug AUC and gene expression", y = "Number of level A G2P associations") +
+  theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
+
+plot_pearson_box <- ggplot(data = g2p_druggene_pearson) +
+  facet_wrap(~ Dataset) +
+  geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5) +
+  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.75, width = 0.25) +
+  coord_flip() +
+  labs(x = "Level A G2P\nassociation") +
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
+
+plot_pearson_point <- ggplot_gtable(ggplot_build(plot_pearson_point))
+plot_pearson_box <- ggplot_gtable(ggplot_build(plot_pearson_box))
+p_maxWidth <-  grid::unit.pmax(plot_pearson_point$widths, plot_pearson_box$widths)
+plot_pearson_point$widths <- as.list(p_maxWidth)
+plot_pearson_box$widths <- as.list(p_maxWidth)
+
+g2p_druggene_pearson_plot <- cowplot::plot_grid(plot_pearson_box, plot_pearson_point, nrow = 2, rel_heights = c(1.5, 4))
+g2p_druggene_pearson_plot
+# ggsave("./plots_18Q3/manuscript/g2p_druggene_pearson_plot.png", g2p_druggene_pearson_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+```
+
+```{r, eval=FALSE}
+plot_pearson_point <- ggplot(data = g2p_druggene_pearson) +
+  facet_wrap(~ Dataset) +
+  geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = Pearson_Corr, y = n), alpha = 0.5) +
+  scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  geom_text(data = g2p_druggene_pearson_text, mapping = aes(x = -0.05, y = 110, label = Test_Results_PearCorr)) +
+  labs(x = "Pearson correlation coefficient between gene-drug AUC and gene expression", y = "Number of level A G2P associations") +
+  theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
+
+plot_pearson_box <- ggplot(data = g2p_druggene_pearson) +
+  facet_wrap(~ Dataset) +
+  geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5) +
+  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.75, width = 0.25) +
+  coord_flip() +
+  labs(x = "Level A G2P\nassociation") +
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
+
+plot <- subplot(plot_pearson_box, plot_pearson_point, nrows = 2, titleX = TRUE, titleY = TRUE) %>% layout(margin = list(l = 75), xaxis5 = list(title = "Pearson correlation coefficient between gene-drug AUC and gene expression"), yaxis = list(title = "Level A G2P\nassociation", domain = c(0.8, 1)), yaxis2 = list(title = "Number of level A G2P associations", domain = c(0, 0.79)))
+
+saveWidgetFix(widget = plot, file = "./plots_18Q3/manuscript/g2p_druggene_pearson_plot.html")
+```
 
 ## Cell line overlap
 
@@ -1070,7 +1234,7 @@ gdsc_ccl <- unique(select(gdsc_data, Broad_ID, CCLE_Name, accession_id))
 
 Mutation status boxplots for genes identified in G2P.
 
-## Figure 1
+## G2P genes
 
 Boxplots ordered by gene based on frequency of G2P associations.
 
