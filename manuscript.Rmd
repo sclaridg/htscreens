@@ -132,6 +132,9 @@ PearsonByLineage <- function(lin, dataset) {
     pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
     pearson_res <- merge(g2p_druggene_p_tally, pearson_res, all.y = TRUE)
     pearson_res$group_general_lineage_name <- lin
+    pearson_res$Pearson_Corr_Abs <- abs(pearson_res$Pearson_Corr)
+    pearson_res$Pearson_Corr_Sign <- ifelse(sign(pearson_res$Pearson_Corr) == 1, "+",
+                                            ifelse(sign(pearson_res$Pearson_Corr) == -1, "-", "0"))
     return(pearson_res)
   }
 }
@@ -215,7 +218,7 @@ MutPlotlyByLineage <- function(lineage_name) {
     coord_cartesian(ylim = c(0, 1)) +
     scale_y_continuous(breaks = seq(0, 1, by = 0.1), labels = seq(0, 1, by = 0.1)) +
     geom_violin(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.5) +
-    geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.75, width = 0.5) +
+    geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.75, width = 0.25) +
     coord_flip() +
     labs(x = "Level A G2P\nassociation") +
     theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -242,7 +245,7 @@ GexpPlotlyByLineage <- function(lineage) {
     }
   else if(use_data_ccle_summ[use_data_ccle_summ$InG2P == "Yes",]$nn < 2) { ccle_ttest_res <-  NA }
   else if(use_data_ccle_summ[use_data_ccle_summ$InG2P == "Yes",]$nn >= 2) {
-    ccle_lin_ttest <- t.test(use_data_ccle$Pearson_Corr ~ use_data_ccle$InG2P)
+    ccle_lin_ttest <- t.test(use_data_ccle$Pearson_Corr_Abs ~ use_data_ccle$InG2P)
     ccle_ttest_res <- paste0("t = ", round(ccle_lin_ttest$statistic, 3), ", df = ", round(ccle_lin_ttest$parameter, 3), ", p = ", round(ccle_lin_ttest$p.value, 3))
   }
   
@@ -254,7 +257,7 @@ GexpPlotlyByLineage <- function(lineage) {
     }
   else if(use_data_ctrp_summ[use_data_ctrp_summ$InG2P == "Yes",]$nn < 2) { ctrp_ttest_res <-  NA }
   else if(use_data_ctrp_summ[use_data_ctrp_summ$InG2P == "Yes",]$nn >= 2) {
-    ctrp_lin_ttest <- t.test(use_data_ctrp$Pearson_Corr ~ use_data_ctrp$InG2P)
+    ctrp_lin_ttest <- t.test(use_data_ctrp$Pearson_Corr_Abs ~ use_data_ctrp$InG2P)
     ctrp_ttest_res <- paste0("t = ", round(ctrp_lin_ttest$statistic, 3), ", df = ", round(ctrp_lin_ttest$parameter, 3), ", p = ", round(ctrp_lin_ttest$p.value, 3))
   }
   
@@ -266,27 +269,27 @@ GexpPlotlyByLineage <- function(lineage) {
     }
   else if(use_data_gdsc_summ[use_data_gdsc_summ$InG2P == "Yes",]$nn < 2) { gdsc_ttest_res <-  NA }
   else if(use_data_gdsc_summ[use_data_gdsc_summ$InG2P == "Yes",]$nn >= 2) {
-    gdsc_lin_ttest <- t.test(use_data_gdsc$Pearson_Corr ~ use_data_gdsc$InG2P)
+    gdsc_lin_ttest <- t.test(use_data_gdsc$Pearson_Corr_Abs ~ use_data_gdsc$InG2P)
     gdsc_ttest_res <- paste0("t = ", round(gdsc_lin_ttest$statistic, 3), ", df = ", round(gdsc_lin_ttest$parameter, 3), ", p = ", round(gdsc_lin_ttest$p.value, 3))
   }
   
   y_value <- ifelse(ticker == 3, 10, max(use_data$n) + 1)
-  x_value <- (max(use_data$Pearson_Corr) + min(use_data$Pearson_Corr)) / 2
   
   summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results = c(ccle_ttest_res, ctrp_ttest_res, gdsc_ttest_res))
   
   plot_point <- ggplot(data = use_data) +
     facet_wrap(~ Dataset, drop = FALSE) +
     scale_y_continuous(breaks = pretty_breaks()) +
-    geom_point(mapping = aes(label = Pearson_Pvalue, color = InG2P, x = Pearson_Corr, y = n), alpha = 0.5, position = position_jitter(width = 0, height = 0.15)) +
-    geom_text(data = summ_text, mapping = aes(x = x_value, y = y_value, label = Test_Results), nudge_y = 1) +
-    labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations") +
+    geom_point(mapping = aes(label = Pearson_Pvalue, color = InG2P, shape = Pearson_Corr_Sign, x = Pearson_Corr_Abs, y = n), alpha = 0.5, position = position_jitter(width = 0, height = 0.15)) +
+    scale_shape_manual(values = c(45, 43, 42)) +
+    geom_text(data = summ_text, mapping = aes(x = 0.5, y = y_value, label = Test_Results), nudge_y = 1) +
+    labs(y = "Number of level A G2P associations") +
     theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
   plot_box <- ggplot(data = use_data) +
     facet_wrap(~ Dataset, drop = FALSE) +
-    geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5) +
-    geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5, width = 0.5) +
+    geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr_Abs, x = InG2P), alpha = 0.5) +
+    geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr_Abs, x = InG2P), alpha = 0.5, width = 0.25) +
     coord_flip() +
     labs(x = "Level A G2P\nassociation") +
     theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -968,7 +971,7 @@ g2p_druggene_p_summ_plot
 ccle_druggene_mad_summ <- ccle_data_ptmuts %>% group_by(Drug_Gene, Mutation_Status_Nonsilent) %>% summarize(Mean_AUC = mean(AUC))
 ccle_druggene_mad_summ <- dcast(ccle_druggene_mad_summ, Drug_Gene ~ Mutation_Status_Nonsilent)
 ccle_druggene_mad_summ$MAD <- abs(ccle_druggene_mad_summ$Mutant - ccle_druggene_mad_summ$Other)
-ccle_druggene_p_summ <- ccle_signif_g2p_ByDrug_all
+ccle_druggene_p_summ <- ccle_signif_g2p_lineage
 ccle_druggene_p_summ$Drug_Gene <- paste0(ccle_druggene_p_summ$Drug, "_", ccle_druggene_p_summ$Hugo_Symbol)
 ccle_druggene_summ <- merge(merge(g2p_druggene_p_tally, ccle_druggene_p_summ[, c("Drug_Gene", "p")], by = "Drug_Gene", all.y = TRUE), ccle_druggene_mad_summ, by = "Drug_Gene", all = TRUE)
 ccle_druggene_summ$n <- ifelse(is.na(ccle_druggene_summ$n), 0, ccle_druggene_summ$n)
@@ -982,7 +985,7 @@ ccle_mad_ttest_res <- paste0("t = ", round(ccle_mad_ttest$statistic, 3), ", df =
 ctrp_druggene_mad_summ <- ctrp_data_ptmuts %>% group_by(Drug_Gene, Mutation_Status_Nonsilent) %>% summarize(Mean_AUC = mean(AUC))
 ctrp_druggene_mad_summ <- dcast(ctrp_druggene_mad_summ, Drug_Gene ~ Mutation_Status_Nonsilent)
 ctrp_druggene_mad_summ$MAD <- abs(ctrp_druggene_mad_summ$Mutant - ctrp_druggene_mad_summ$Other)
-ctrp_druggene_p_summ <- ctrp_signif_g2p_ByDrug_all
+ctrp_druggene_p_summ <- ctrp_signif_g2p_lineage
 ctrp_druggene_p_summ$Drug_Gene <- paste0(ctrp_druggene_p_summ$Drug, "_", ctrp_druggene_p_summ$Hugo_Symbol)
 ctrp_druggene_summ <- merge(merge(g2p_druggene_p_tally, ctrp_druggene_p_summ[, c("Drug_Gene", "p")], by = "Drug_Gene", all.y = TRUE), ctrp_druggene_mad_summ, by = "Drug_Gene", all = TRUE)
 ctrp_druggene_summ$n <- ifelse(is.na(ctrp_druggene_summ$n), 0, ctrp_druggene_summ$n)
@@ -996,7 +999,7 @@ ctrp_mad_ttest_res <- paste0("t = ", round(ctrp_mad_ttest$statistic, 3), ", df =
 gdsc_druggene_mad_summ <- gdsc_data_ptmuts %>% group_by(Drug_Gene, Mutation_Status_Nonsilent) %>% summarize(Mean_AUC = mean(AUC))
 gdsc_druggene_mad_summ <- dcast(gdsc_druggene_mad_summ, Drug_Gene ~ Mutation_Status_Nonsilent)
 gdsc_druggene_mad_summ$MAD <- abs(gdsc_druggene_mad_summ$Mutant - gdsc_druggene_mad_summ$Other)
-gdsc_druggene_p_summ <- gdsc_signif_g2p_ByDrug_all
+gdsc_druggene_p_summ <- gdsc_signif_g2p_lineage
 gdsc_druggene_p_summ$Drug_Gene <- paste0(gdsc_druggene_p_summ$Drug, "_", gdsc_druggene_p_summ$Hugo_Symbol)
 gdsc_druggene_summ <- merge(merge(g2p_druggene_p_tally, gdsc_druggene_p_summ[, c("Drug_Gene", "p")], by = "Drug_Gene", all.y = TRUE), gdsc_druggene_mad_summ, by = "Drug_Gene", all = TRUE)
 gdsc_druggene_summ$n <- ifelse(is.na(gdsc_druggene_summ$n), 0, gdsc_druggene_summ$n)
@@ -1174,23 +1177,27 @@ gdsc_pearson_ttest <- t.test(gdsc_pearson_res$Pearson_Corr ~ gdsc_pearson_res$In
 gdsc_pearson_ttest_res <- paste0("t = ", round(gdsc_pearson_ttest$statistic, 3), ", df = ", round(gdsc_pearson_ttest$parameter, 3), ", p = ", round(gdsc_pearson_ttest$p.value, 3))
 
 g2p_druggene_pearson <- rbind(ccle_pearson_res, ctrp_pearson_res, gdsc_pearson_res)
+g2p_druggene_pearson$Pearson_Corr_Abs <- abs(g2p_druggene_pearson$Pearson_Corr)
+g2p_druggene_pearson$Pearson_Corr_Sign <- ifelse(sign(g2p_druggene_pearson$Pearson_Corr) == 1, "+",
+                                           ifelse(sign(g2p_druggene_pearson$Pearson_Corr) == -1, "-", "0"))
 g2p_druggene_pearson_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results_PearCorr = c(ccle_pearson_ttest_res, ctrp_pearson_ttest_res, gdsc_pearson_ttest_res))
 ```
 
 ```{r fig.height=5, fig.width=12}
 plot_pearson_point <- ggplot(data = g2p_druggene_pearson) +
   facet_wrap(~ Dataset) +
-  geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = Pearson_Corr, y = n), alpha = 0.5) +
+  geom_point(mapping = aes(label = Drug_Gene, color = InG2P, shape = Pearson_Corr_Sign, x = Pearson_Corr_Abs, y = n)) +
   scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
   scale_x_continuous(breaks = pretty_breaks()) +
-  geom_text(data = g2p_druggene_pearson_text, mapping = aes(x = -0.05, y = 110, label = Test_Results_PearCorr)) +
+  scale_shape_manual(values = c(45, 43, 42)) +
+  geom_text(data = g2p_druggene_pearson_text, mapping = aes(x = 0.3, y = 110, label = Test_Results_PearCorr)) +
   labs(x = "Pearson correlation coefficient between drug-gene AUC and gene expression", y = "Number of level A G2P associations") +
   theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
 plot_pearson_box <- ggplot(data = g2p_druggene_pearson) +
   facet_wrap(~ Dataset) +
-  geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5) +
-  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5, width = 0.25) +
+  geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr_Abs, x = InG2P), alpha = 0.5) +
+  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr_Abs, x = InG2P), alpha = 0.5, width = 0.25) +
   coord_flip() +
   labs(x = "Level A G2P\nassociation") +
   theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -1209,17 +1216,18 @@ g2p_druggene_pearson_plot
 ```{r, eval=FALSE}
 plot_pearson_point <- ggplot(data = g2p_druggene_pearson) +
   facet_wrap(~ Dataset) +
-  geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = Pearson_Corr, y = n), alpha = 0.5) +
+  geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = Pearson_Corr_Abs, shape = Pearson_Corr_Sign, y = n), alpha = 0.5) +
   scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
   scale_x_continuous(breaks = pretty_breaks()) +
-  geom_text(data = g2p_druggene_pearson_text, mapping = aes(x = -0.05, y = 110, label = Test_Results_PearCorr)) +
+  scale_shape_manual(values = c(45, 43, 42)) +
+  geom_text(data = g2p_druggene_pearson_text, mapping = aes(x = 0.3, y = 110, label = Test_Results_PearCorr)) +
   labs(x = "Pearson correlation coefficient between drug-gene AUC and gene expression", y = "Number of level A G2P associations") +
   theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
 plot_pearson_box <- ggplot(data = g2p_druggene_pearson) +
   facet_wrap(~ Dataset) +
-  geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5) +
-  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr, x = InG2P), alpha = 0.5, width = 0.25) +
+  geom_violin(mapping = aes(color = InG2P, y = Pearson_Corr_Abs, x = InG2P), alpha = 0.5) +
+  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_Corr_Abs, x = InG2P), alpha = 0.5, width = 0.25) +
   coord_flip() +
   labs(x = "Level A G2P\nassociation") +
   theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
