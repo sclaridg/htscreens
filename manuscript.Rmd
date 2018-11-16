@@ -91,7 +91,7 @@ WilcoxonByDrug <- function(drug, dataset, data_name, grouping_var) {
     grouper <- "Hugo_Symbol"
   }
   use_data <- filter(dataset, Drug == drug)
-  sig <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = grouper, data = use_data, method = "wilcox.test", p.adjust.method = "BH")
+  sig <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = grouper, data = use_data, method = "wilcox.test", p.adjust.method = "BH")
   sig <- adj_signif(sig)
   sig <- sig[order(sig$p),]
   sig$Drug <- drug
@@ -100,35 +100,35 @@ WilcoxonByDrug <- function(drug, dataset, data_name, grouping_var) {
 }
 
 
-WilcoxonByDrugAllGenes <- function(melt_file, grid_file, data_name) {
-  druglist <- as.character(unique(melt_file$Drug))
-  sig_df <- NULL
-  for(i in 1:length(druglist)) {
-    print(paste0("Current drug in process: ", druglist[i], " (drug ", i, " of ", length(druglist), ")."))
-    flush.console()
-    melted <- filter(melt_file, Drug == druglist[i])
-    use_data <- merge(grid_file, melted, by = "accession_id", all.x = TRUE)
-    use_data <- merge(use_data, ccl_converter, by = "accession_id", all.x = TRUE)
-    use_data <- merge(use_data, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-    use_data$Mutation_Status_Nonsilent <- ifelse(is.na(use_data$Mutation_Status_Nonsilent), "Wildtype", use_data$Mutation_Status_Nonsilent)
-    use_data$Hugo_Symbol <- factor(use_data$Hugo_Symbol)
-    use_data$AUC <- as.numeric(use_data$AUC)
-    use_data <- filter(use_data, !is.na(use_data$AUC))
-    use_data$Drug_Gene <- paste0(use_data$Drug, "_", use_data$Hugo_Symbol)
-    use_data_ptmuts <- filter(use_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
-    use_data_ptmuts$Keep_PtMut_Tests <- ifelse(use_data_ptmuts$Reference_Allele_Length == 1 | is.na(use_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(use_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
-    use_data_ptmuts <- filter(use_data_ptmuts, Keep_PtMut_Tests == TRUE)
-    
-    sig <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Hugo_Symbol", data = use_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
-    sig <- adj_signif(sig)
-    sig <- sig[order(sig$p),]
-    sig <- filter(sig, p <= 0.05)
-    sig$Drug <- druglist[i]
-    sig$Dataset <- toupper(data_name)
-    sig_df <- rbind(sig_df, sig)
-  }
-  return(sig_df)
-}
+# WilcoxonByDrugAllGenes <- function(melt_file, grid_file, data_name) {
+#   druglist <- as.character(unique(melt_file$Drug))
+#   sig_df <- NULL
+#   for(i in 1:length(druglist)) {
+#     print(paste0("Current drug in process: ", druglist[i], " (drug ", i, " of ", length(druglist), ")."))
+#     flush.console()
+#     melted <- filter(melt_file, Drug == druglist[i])
+#     use_data <- merge(grid_file, melted, by = "accession_id", all.x = TRUE)
+#     use_data <- merge(use_data, ccl_converter, by = "accession_id", all.x = TRUE)
+#     use_data <- merge(use_data, maf_df, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+#     use_data$Mutation_Status_Nonsilent <- ifelse(is.na(use_data$Mutation_Status_Nonsilent), "Wildtype", use_data$Mutation_Status_Nonsilent)
+#     use_data$Hugo_Symbol <- factor(use_data$Hugo_Symbol)
+#     use_data$AUC <- as.numeric(use_data$AUC)
+#     use_data <- filter(use_data, !is.na(use_data$AUC))
+#     use_data$Drug_Gene <- paste0(use_data$Drug, "_", use_data$Hugo_Symbol)
+#     use_data_ptmuts <- filter(use_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+#     use_data_ptmuts$Keep_PtMut_Tests <- ifelse(use_data_ptmuts$Reference_Allele_Length == 1 | is.na(use_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(use_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+#     use_data_ptmuts <- filter(use_data_ptmuts, Keep_PtMut_Tests == TRUE)
+#     
+#     sig <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Hugo_Symbol", data = use_data_ptmuts, method = "wilcox.test", p.adjust.method = "BH")
+#     sig <- adj_signif(sig)
+#     sig <- sig[order(sig$p),]
+#     sig <- filter(sig, p <= 0.05)
+#     sig$Drug <- druglist[i]
+#     sig$Dataset <- toupper(data_name)
+#     sig_df <- rbind(sig_df, sig)
+#   }
+#   return(sig_df)
+# }
 ```
 
 ## Pearson correlation by lineage
@@ -141,7 +141,7 @@ PearsonByLineage <- function(lin, dataset, variable) {
     use_data_summ <- filter(use_data_summ, n >= 3) # cor.test requires at least 3 non-NA data points
     use_data_filt <- filter(use_data, Drug_Gene %in% as.character(unique(use_data_summ$Drug_Gene)))
     if(nrow(use_data_filt) > 0) {
-      pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
+      pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
       pearson_res <- merge(g2p_druggene_p_tally, pearson_res, all.y = TRUE)
       pearson_res$group_general_lineage_name <- lin
       pearson_res$Pearson_GE_Abs <- abs(pearson_res$Pearson_Corr_GE)
@@ -156,7 +156,7 @@ PearsonByLineage <- function(lin, dataset, variable) {
     use_data_summ <- filter(use_data_summ, n >= 3) # cor.test requires at least 3 non-NA data points
     use_data_filt <- filter(use_data, Drug_Gene %in% as.character(unique(use_data_summ$Drug_Gene)))
     if(nrow(use_data_filt) > 0) {
-      pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$p.value)
+      pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$p.value)
       pearson_res <- merge(g2p_druggene_p_tally, pearson_res, all.y = TRUE)
       pearson_res$group_general_lineage_name <- lin
       pearson_res$Pearson_CN_Abs <- abs(pearson_res$Pearson_Corr_CN)
@@ -562,23 +562,46 @@ cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q4.rds")
 
 ### CCLE gene expression file
 
-CCLE RNAseq gene expression data (log2(TPM+1)):
+18Q3, Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
 ```{r, eval=FALSE}
-ge <- read.delim("./../htscreen_lineages_giant_files/CCLE_depMap_18Q4_TPM_v2_20181115.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+ge_18Q3 <- read.delim("./../htscreen_lineages_giant_files/CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
 
-# Remove Entrez gene IDs from colnames
-# Format: Hugo_Symbol (Entrez ID)
-colnames(ge) <- gsub(" .*", "", colnames(ge))
-colnames(ge)[1] <- "DepMap_ID"
+# Edit columns
+ge_18Q3$Name <- NULL
+colnames(ge_18Q3)[1] <- "Hugo_Symbol"
 
 # Melt
-ge_melt <- melt(ge, id.vars = "DepMap_ID", measure.vars = colnames(ge)[2:ncol(ge)], variable.name = "Hugo_Symbol", value.name = "TPM")
+ge_melt_18Q3 <- melt(data = ge_18Q3, id.vars = "Hugo_Symbol", measure.vars = colnames(ge_18Q3[2:ncol(ge_18Q3)]), value.name = "RPKM")
+## Split variable column
+ge_melt_18Q3 <- with(ge_melt_18Q3, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "DepMap_ID")), RPKM))
+## Remove parentheses around Broad IDs
+ge_melt_18Q3$DepMap_ID <- gsub("\\(|\\)", "", ge_melt_18Q3$DepMap_ID)
 
-saveRDS(ge_melt, "./data_munging/rds/ge_melt_18Q4.rds", compress = "xz")
+saveRDS(ge_melt_18Q3, "./../htscreen_lineages_giant_files/ge_melt_18Q3.rds", compress = "xz")
 ```
 
 ```{r, eval=FALSE}
-ge_melt <- readRDS("./data_munging/rds/ge_melt_18Q4.rds")
+ge_melt_18Q3 <- readRDS("./../htscreen_lineages_giant_files/ge_melt_18Q3.rds")
+```
+
+18Q4, CCLE RNAseq gene expression data (log2(TPM+1)):
+```{r, eval=FALSE}
+ge_18Q4 <- read.delim("./../htscreen_lineages_giant_files/CCLE_depMap_18Q4_TPM_v2_20181115.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+
+# Remove Entrez gene IDs from colnames
+# Format: Hugo_Symbol (Entrez ID)
+colnames(ge_18Q4) <- gsub(" .*", "", colnames(ge_18Q4))
+colnames(ge_18Q4)[1] <- "DepMap_ID"
+
+# Melt
+ge_melt_18Q4_all <- melt(ge_18Q4, id.vars = "DepMap_ID", measure.vars = colnames(ge_18Q4)[2:ncol(ge_18Q4)], variable.name = "Hugo_Symbol", value.name = "TPM")
+ge_melt_18Q4 <- unique(ge_melt_18Q4)
+
+saveRDS(ge_melt_18Q4, "./data_munging/rds/ge_melt_18Q4.rds", compress = "xz")
+```
+
+```{r, eval=FALSE}
+ge_melt_18Q4 <- readRDS("./data_munging/rds/ge_melt_18Q4.rds")
 ```
 
 ## G2P
@@ -656,14 +679,15 @@ levels(crispr_data$lineage_name) <- sort(levels(crispr_data$lineage_name), decre
 # Copy number
 crispr_data <- merge(crispr_data, cn_melt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 # Gene expression (RPKM)
-ge_filt <- filter(ge_melt, Hugo_Symbol %in% as.character(unique(crispr_data$Hugo_Symbol)) & DepMap_ID %in% as.character(unique(crispr_data$DepMap_ID)))
-crispr_data <- merge(crispr_data, ge_filt, by = c("Hugo_Symbol", "DepMap_ID", "CCLE_Name"), all.x = TRUE)
-crispr_data$RPKM_log2 <- log2(crispr_data$RPKM + 0.0001)
-saveRDS(crispr_data, "./../htscreen_lineages_giant_files/crispr_data_18Q3.rds", compress = "xz")
+ge_crispr_18Q3 <- filter(ge_melt_18Q3, Hugo_Symbol %in% as.character(unique(crispr_melt$Hugo_Symbol)))
+ge_crispr_18Q4 <- filter(ge_melt_18Q4_test, Hugo_Symbol %in% as.character(unique(crispr_melt$Hugo_Symbol)))
+crispr_data <- merge(crispr_data, ge_crispr_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+crispr_data <- merge(crispr_data, ge_crispr_18Q4, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
+saveRDS(crispr_data, "./../htscreen_lineages_giant_files/crispr_data_18Q4.rds", compress = "xz")
 ```
 
 ```{r}
-crispr_data <- readRDS("./../htscreen_lineages_giant_files/crispr_data_18Q3.rds")
+crispr_data <- readRDS("./../htscreen_lineages_giant_files/crispr_data_18Q4.rds")
 
 crispr_data_ptmuts <- filter(crispr_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele_Length == 1 | is.na(crispr_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
@@ -676,13 +700,15 @@ crispr_data_g2p$Hugo_Symbol <- factor(crispr_data_g2p$Hugo_Symbol, levels = g2p_
 
 ## Drug screens
 
-```{r, eval=TRUE}
+
+```{r, eval=FALSE}
 # Drug metadata
 drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv", sep = "\t", header = FALSE)
 colnames(drug_meta) <- c("CID", "Drug")
 drug_meta$Drug <- tolower(drug_meta$Drug)
 maf_df_g2p <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
-ge_filt <- filter(ge_melt, Hugo_Symbol %in% g2p_genes)
+ge_filt_18Q3 <- filter(ge_melt_18Q3, Hugo_Symbol %in% g2p_genes)
+# ge_filt_18Q4 <- filter(ge_melt_18Q4, Hugo_Symbol %in% g2p_genes)
 cn_filt <- filter(cn_melt, Hugo_Symbol %in% g2p_genes)
 
 # CCLE
@@ -694,15 +720,21 @@ ccle_data <- merge(ccle_grid, ccle_melt, by = "accession_id", all.x = TRUE)
 ccle_data <- merge(ccle_data, ccl_converter, by = "accession_id", all.x = TRUE)
 ccle_data <- merge(ccle_data, maf_df_g2p, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
 ccle_data$Mutation_Status_Nonsilent <- ifelse(is.na(ccle_data$Mutation_Status_Nonsilent), "Wildtype", ccle_data$Mutation_Status_Nonsilent)
-ccle_data <- merge(ccle_data, ge_filt, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+ccle_data <- merge(ccle_data, ge_filt_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+# ccle_data <- merge(ccle_data, ge_filt_18Q4, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 ccle_data <- merge(ccle_data, cn_filt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 ccle_data$Hugo_Symbol <- factor(ccle_data$Hugo_Symbol)
 ccle_data$AUC <- as.numeric(ccle_data$AUC)
+# CCLE AUC is actually AOC
+# assuming scale is 0-8, transform to range between 0 and 1
+# get AUC by 1 - AOC
+ccle_data$AUC_transform <- 1 - (ccle_data$AUC / 8)
+ccle_data$AUC_zscore <- (ccle_data$AUC_transform - mean(ccle_data$AUC_transform)) / sd(ccle_data$AUC_transform)
 ccle_data$Color_Nonsilent <- ifelse(ccle_data$Mutation_Status_Nonsilent == "Wildtype", "palegreen3", "springgreen4")
 ccle_data$Color_Nonsilent <- factor(ccle_data$Color_Nonsilent)
 ccle_data <- filter(ccle_data, !is.na(ccle_data$AUC))
 ccle_data$Drug_Gene <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol)
-saveRDS(ccle_data, "./data_munging/rds/ccle_data_18Q3_g2pgenes.rds", compress = "xz")
+saveRDS(ccle_data, "./data_munging/rds/ccle_data_18Q4_g2pgenes.rds", compress = "xz")
 
 # CTRP
 ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
@@ -713,15 +745,17 @@ ctrp_data <- merge(ctrp_grid, ctrp_melt, by = "accession_id", all.x = TRUE)
 ctrp_data <- merge(ctrp_data, ccl_converter, by = "accession_id", all.x = TRUE)
 ctrp_data <- merge(ctrp_data, maf_df_g2p, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
 ctrp_data$Mutation_Status_Nonsilent <- ifelse(is.na(ctrp_data$Mutation_Status_Nonsilent), "Wildtype", ctrp_data$Mutation_Status_Nonsilent)
-ctrp_data <- merge(ctrp_data, ge_filt, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+ctrp_data <- merge(ctrp_data, ge_filt_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+# ctrp_data <- merge(ctrp_data, ge_filt_18Q4, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 ctrp_data <- merge(ctrp_data, cn_filt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 ctrp_data$Hugo_Symbol <- factor(ctrp_data$Hugo_Symbol)
 ctrp_data$AUC <- as.numeric(ctrp_data$AUC)
+ctrp_data$AUC_zscore <- (ctrp_data$AUC - mean(ctrp_data$AUC)) / sd(ctrp_data$AUC)
 ctrp_data$Color_Nonsilent <- ifelse(ctrp_data$Mutation_Status_Nonsilent == "Wildtype", "slategray3", "steelblue4")
 ctrp_data$Color_Nonsilent <- factor(ctrp_data$Color_Nonsilent)
 ctrp_data <- filter(ctrp_data, !is.na(ctrp_data$AUC))
 ctrp_data$Drug_Gene <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol)
-saveRDS(ctrp_data, "./data_munging/rds/ctrp_data_18Q3_g2pgenes.rds", compress = "xz")
+saveRDS(ctrp_data, "./data_munging/rds/ctrp_data_18Q4_g2pgenes.rds", compress = "xz")
 
 # GDSC
 gdsc <- read.delim("./data_munging/data_drug_auc_gdsc_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
@@ -732,33 +766,35 @@ gdsc_data <- merge(gdsc_grid, gdsc_melt, by = "accession_id", all.x = TRUE)
 gdsc_data <- merge(gdsc_data, ccl_converter, by = "accession_id", all.x = TRUE)
 gdsc_data <- merge(gdsc_data, maf_df_g2p, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
 gdsc_data$Mutation_Status_Nonsilent <- ifelse(is.na(gdsc_data$Mutation_Status_Nonsilent), "Wildtype", gdsc_data$Mutation_Status_Nonsilent)
-gdsc_data <- merge(gdsc_data, ge_filt, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+gdsc_data <- merge(gdsc_data, ge_filt_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
+# gdsc_data <- merge(gdsc_data, ge_filt_18Q4, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 gdsc_data <- merge(gdsc_data, cn_filt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 gdsc_data$Hugo_Symbol <- factor(gdsc_data$Hugo_Symbol)
 gdsc_data$AUC <- as.numeric(gdsc_data$AUC)
+gdsc_data$AUC_zscore <- (gdsc_data$AUC - mean(gdsc_data$AUC)) / sd(gdsc_data$AUC)
 gdsc_data$Color_Nonsilent <- ifelse(gdsc_data$Mutation_Status_Nonsilent == "Wildtype", "paleturquoise3", "turquoise4")
 gdsc_data$Color_Nonsilent <- factor(gdsc_data$Color_Nonsilent)
 gdsc_data <- filter(gdsc_data, !is.na(gdsc_data$AUC))
 gdsc_data$Drug_Gene <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol)
-saveRDS(gdsc_data, "./data_munging/rds/gdsc_data_18Q3_g2pgenes.rds", compress = "xz")
+saveRDS(gdsc_data, "./data_munging/rds/gdsc_data_18Q4_g2pgenes.rds", compress = "xz")
 ```
 
 ```{r}
-ccle_data <- readRDS("./data_munging/rds/ccle_data_18Q3_g2pgenes.rds")
+ccle_data <- readRDS("./data_munging/rds/ccle_data_18Q4_g2pgenes.rds")
 ccle_data_ptmuts <- filter(ccle_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele_Length == 1 | is.na(ccle_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
 ccle_data_ptmuts$Dataset <- "CCLE"
 ccle_data_ptmuts$Hugo_Symbol <- ordered(ccle_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
 
-ctrp_data <- readRDS("./data_munging/rds/ctrp_data_18Q3_g2pgenes.rds")
+ctrp_data <- readRDS("./data_munging/rds/ctrp_data_18Q4_g2pgenes.rds")
 ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele_Length == 1 | is.na(ctrp_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
 ctrp_data_ptmuts$Dataset <- "CTRP"
 ctrp_data_ptmuts$Hugo_Symbol <- ordered(ctrp_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
 
-gdsc_data <- readRDS("./data_munging/rds/gdsc_data_18Q3_g2pgenes.rds")
+gdsc_data <- readRDS("./data_munging/rds/gdsc_data_18Q4_g2pgenes.rds")
 gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele_Length == 1 | is.na(gdsc_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
@@ -784,7 +820,7 @@ gdsc_data_g2p_grid <- filter(gdsc_data_ptmuts, Drug %in% g2p_drugs)
 
 ### G2P genes
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 crispr_signif_g2p_gene <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol"), data = crispr_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
 crispr_signif_g2p_gene <- adj_signif(crispr_signif_g2p_gene)
 crispr_signif_g2p_gene <- crispr_signif_g2p_gene[order(crispr_signif_g2p_gene$p),]
@@ -880,15 +916,15 @@ knitr::kable(crispr_data_signif_g2p_lineage_summ, caption = "Mutant/Wildtype cou
 
 ### G2P gene and drug
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 # G2P drug-gene associations only
-ccle_signif_g2p <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ccle_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
+ccle_signif_g2p <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ccle_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
 ccle_signif_g2p <- adj_signif(ccle_signif_g2p)
 ccle_signif_g2p <- ccle_signif_g2p[order(ccle_signif_g2p$p),]
 saveRDS(ccle_signif_g2p, "./data_munging/rds/ccle_signif_g2p_gene.rds")
 
 # Grid comparisons of G2P drugs and genes
-ccle_signif_g2p_grid <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = ccle_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
+ccle_signif_g2p_grid <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = ccle_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
 ccle_signif_g2p_grid <- adj_signif(ccle_signif_g2p_grid)
 ccle_signif_g2p_grid <- ccle_signif_g2p_grid[order(ccle_signif_g2p_grid$p),]
 ccle_signif_g2p_grid$Drug_Gene <- paste0(ccle_signif_g2p_grid$Drug, "_", ccle_signif_g2p_grid$Hugo_Symbol)
@@ -907,7 +943,7 @@ knitr::kable(ccle_signif_g2p_grid[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.fo
 
 ### G2P gene, drug, and lineage
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 ccle_signif_g2p_lineage <- lapply(unique(ccle_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ccle_data_g2p_grid, data_name = "ccle", grouping_var = "lineage")
 names(ccle_signif_g2p_lineage) <- unique(ccle_signif_g2p_lineage$Drug)
 ccle_signif_g2p_lineage <- rbindlist(ccle_signif_g2p_lineage, use.names = TRUE)
@@ -926,13 +962,13 @@ knitr::kable(ccle_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_gene
 ### G2P gene and drug
 
 ```{r, eval=FALSE}
-ctrp_signif_g2p <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ctrp_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
+ctrp_signif_g2p <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ctrp_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
 ctrp_signif_g2p <- adj_signif(ctrp_signif_g2p)
 ctrp_signif_g2p <- ctrp_signif_g2p[order(ctrp_signif_g2p$p),]
 saveRDS(ctrp_signif_g2p, "./data_munging/rds/ctrp_signif_g2p_gene.rds")
 
 # Grid comparisons of G2P drugs and genes
-ctrp_signif_g2p_grid <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = ctrp_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
+ctrp_signif_g2p_grid <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = ctrp_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
 ctrp_signif_g2p_grid <- adj_signif(ctrp_signif_g2p_grid)
 ctrp_signif_g2p_grid <- ctrp_signif_g2p_grid[order(ctrp_signif_g2p_grid$p),]
 ctrp_signif_g2p_grid$Drug_Gene <- paste0(ctrp_signif_g2p_grid$Drug, "_", ctrp_signif_g2p_grid$Hugo_Symbol)
@@ -959,7 +995,7 @@ ctrp_signif_g2p_lineage <- ctrp_signif_g2p_lineage[order(ctrp_signif_g2p_lineage
 saveRDS(ctrp_signif_g2p_lineage, "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 ```
 
-```{r, eval=FALSE}
+```{r}
 ctrp_signif_g2p_lineage <- readRDS("./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 
 knitr::kable(ctrp_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
@@ -970,13 +1006,13 @@ knitr::kable(ctrp_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_gene
 ### G2P gene and drug
 
 ```{r, eval=FALSE}
-gdsc_signif_g2p <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = gdsc_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
+gdsc_signif_g2p <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = gdsc_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
 gdsc_signif_g2p <- adj_signif(gdsc_signif_g2p)
 gdsc_signif_g2p <- gdsc_signif_g2p[order(gdsc_signif_g2p$p),]
 saveRDS(gdsc_signif_g2p, "./data_munging/rds/gdsc_signif_g2p_gene.rds")
 
 # Grid comparisons of G2P drugs and genes
-gdsc_signif_g2p_grid <- compare_means(AUC ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = gdsc_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
+gdsc_signif_g2p_grid <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "Drug"), data = gdsc_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
 gdsc_signif_g2p_grid <- adj_signif(gdsc_signif_g2p_grid)
 gdsc_signif_g2p_grid <- gdsc_signif_g2p_grid[order(gdsc_signif_g2p_grid$p),]
 gdsc_signif_g2p_grid$Drug_Gene <- paste0(gdsc_signif_g2p_grid$Drug, "_", gdsc_signif_g2p_grid$Hugo_Symbol)
@@ -1003,7 +1039,7 @@ gdsc_signif_g2p_lineage <- gdsc_signif_g2p_lineage[order(gdsc_signif_g2p_lineage
 saveRDS(gdsc_signif_g2p_lineage, "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
-```{r, eval=FALSE}
+```{r}
 gdsc_signif_g2p_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 
 knitr::kable(gdsc_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
@@ -1149,9 +1185,9 @@ plot_p_point <- ggplot(data = g2p_druggene_all_summ, aes(x = p, y = n, label = D
   geom_point(mapping = aes(color = InG2P), alpha = 0.5) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
   scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
-  geom_text_repel(data = subset(g2p_druggene_all_summ, InG2P == "Yes" & n > 10), size = 3, segment.size = 0.2, segment.color = "grey50") +
+  geom_text_repel(data = subset(g2p_druggene_all_summ, InG2P == "Yes" & n > 30), size = 3, segment.size = 0.2, segment.color = "grey50") +
   geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = 0.5, y = 110, label = Test_Results_p)) +
-  labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations", color = "Does the drug-gene combination have level A G2P indication?") +
+  labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations") +
   theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
 plot_p_box <- ggplot(data = g2p_druggene_all_summ) +
@@ -1184,7 +1220,7 @@ plot_p_point <- ggplot(data = g2p_druggene_all_summ) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
   scale_y_continuous(breaks = seq(0, 110, by = 10), labels = seq(0, 110, by = 10)) +
   geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = 0.5, y = 110, label = Test_Results_p)) +
-  labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations", color = "Does the drug-gene combination have level A G2P indication?") +
+  labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations") +
   theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
 plot_p_box <- ggplot(data = g2p_druggene_all_summ) +
