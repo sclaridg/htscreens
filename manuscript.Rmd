@@ -621,9 +621,9 @@ g2p$Alt[g2p$Alt == "None"] <- NA
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
 g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
 g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
-g2p <- subset(g2p, grepl("^CID", g2p$DrugID))
+g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 
-g2p_drug_genes <- unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)])
+g2p_drug_genes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
 g2p_genes <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[2]))
 g2p_drugs <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[1]))
 g2p_genes
@@ -631,6 +631,14 @@ g2p_drugs
 # Order and genes taken from pink heatmapo from Daniel's analyses
 g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
 ```
+
+```{r}
+g2p_nonCID <- subset(g2p, !grepl("^CID", g2p$DrugID))
+summ <- g2p_nonCID %>% group_by(Drug, DrugID) %>% tally() %>% summarize(n = n,
+                                                                percent = n / 402 * 100)
+summ
+```
+
 
 ```{r, eval=FALSE}
 maf_df <- readRDS("./data_munging/rds/maf_df_18Q4.rds")
@@ -853,10 +861,6 @@ crispr_signif_g2p_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds
 knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r}
-unique(crispr_data_signif_g2p_gene$Mutation_Status_Nonsilent)
-```
-
 
 ```{r fig.height=7, fig.width=12}
 crispr_data_signif_g2p_gene_filt <- filter(crispr_data_ptmuts, Hugo_Symbol %in% as.character(crispr_signif_g2p_gene$Hugo_Symbol))
@@ -898,9 +902,9 @@ crispr_signif_g2p_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_linea
 knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs wildtype cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=15, fig.width=15}
+```{r fig.height=15, fig.width=15, eval=FALSE}
 crispr_data_signif_g2p_lineage <- merge(crispr_data_signif_g2p_gene_filt, crispr_signif_g2p_lineage, by = c("Hugo_Symbol", "group_general_lineage_name"))
-crispr_data_signif_g2p_lineage$Hugo_Symbol <- ordered(crispr_data_signif_g2p_lineage$Hugo_Symbol, levels = crispr_signif_g2p_20gene)
+crispr_data_signif_g2p_lineage$Hugo_Symbol <- ordered(crispr_data_signif_g2p_lineage$Hugo_Symbol, levels = as.character(unique((crispr_signif_g2p_lineage$Hugo_Symbol)))
 
 crispr_data_signif_g2p_lineage <- merge(crispr_data_signif_g2p_lineage, crispr_data_signif_g2p_lineage %>% group_by(Hugo_Symbol) %>% summarize(Text_y = max(Score)), by = "Hugo_Symbol")
 
@@ -1139,6 +1143,24 @@ knitr::kable(crispr_data_g2p_summ, caption = "CRISPR: Level A G2P genes mutation
 ```
 
 ## Drugscreen: G2P evidence
+
+G2P summary stats:
+```{r}
+g2p_druggene_p_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+range(g2p_druggene_p_tally$n)
+mean(g2p_druggene_p_tally$n)
+sd(g2p_druggene_p_tally$n)
+
+g2p_drug_tally <- g2p %>% group_by(Drug) %>% tally() %>% drop_na()
+range(g2p_drug_tally$n)
+mean(g2p_drug_tally$n)
+sd(g2p_drug_tally$n)
+
+g2p_gene_tally <- g2p %>% group_by(Gene) %>% tally() %>% drop_na()
+range(g2p_gene_tally$n)
+mean(g2p_gene_tally$n)
+sd(g2p_gene_tally$n)
+```
 
 ### Lineage-agnostic
 
@@ -1554,24 +1576,6 @@ knitr::kable(druggenelin_pearson_ttest_res_list[order(druggenelin_pearson_ttest_
 ```
 
 ### All
-
-G2P summary stats:
-```{r}
-g2p_druggene_p_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
-range(g2p_druggene_p_tally$n)
-mean(g2p_druggene_p_tally$n)
-sd(g2p_druggene_p_tally$n)
-
-g2p_drug_tally <- g2p %>% group_by(Drug) %>% tally() %>% drop_na()
-range(g2p_drug_tally$n)
-mean(g2p_drug_tally$n)
-sd(g2p_drug_tally$n)
-
-g2p_gene_tally <- g2p %>% group_by(Gene) %>% tally() %>% drop_na()
-range(g2p_gene_tally$n)
-mean(g2p_gene_tally$n)
-sd(g2p_gene_tally$n)
-```
 
 Mutation status summary stats:
 ```{r}
