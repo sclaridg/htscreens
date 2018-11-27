@@ -612,8 +612,8 @@ saveRDS(ge_melt_18Q4, "./data_munging/rds/ge_melt_18Q4.rds", compress = "xz")
 ## G2P
 
 ```{r}
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_withGroupedLineages.csv", sep = "\t", header = TRUE, row.names = 1)
-g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_NOV_27.csv", sep = "\t", header = TRUE)
+# g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
 g2p$Drug <- tolower(g2p$Drug)
 g2p[g2p == -1] <- NA
 g2p$Ref[g2p$Ref == "None"] <- NA
@@ -626,6 +626,7 @@ g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 g2p_drug_genes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
 g2p_genes <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[2]))
 g2p_drugs <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[1]))
+g2p_drug_genes
 g2p_genes
 g2p_drugs
 # Order and genes taken from pink heatmapo from Daniel's analyses
@@ -645,6 +646,9 @@ maf_df <- readRDS("./data_munging/rds/maf_df_18Q4.rds")
 cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q4.rds")
 ge_melt_18Q3 <- readRDS("./../htscreen_lineages_giant_files/ge_melt_18Q3.rds")
 # ge_melt_18Q4 <- readRDS("./data_munging/rds/ge_melt_18Q4.rds")
+
+# maf_filt_dan <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
+# write.table(maf_filt_dan, file = "~/Desktop/maf_filt_dan_18Q4_2018112.csv", quote = FALSE, sep = ",", row.names = FALSE)
 ```
 
 ## CRISPR
@@ -839,6 +843,13 @@ gdsc_data_g2p_grid <- filter(gdsc_data_ptmuts, Drug %in% g2p_drugs)
 gdsc_data_g2p_grid$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 ```
 
+```{r}
+test_ccle <- ccle_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
+test_ctrp <- ctrp_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
+test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
+
+```
+
 
 
 # Mutation Status Wilcoxon tests
@@ -902,16 +913,16 @@ crispr_signif_g2p_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_linea
 knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs wildtype cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-```{r fig.height=15, fig.width=15, eval=FALSE}
+```{r fig.height=18, fig.width=15, eval=TRUE}
 crispr_data_signif_g2p_lineage <- merge(crispr_data_signif_g2p_gene_filt, crispr_signif_g2p_lineage, by = c("Hugo_Symbol", "group_general_lineage_name"))
-crispr_data_signif_g2p_lineage$Hugo_Symbol <- ordered(crispr_data_signif_g2p_lineage$Hugo_Symbol, levels = as.character(unique((crispr_signif_g2p_lineage$Hugo_Symbol)))
+crispr_data_signif_g2p_lineage$Hugo_Symbol <- ordered(crispr_data_signif_g2p_lineage$Hugo_Symbol, levels = as.character(unique((crispr_signif_g2p_lineage$Hugo_Symbol))))
 
 crispr_data_signif_g2p_lineage <- merge(crispr_data_signif_g2p_lineage, crispr_data_signif_g2p_lineage %>% group_by(Hugo_Symbol) %>% summarize(Text_y = max(Score)), by = "Hugo_Symbol")
 
 crispr_data_signif_g2p_lineage_text <- unique(data.frame(p.signif = crispr_data_signif_g2p_lineage$p.signif, p.signif.adj = crispr_data_signif_g2p_lineage$p.signif.adj,  group_general_lineage_name = crispr_data_signif_g2p_lineage$group_general_lineage_name, Hugo_Symbol = crispr_data_signif_g2p_lineage$Hugo_Symbol, Text_y = crispr_data_signif_g2p_lineage$Text_y))
 
 crispr_data_signif_g2p_lineage_plot <- ggplot(data = crispr_data_signif_g2p_lineage, aes(x = group_general_lineage_name, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, nrow = 4, scales = "free_y") +
+  facet_wrap(~ Hugo_Symbol, nrow = 6, scales = "free_y") +
   geom_point(aes(color = Mutation_Status_Nonsilent), alpha = 0.5) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   scale_color_manual(values = c("Mutant" = "darkorchid", "Wildtype" = "thistle")) +
@@ -924,7 +935,7 @@ crispr_data_signif_g2p_lineage_plot <- ggplot(data = crispr_data_signif_g2p_line
        subtitle = "* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001\nGenes are sorted by increasing lineage-agnostic p-value.")
 crispr_data_signif_g2p_lineage_plot
 
-# ggsave("./plots/manuscript/crispr_data_signif_g2p_lineage_plot.png", crispr_data_signif_g2p_lineage_plot, width = 12, height = 15, units = "in")
+# ggsave("./plots/manuscript/crispr_data_signif_g2p_lineage_plot.png", crispr_data_signif_g2p_lineage_plot, width = 15, height = 18, units = "in")
 ```
 
 ```{r}
@@ -1146,17 +1157,17 @@ knitr::kable(crispr_data_g2p_summ, caption = "CRISPR: Level A G2P genes mutation
 
 G2P summary stats:
 ```{r}
-g2p_druggene_p_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+g2p_druggene_p_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 range(g2p_druggene_p_tally$n)
 mean(g2p_druggene_p_tally$n)
 sd(g2p_druggene_p_tally$n)
 
-g2p_drug_tally <- g2p %>% group_by(Drug) %>% tally() %>% drop_na()
+g2p_drug_tally <- g2p_filt %>% group_by(Drug) %>% tally() %>% drop_na()
 range(g2p_drug_tally$n)
 mean(g2p_drug_tally$n)
 sd(g2p_drug_tally$n)
 
-g2p_gene_tally <- g2p %>% group_by(Gene) %>% tally() %>% drop_na()
+g2p_gene_tally <- g2p_filt %>% group_by(Gene) %>% tally() %>% drop_na()
 range(g2p_gene_tally$n)
 mean(g2p_gene_tally$n)
 sd(g2p_gene_tally$n)
@@ -1196,21 +1207,21 @@ ccle_druggene_summ$n <- ifelse(is.na(ccle_druggene_summ$n), 0, ccle_druggene_sum
 ccle_druggene_summ$InG2P <- ifelse(ccle_druggene_summ$n != 0, "Yes", "No")
 ccle_druggene_summ$Dataset <- "CCLE"
 ccle_p_ttest <- t.test(ccle_druggene_summ$p ~ ccle_druggene_summ$InG2P)
-ccle_p_ttest_res <- paste0("t(", round(ccle_p_ttest$parameter, 1), ") = ", round(ccle_p_ttest$statistic, 2), ", p = ", round(ccle_p_ttest$p.value, 3))
+ccle_p_ttest_res <- paste0("t(", round(ccle_p_ttest$parameter, 0), ") = ", round(ccle_p_ttest$statistic, 2), ", p = ", round(ccle_p_ttest$p.value, 2))
 
 ctrp_druggene_summ <- merge(g2p_druggene_p_tally, ctrp_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
 ctrp_druggene_summ$n <- ifelse(is.na(ctrp_druggene_summ$n), 0, ctrp_druggene_summ$n)
 ctrp_druggene_summ$InG2P <- ifelse(ctrp_druggene_summ$n != 0, "Yes", "No")
 ctrp_druggene_summ$Dataset <- "CTRP"
 ctrp_p_ttest <- t.test(ctrp_druggene_summ$p ~ ctrp_druggene_summ$InG2P)
-ctrp_p_ttest_res <- paste0("t(", round(ctrp_p_ttest$parameter, 1), ") = ", round(ctrp_p_ttest$statistic, 2), ", p = ", round(ctrp_p_ttest$p.value, 3))
+ctrp_p_ttest_res <- paste0("t(", round(ctrp_p_ttest$parameter, 0), ") = ", round(ctrp_p_ttest$statistic, 2), ", p = ", formatC(ctrp_p_ttest$p.value, digits = 2, format = "f"))
 
 gdsc_druggene_summ <- merge(g2p_druggene_p_tally, gdsc_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
 gdsc_druggene_summ$n <- ifelse(is.na(gdsc_druggene_summ$n), 0, gdsc_druggene_summ$n)
 gdsc_druggene_summ$InG2P <- ifelse(gdsc_druggene_summ$n != 0, "Yes", "No")
 gdsc_druggene_summ$Dataset <- "GDSC"
 gdsc_p_ttest <- t.test(gdsc_druggene_summ$p ~ gdsc_druggene_summ$InG2P)
-gdsc_p_ttest_res <- paste0("t(", round(gdsc_p_ttest$parameter, 1), ") = ", round(gdsc_p_ttest$statistic, 2), ", p = ", round(gdsc_p_ttest$p.value, 3))
+gdsc_p_ttest_res <- paste0("t(", round(gdsc_p_ttest$parameter, 0), ") = ", round(gdsc_p_ttest$statistic, 2), ", p = ", round(gdsc_p_ttest$p.value, 2))
 
 g2p_druggene_all_summ <- rbind(ccle_druggene_summ, ctrp_druggene_summ, gdsc_druggene_summ)
 g2p_druggene_all_summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results_p = c(ccle_p_ttest_res, ctrp_p_ttest_res, gdsc_p_ttest_res))
@@ -1248,7 +1259,7 @@ g2p_druggene_mut_plot <- cowplot::plot_grid(plot_p_box,
                    rel_heights = c(1, 4))
 g2p_druggene_mut_plot
 
-ggsave("./plots/manuscript/g2p_druggene_mut_plot.png", g2p_druggene_mut_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+# ggsave("./plots/manuscript/g2p_druggene_mut_plot.png", g2p_druggene_mut_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
 ```{r, eval=FALSE}
@@ -1288,9 +1299,9 @@ ccle_pearson_res$n <- ifelse(is.na(ccle_pearson_res$n), 0, ccle_pearson_res$n)
 ccle_pearson_res$InG2P <- ifelse(ccle_pearson_res$n != 0, "Yes", "No")
 ccle_pearson_res$Dataset <- "CCLE"
 ccle_pearson_ttest_GE <- t.test(ccle_pearson_res$Pearson_Corr_GE ~ ccle_pearson_res$InG2P)
-ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 1), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 3))
+ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 0), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 2))
 ccle_pearson_ttest_CN <- t.test(ccle_pearson_res$Pearson_Corr_CN ~ ccle_pearson_res$InG2P)
-ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 1), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 3))
+ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 0), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 2))
 
 ctrp_pearson_res <- ctrp_data_g2p_grid %>% group_by(Drug_Gene) %>%
                     summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
@@ -1302,9 +1313,9 @@ ctrp_pearson_res$n <- ifelse(is.na(ctrp_pearson_res$n), 0, ctrp_pearson_res$n)
 ctrp_pearson_res$InG2P <- ifelse(ctrp_pearson_res$n != 0, "Yes", "No")
 ctrp_pearson_res$Dataset <- "CTRP"
 ctrp_pearson_ttest_GE <- t.test(ctrp_pearson_res$Pearson_Corr_GE ~ ctrp_pearson_res$InG2P)
-ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 1), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p = ", round(ctrp_pearson_ttest_GE$p.value, 3))
+ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 0), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p ", ifelse(round(ctrp_pearson_ttest_GE$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_pearson_ttest_GE$p.value, 3))))
 ctrp_pearson_ttest_CN <- t.test(ctrp_pearson_res$Pearson_Corr_CN ~ ctrp_pearson_res$InG2P)
-ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 1), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
+ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 0), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
 
 gdsc_pearson_res <- gdsc_data_g2p_grid %>% group_by(Drug_Gene) %>%
                     summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
@@ -1316,9 +1327,9 @@ gdsc_pearson_res$n <- ifelse(is.na(gdsc_pearson_res$n), 0, gdsc_pearson_res$n)
 gdsc_pearson_res$InG2P <- ifelse(gdsc_pearson_res$n != 0, "Yes", "No")
 gdsc_pearson_res$Dataset <- "GDSC"
 gdsc_pearson_ttest_GE <- t.test(gdsc_pearson_res$Pearson_Corr_GE ~ gdsc_pearson_res$InG2P)
-gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 1), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
+gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 0), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
 gdsc_pearson_ttest_CN <- t.test(gdsc_pearson_res$Pearson_Corr_CN ~ gdsc_pearson_res$InG2P)
-gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 1), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
+gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 0), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
 
 g2p_druggene_pearson <- rbind(ccle_pearson_res, ctrp_pearson_res, gdsc_pearson_res)
 g2p_druggene_pearson$Pearson_GE_Abs <- abs(g2p_druggene_pearson$Pearson_Corr_GE)
@@ -1368,7 +1379,7 @@ plot_ge_box$widths[2:3] <- p_maxWidth
 g2p_druggene_ge_plot <- cowplot::plot_grid(plot_ge_box, plot_ge_point, nrow = 2, rel_heights = c(1, 4))
 g2p_druggene_ge_plot
 
-ggsave("./plots/manuscript/g2p_druggene_ge_plot.png", g2p_druggene_ge_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+# ggsave("./plots/manuscript/g2p_druggene_ge_plot.png", g2p_druggene_ge_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
 
@@ -1581,32 +1592,33 @@ Mutation status summary stats:
 ```{r}
 g2p_druggene_all_summ_stats <- g2p_druggene_all_summ
 g2p_druggene_all_summ_stats$n_true <- TRUE
-g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 3), p_sd = round(sd(p), 3), n = sum(n_true), n_signif = sum(p < 0.05))
+g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05))
 ```
 
 Pearson summary stats:
 ```{r fig.height=4, fig.width=5}
 g2p_druggene_pearson_stats <- g2p_druggene_pearson
 g2p_druggene_pearson_stats$n_true <- TRUE
-g2p_druggene_pearson_stats <- g2p_druggene_pearson_stats %>% group_by(Dataset, InG2P) %>% drop_na() %>% summarize(ge_mean = round(mean(Pearson_GE_Abs), 3),
-          ge_sd = round(sd(Pearson_GE_Abs), 3),
+g2p_druggene_pearson_stats <- g2p_druggene_pearson_stats %>% group_by(Dataset, InG2P) %>% drop_na() %>% summarize(
+          ge_mean = round(mean(Pearson_GE_Abs), 5),
+          ge_sd = round(sd(Pearson_GE_Abs), 5),
           ge_n = sum(n_true),
           ge_n_signif = sum(Pearson_Pval_GE < 0.05),
           cn_mean = round(mean(Pearson_CN_Abs), 3),
-          cn_sd = round(sd(Pearson_CN_Abs), 3),
+          cn_sd = round(sd(Pearson_CN_Abs), 5),
           cn_n = sum(n_true),
           cn_n_signif = sum(Pearson_Pval_CN < 0.05))
 
 ctrp_grid_summary_data <- filter(ctrp_data_g2p_grid, Drug_Gene == "afatinib_ERBB2")
 
 ctrp_grid_summary_mut_corr <- wilcox.test(AUC_zscore ~ Mutation_Status_Nonsilent, data = ctrp_grid_summary_data[!is.na(ctrp_grid_summary_data$Mutation_Status_Nonsilent),], paired = FALSE)
-ctrp_grid_summary_mut_corr_text <- paste0("W = ", ctrp_grid_summary_mut_corr$statistic, ", p = ", round(ctrp_grid_summary_mut_corr$p.value, 3))
+ctrp_grid_summary_mut_corr_text <- paste0("W = ", formatC(ctrp_grid_summary_mut_corr$statistic, format = "d", big.mark = ","), "\np = ", round(ctrp_grid_summary_mut_corr$p.value, 3))
 
 ctrp_grid_summary_ge_corr <- cor.test(y = ctrp_grid_summary_data$AUC, x = ctrp_grid_summary_data$RPKM, method = "pearson", use = "complete.obs")
-ctrp_grid_summary_ge_corr_text <- paste0("r = ", round(ctrp_grid_summary_ge_corr$estimate, 3), ", t(", ctrp_grid_summary_ge_corr$parameter, ") = ", round(ctrp_grid_summary_ge_corr$statistic, 2), ", p = ", round(ctrp_grid_summary_ge_corr$p.value, 3))
+ctrp_grid_summary_ge_corr_text <- paste0("r(", ctrp_grid_summary_ge_corr$parameter, ") = ", round(ctrp_grid_summary_ge_corr$estimate, 2), "\np ", ifelse(round(ctrp_grid_summary_ge_corr$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_grid_summary_ge_corr$p.value, 3))))
 
 ctrp_grid_summary_cn_corr <- cor.test(y = ctrp_grid_summary_data$AUC, x = ctrp_grid_summary_data$CN, method = "pearson", use = "complete.obs")
-ctrp_grid_summary_cn_corr_text <- paste0("r = ", round(ctrp_grid_summary_cn_corr$estimate, 3), ", t(", ctrp_grid_summary_cn_corr$parameter, ") = ", round(ctrp_grid_summary_cn_corr$statistic, 2), ", p = ", round(ctrp_grid_summary_cn_corr$p.value, 3))
+ctrp_grid_summary_cn_corr_text <- paste0("r(", ctrp_grid_summary_cn_corr$parameter, ") = ", formatC(ctrp_grid_summary_cn_corr$estimate, digits = 2, format = "f"), "\np ", ifelse(round(ctrp_grid_summary_cn_corr$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_grid_summary_cn_corr$p.value, 3))))
 
 ctrp_grid_summary_mut_plot <- ggplot(data = ctrp_grid_summary_data[!is.na(ctrp_grid_summary_data$Mutation_Status_Nonsilent),], aes(y = AUC_zscore, x = Mutation_Status_Nonsilent, fill = Mutation_Status_Nonsilent)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.6) +
@@ -1614,28 +1626,34 @@ ctrp_grid_summary_mut_plot <- ggplot(data = ctrp_grid_summary_data[!is.na(ctrp_g
   scale_fill_manual(values = c("Wildtype" = "lightsteelblue1", "Mutant" = "steelblue4")) +
   annotate(geom = "text", label = ctrp_grid_summary_mut_corr_text, x = 1.5, y = 1.3) +
   guides(fill = FALSE) +
-  labs(x = "ERBB2 mutation status", y = "Afatinib AUC (z-score)")
+  labs(x = "ERBB2 mutation status", y = "Afatinib AUC (z-score)") +
+  geom_segment(aes(x = 1, y = 1.5, xend = 1.1, yend = 1.5), lwd = 0.2) +
+  geom_segment(aes(x = 1.9, y = 1.5, xend = 2, yend = 1.5), lwd = 0.2) +
+  geom_segment(aes(x = 1, y = 1.5, xend = 1, yend = 1.35), lwd = 0.2) +
+  geom_segment(aes(x = 2, y = 1.5, xend = 2, yend = 1.35), lwd = 0.2)
 ctrp_grid_summary_mut_plot
 
 ctrp_grid_summary_ge_plot <- ggplot(data = ctrp_grid_summary_data, aes(y = AUC_zscore, x = RPKM)) +
   geom_point(alpha = 0.25, size = 1.25, color = "gray4") +
   geom_smooth(method = "lm", se = FALSE, lwd = 0.5, lty = 2) +
-  annotate(geom = "text", label = ctrp_grid_summary_ge_corr_text, x = 1750, y = 1.3) +
+  annotate(geom = "text", label = ctrp_grid_summary_ge_corr_text, x = 2000, y = 1.3) +
   labs(x = "ERBB2 gene expression (RPKM)", y = "Afatinib AUC (z-score)") +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank()) +
+  geom_curve(aes(x = 750, y = -1.9, xend = 1720, yend = 1.1), lwd = 0.2, curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))
 ctrp_grid_summary_ge_plot
 
 ctrp_grid_summary_cn_plot <- ggplot(data = ctrp_grid_summary_data, aes(y = AUC_zscore, x = CN)) +
   geom_point(alpha = 0.25, size = 1.25, color = "gray4") +
   geom_smooth(method = "lm", se = FALSE, lwd = 0.5, lty = 2) +
-  annotate(geom = "text", label = ctrp_grid_summary_cn_corr_text, x = 4, y = 1.3) +
+  annotate(geom = "text", label = ctrp_grid_summary_cn_corr_text, x = 5, y = 1.3) +
   labs(x = "ERBB2 copy number (log2 ratio)") +
-  theme(axis.title.y = element_blank())
+  theme(axis.title.y = element_blank()) +
+  geom_curve(aes(x = 4, y = -2.3, xend = 5, yend = 0.8), lwd = 0.2, curvature = 0.2, arrow = arrow(length = unit(0.03, "npc")))
 ctrp_grid_summary_cn_plot
 
-ggsave("./plots/manuscript/ctrp_grid_summary_mut_plot.png", ctrp_grid_summary_mut_plot, device = "png", dpi = 450, width = 3, height = 4, units = "in")
-ggsave("./plots/manuscript/ctrp_grid_summary_ge_plot.png", ctrp_grid_summary_ge_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
-ggsave("./plots/manuscript/ctrp_grid_summary_cn_plot.png", ctrp_grid_summary_cn_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
+# ggsave("./plots/manuscript/ctrp_grid_summary_mut_plot.png", ctrp_grid_summary_mut_plot, device = "png", dpi = 450, width = 3, height = 4, units = "in")
+# ggsave("./plots/manuscript/ctrp_grid_summary_ge_plot.png", ctrp_grid_summary_ge_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
+# ggsave("./plots/manuscript/ctrp_grid_summary_cn_plot.png", ctrp_grid_summary_cn_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
 ```
 
 Big grid plot by lineages:
@@ -1668,7 +1686,7 @@ all_druggenelin_summ_plot <- ggplot(data = all_druggenelin_summ, aes(x = InG2P, 
   theme(legend.position = "top") +
   guides(color = FALSE, fill = FALSE)
   
-ggsave("./plots/manuscript/all_druggenelin_summ_plot.png", all_druggenelin_summ_plot, device = "png", dpi = 450, width = 12, height = 40, units = "in")
+# ggsave("./plots/manuscript/all_druggenelin_summ_plot.png", all_druggenelin_summ_plot, device = "png", dpi = 450, width = 12, height = 40, units = "in")
 ```
 
 ```
