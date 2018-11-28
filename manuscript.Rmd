@@ -635,11 +635,9 @@ g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA",
 
 ```{r}
 g2p_nonCID <- subset(g2p, !grepl("^CID", g2p$DrugID))
-summ <- g2p_nonCID %>% group_by(Drug, DrugID) %>% tally() %>% summarize(n = n,
-                                                                percent = n / 402 * 100)
+summ <- g2p_nonCID %>% group_by(Drug, DrugID) %>% tally() %>% summarize(DrugID = DrugID, n = n, percent = formatC(n / 402 * 100, digits = 6, format = "f"))
 summ
 ```
-
 
 ```{r, eval=FALSE}
 maf_df <- readRDS("./data_munging/rds/maf_df_18Q4.rds")
@@ -847,7 +845,6 @@ gdsc_data_g2p_grid$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_grid$Mutati
 test_ccle <- ccle_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 test_ctrp <- ctrp_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
-
 ```
 
 
