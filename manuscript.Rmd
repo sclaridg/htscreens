@@ -613,7 +613,9 @@ saveRDS(ge_melt_18Q4, "./data_munging/rds/ge_melt_18Q4.rds", compress = "xz")
 
 ```{r}
 g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_NOV_27.csv", sep = "\t", header = TRUE)
-# g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+colnames(g2p)[colnames(g2p) == "Phenotype.ID"] <- "grouped_general_doid"
+g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+
 g2p$Drug <- tolower(g2p$Drug)
 g2p[g2p == -1] <- NA
 g2p$Ref[g2p$Ref == "None"] <- NA
@@ -719,6 +721,7 @@ crispr_data_g2p <- filter(crispr_data_ptmuts, Hugo_Symbol %in% g2p_genes)
 crispr_data_g2p$Hugo_Symbol <- factor(crispr_data_g2p$Hugo_Symbol, levels = g2p_genes)
 crispr_data_g2p$Mutation_Status_Nonsilent <- factor(crispr_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 ```
+
 
 ## Drug screens
 
