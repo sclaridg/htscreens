@@ -305,7 +305,7 @@ PearsonPlotlyByLineage <- function(lineage) {
   }
   else if(use_data_ccle_ge_summ[use_data_ccle_ge_summ$InG2P == "Yes",]$nn >= 2) {
     ccle_ge_ttest <- t.test(use_data_ccle$Pearson_GE_Abs ~ use_data_ccle$InG2P)
-    ccle_ge_res <- paste0("t(", round(ccle_ge_ttest$parameter, 1), ") = ", round(ccle_ge_ttest$statistic, 2), ", p = ", round(ccle_ge_ttest$p.value, 3))
+    ccle_ge_res <- paste0("t(", trunc(ccle_ge_ttest$parameter), ") = ", round(ccle_ge_ttest$statistic, 2), ", p = ", round(ccle_ge_ttest$p.value, 3))
   }
   if(nrow(use_data_ccle_cn_summ) <= 1) {
     ccle_cn_res <-  NA
@@ -316,7 +316,7 @@ PearsonPlotlyByLineage <- function(lineage) {
   }
   else if(use_data_ccle_cn_summ[use_data_ccle_cn_summ$InG2P == "Yes",]$nn >= 2) {
     ccle_cn_ttest <- t.test(use_data_ccle$Pearson_CN_Abs ~ use_data_ccle$InG2P)
-    ccle_cn_res <- paste0("t(", round(ccle_cn_ttest$parameter, 1), ") = ", round(ccle_cn_ttest$statistic, 2), ", p = ", round(ccle_cn_ttest$p.value, 3))
+    ccle_cn_res <- paste0("t(", trunc(ccle_cn_ttest$parameter), ") = ", round(ccle_cn_ttest$statistic, 2), ", p = ", round(ccle_cn_ttest$p.value, 3))
   }
   print("CCLE testing: DONE")
   
@@ -334,7 +334,7 @@ PearsonPlotlyByLineage <- function(lineage) {
   }
   else if(use_data_ctrp_ge_summ[use_data_ctrp_ge_summ$InG2P == "Yes",]$nn >= 2) {
     ctrp_ge_ttest <- t.test(use_data_ctrp$Pearson_GE_Abs ~ use_data_ctrp$InG2P)
-    ctrp_ge_res <- paste0("t(", round(ctrp_ge_ttest$parameter, 1), ") = ", round(ctrp_ge_ttest$statistic, 2), ", p = ", round(ctrp_ge_ttest$p.value, 3))
+    ctrp_ge_res <- paste0("t(", trunc(ctrp_ge_ttest$parameter), ") = ", round(ctrp_ge_ttest$statistic, 2), ", p = ", round(ctrp_ge_ttest$p.value, 3))
   }
   if(nrow(use_data_ctrp_cn_summ) <= 1) {
     ctrp_cn_res <-  NA
@@ -345,7 +345,7 @@ PearsonPlotlyByLineage <- function(lineage) {
   }
   else if(use_data_ctrp_cn_summ[use_data_ctrp_cn_summ$InG2P == "Yes",]$nn >= 2) {
     ctrp_cn_ttest <- t.test(use_data_ctrp$Pearson_CN_Abs ~ use_data_ctrp$InG2P)
-    ctrp_cn_res <- paste0("t(", round(ctrp_cn_ttest$parameter, 1), ") = ", round(ctrp_cn_ttest$statistic, 2), ", p = ", round(ctrp_cn_ttest$p.value, 3))
+    ctrp_cn_res <- paste0("t(", trunc(ctrp_cn_ttest$parameter), ") = ", round(ctrp_cn_ttest$statistic, 2), ", p = ", round(ctrp_cn_ttest$p.value, 3))
   }
   print("CTRP testing: DONE")
   
@@ -363,7 +363,7 @@ PearsonPlotlyByLineage <- function(lineage) {
   }
   else if(use_data_gdsc_ge_summ[use_data_gdsc_ge_summ$InG2P == "Yes",]$nn >= 2) {
     gdsc_ge_ttest <- t.test(use_data_gdsc$Pearson_GE_Abs ~ use_data_gdsc$InG2P)
-    gdsc_ge_res <- paste0("t(", round(gdsc_ge_ttest$parameter, 1), ") = ", round(gdsc_ge_ttest$statistic, 2), ", p = ", round(gdsc_ge_ttest$p.value, 3))
+    gdsc_ge_res <- paste0("t(", trunc(gdsc_ge_ttest$parameter), ") = ", round(gdsc_ge_ttest$statistic, 2), ", p = ", round(gdsc_ge_ttest$p.value, 3))
   }
   if(nrow(use_data_gdsc_cn_summ) <= 1) {
     gdsc_cn_res <-  NA
@@ -374,7 +374,7 @@ PearsonPlotlyByLineage <- function(lineage) {
   }
   else if(use_data_gdsc_cn_summ[use_data_gdsc_cn_summ$InG2P == "Yes",]$nn >= 2) {
     gdsc_cn_ttest <- t.test(use_data_gdsc$Pearson_CN_Abs ~ use_data_gdsc$InG2P)
-    gdsc_cn_res <- paste0("t(", round(gdsc_cn_ttest$parameter, 1), ") = ", round(gdsc_cn_ttest$statistic, 2), ", p = ", round(gdsc_cn_ttest$p.value, 3))
+    gdsc_cn_res <- paste0("t(", trunc(gdsc_cn_ttest$parameter), ") = ", round(gdsc_cn_ttest$statistic, 2), ", p = ", round(gdsc_cn_ttest$p.value, 3))
   }
   print("GDSC testing: DONE")
   
@@ -383,11 +383,11 @@ PearsonPlotlyByLineage <- function(lineage) {
   summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"),
                           Test_Results_GE = c(ccle_ge_res, ctrp_ge_res, gdsc_ge_res),
                           t_statistic_GE = c(round(ccle_ge_ttest$statistic, 3), round(ctrp_ge_ttest$statistic, 3), round(gdsc_ge_ttest$statistic, 3)),
-                          df_GE = c(round(ccle_ge_ttest$parameter, 3), round(ctrp_ge_ttest$parameter, 3), round(gdsc_ge_ttest$parameter, 3)),
+                          df_GE = c(trunc(ccle_ge_ttest$parameter), trunc(ctrp_ge_ttest$parameter), trunc(gdsc_ge_ttest$parameter)),
                           p_value_GE = c(round(ccle_ge_ttest$p.value, 3), round(ctrp_ge_ttest$p.value, 3), round(gdsc_ge_ttest$p.value, 3)),
                           Test_Results_CN = c(ccle_cn_res, ctrp_cn_res, gdsc_cn_res),
                           t_statistic_CN = c(round(ccle_cn_ttest$statistic, 3), round(ctrp_cn_ttest$statistic, 3), round(gdsc_cn_ttest$statistic, 3)),
-                          df_CN = c(round(ccle_cn_ttest$parameter, 3), round(ctrp_cn_ttest$parameter, 3), round(gdsc_cn_ttest$parameter, 3)),
+                          df_CN = c(trunc(ccle_cn_ttest$parameter), trunc(ctrp_cn_ttest$parameter), trunc(gdsc_cn_ttest$parameter)),
                           p_value_CN = c(round(ccle_cn_ttest$p.value, 3), round(ctrp_cn_ttest$p.value, 3), round(gdsc_cn_ttest$p.value, 3)),
                           group_general_lineage_name = lineage)
   
@@ -612,8 +612,8 @@ saveRDS(ge_melt_18Q4, "./data_munging/rds/ge_melt_18Q4.rds", compress = "xz")
 ## G2P
 
 ```{r}
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_NOV_27.csv", sep = "\t", header = TRUE)
-colnames(g2p)[colnames(g2p) == "Phenotype.ID"] <- "grouped_general_doid"
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
+g2p[, 1:2] <- NULL
 g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
 
 g2p$Drug <- tolower(g2p$Drug)
@@ -869,6 +869,7 @@ saveRDS(crispr_signif_g2p_gene, "./data_munging/rds/crispr_signif_g2p_gene.rds")
 
 ```{r}
 crispr_signif_g2p_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
+crispr_signif_g2p_gene <- rbind(crispr_signif_g2p_gene, c("G6PD", rep(NA, 11)))
 knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
@@ -1175,6 +1176,25 @@ sd(g2p_gene_tally$n)
 
 ### Lineage-agnostic
 
+#### CRISPR
+
+```{r fig.height=1.5, fig.width=12}
+crispr_signif_g2p_gene$y_label <- "CRISPR"
+crispr_signif_g2p_gene$Hugo_Symbol <- factor(crispr_signif_g2p_gene$Hugo_Symbol, levels = g2p_genes)
+crispr_signif_g2p_gene$p <- as.numeric(as.character(crispr_signif_g2p_gene$p))
+
+crispr_mut_heatmap_plot <- ggplot(data = crispr_signif_g2p_gene, aes(x = Hugo_Symbol, y = y_label)) +
+  geom_tile(aes(fill = p)) +
+  scale_fill_gradientn(colors = c("darkgreen", "white", "white"), values = c(0, 0.05, 1), na.value = "darksalmon") +
+  scale_x_discrete(drop = FALSE) +
+  theme(axis.title.y = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  labs(x = "Gene")
+
+# write.table(crispr_signif_g2p_gene, file = "~/Desktop/crispr_signif_g2p_gene_20181203.csv", quote = FALSE, sep = ",", row.names = FALSE)
+# ggsave("./plots/manuscript/crispr_mut_heatmap_plot_example.png", crispr_mut_heatmap_plot, device = "png", dpi = 450, width = 12, height = 1.5, units = "in")
+```
+
+
 #### Mutation status
 
 ```{r fig.height=4, fig.width=8}
@@ -1221,7 +1241,7 @@ gdsc_druggene_summ$n <- ifelse(is.na(gdsc_druggene_summ$n), 0, gdsc_druggene_sum
 gdsc_druggene_summ$InG2P <- ifelse(gdsc_druggene_summ$n != 0, "Yes", "No")
 gdsc_druggene_summ$Dataset <- "GDSC"
 gdsc_p_ttest <- t.test(gdsc_druggene_summ$p ~ gdsc_druggene_summ$InG2P)
-gdsc_p_ttest_res <- paste0("t(", round(gdsc_p_ttest$parameter, 0), ") = ", round(gdsc_p_ttest$statistic, 2), ", p = ", round(gdsc_p_ttest$p.value, 2))
+gdsc_p_ttest_res <- paste0("t(", round(gdsc_p_ttest$parameter, 0), ") = ", round(gdsc_p_ttest$statistic, 2), ", p = ", formatC(gdsc_p_ttest$p.value, digits = 2, format = "f"))
 
 g2p_druggene_all_summ <- rbind(ccle_druggene_summ, ctrp_druggene_summ, gdsc_druggene_summ)
 g2p_druggene_all_summ_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Test_Results_p = c(ccle_p_ttest_res, ctrp_p_ttest_res, gdsc_p_ttest_res))
@@ -1259,7 +1279,7 @@ g2p_druggene_mut_plot <- cowplot::plot_grid(plot_p_box,
                    rel_heights = c(1, 4))
 g2p_druggene_mut_plot
 
-# ggsave("./plots/manuscript/g2p_druggene_mut_plot.png", g2p_druggene_mut_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+ggsave("./plots/manuscript/g2p_druggene_mut_plot.png", g2p_druggene_mut_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
 ```{r, eval=FALSE}
@@ -1448,7 +1468,7 @@ plot_cn_box$widths <- as.list(p_maxWidth)
 g2p_druggene_cn_plot <- cowplot::plot_grid(plot_cn_box, plot_cn_point, nrow = 2, rel_heights = c(1, 4))
 g2p_druggene_cn_plot
 
-ggsave("./plots/manuscript/g2p_druggene_cn_plot.png", g2p_druggene_cn_plot, device = "png", dpi = 450, width = 12, height = 5.5, units = "in")
+# ggsave("./plots/manuscript/g2p_druggene_cn_plot.png", g2p_druggene_cn_plot, device = "png", dpi = 450, width = 12, height = 5.5, units = "in")
 ```
 
 ```{r, eval=FALSE}
@@ -1592,7 +1612,7 @@ Mutation status summary stats:
 ```{r}
 g2p_druggene_all_summ_stats <- g2p_druggene_all_summ
 g2p_druggene_all_summ_stats$n_true <- TRUE
-g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05))
+g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05), n_sig_perc = n_signif / n * 100)
 ```
 
 Pearson summary stats:
@@ -1604,10 +1624,12 @@ g2p_druggene_pearson_stats <- g2p_druggene_pearson_stats %>% group_by(Dataset, I
           ge_sd = round(sd(Pearson_GE_Abs), 5),
           ge_n = sum(n_true),
           ge_n_signif = sum(Pearson_Pval_GE < 0.05),
+          ge_n_sig_perc = ge_n_signif / ge_n * 100,
           cn_mean = round(mean(Pearson_CN_Abs), 3),
           cn_sd = round(sd(Pearson_CN_Abs), 5),
           cn_n = sum(n_true),
-          cn_n_signif = sum(Pearson_Pval_CN < 0.05))
+          cn_n_signif = sum(Pearson_Pval_CN < 0.05),
+          cn_n_sig_perc = cn_n_signif / cn_n * 100)
 
 ctrp_grid_summary_data <- filter(ctrp_data_g2p_grid, Drug_Gene == "afatinib_ERBB2")
 
