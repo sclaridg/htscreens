@@ -96,6 +96,7 @@ WilcoxonByDrug <- function(drug, dataset, data_name, grouping_var) {
   sig$Dataset <- toupper(data_name)
   return(sig)
 }
+
 # WilcoxonByDrugAllGenes <- function(melt_file, grid_file, data_name) {
 #   druglist <- as.character(unique(melt_file$Drug))
 #   sig_df <- NULL
@@ -636,6 +637,10 @@ g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA",
 ```
 
 ```{r}
+# levels(g2p_filt$Phenotype.Description)
+unique(g2p_filt$group_general_lineage_name)
+levels(g2p_filt$group_general_lineage_name)
+
 g2p_nonCID <- subset(g2p, !grepl("^CID", g2p$DrugID))
 summ <- g2p_nonCID %>% group_by(Drug, DrugID) %>% tally() %>% summarize(DrugID = DrugID, n = n, percent = formatC(n / 402 * 100, digits = 6, format = "f"))
 summ
@@ -845,9 +850,19 @@ gdsc_data_g2p_grid$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_grid$Mutati
 ```
 
 ```{r}
+length(unique(ccle_data_g2p_grid$Drug))
+length(unique(ccle_data_g2p_grid$Drug_Gene))
+```
+
+
+```{r}
 test_ccle <- ccle_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 test_ctrp <- ctrp_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
+```
+
+```{r}
+unique(crispr_data_g2p$lineage_name)
 ```
 
 
@@ -923,7 +938,7 @@ crispr_data_signif_g2p_lineage <- merge(crispr_data_signif_g2p_lineage, crispr_d
 crispr_data_signif_g2p_lineage_text <- unique(data.frame(p.signif = crispr_data_signif_g2p_lineage$p.signif, p.signif.adj = crispr_data_signif_g2p_lineage$p.signif.adj,  group_general_lineage_name = crispr_data_signif_g2p_lineage$group_general_lineage_name, Hugo_Symbol = crispr_data_signif_g2p_lineage$Hugo_Symbol, Text_y = crispr_data_signif_g2p_lineage$Text_y))
 
 crispr_data_signif_g2p_lineage_plot <- ggplot(data = crispr_data_signif_g2p_lineage, aes(x = group_general_lineage_name, y = Score)) +
-  facet_wrap(~ Hugo_Symbol, nrow = 6, scales = "free_y") +
+  facet_wrap(~ Hugo_Symbol, drop = FALSE, nrow = 6, scales = "free_y") +
   geom_point(aes(color = Mutation_Status_Nonsilent), alpha = 0.5) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   scale_color_manual(values = c("Mutant" = "darkorchid", "Wildtype" = "thistle")) +
@@ -991,6 +1006,9 @@ saveRDS(ccle_signif_g2p_lineage, "./data_munging/rds/ccle_signif_g2p_lineage.rds
 
 ```{r}
 ccle_signif_g2p_lineage <- readRDS("./data_munging/rds/ccle_signif_g2p_lineage.rds")
+knitr::kable(ccle_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+
+
 knitr::kable(ccle_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
@@ -1172,6 +1190,11 @@ g2p_gene_tally <- g2p_filt %>% group_by(Gene) %>% tally() %>% drop_na()
 range(g2p_gene_tally$n)
 mean(g2p_gene_tally$n)
 sd(g2p_gene_tally$n)
+
+g2p_druggenelin_tally <- g2p_filt %>% group_by(Drug, Gene, Drug_Gene, group_general_lineage_name) %>% tally() %>% drop_na()
+length(unique(g2p_druggenelin_tally$Drug))
+length(unique(g2p_druggenelin_tally$Gene))
+unique(g2p_filt$Phenotype.Description)
 ```
 
 ### Lineage-agnostic
@@ -1552,6 +1575,7 @@ g2p_druggenelin_p_ttest_res_list <- readRDS("./data_munging/rds/g2p_druggenelin_
 knitr::kable(g2p_druggenelin_p_ttest_res_list, caption = "Mutation status: T-test results for level A G2P drug-gene associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
+
 #### GE and CN
 
 ```{r, eval=FALSE}
@@ -1606,7 +1630,9 @@ knitr::kable(druggenelin_pearson_ttest_res_list[order(druggenelin_pearson_ttest_
 knitr::kable(druggenelin_pearson_ttest_res_list[order(druggenelin_pearson_ttest_res_list$p_value_CN), c("Dataset", "group_general_lineage_name", "t_statistic_CN", "df_CN", "p_value_CN")], caption = "Copy number: T-test results for level A G2P drug-gene/gene expression associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-### All
+### Mut, GE, and CN
+
+#### Lineage-agnostic
 
 Mutation status summary stats:
 ```{r}
@@ -1630,7 +1656,10 @@ g2p_druggene_pearson_stats <- g2p_druggene_pearson_stats %>% group_by(Dataset, I
           cn_n = sum(n_true),
           cn_n_signif = sum(Pearson_Pval_CN < 0.05),
           cn_n_sig_perc = cn_n_signif / cn_n * 100)
+```
 
+Example p-value and Pearson correlation coefficient derivations:
+```{r}
 ctrp_grid_summary_data <- filter(ctrp_data_g2p_grid, Drug_Gene == "afatinib_ERBB2")
 
 ctrp_grid_summary_mut_corr <- wilcox.test(AUC_zscore ~ Mutation_Status_Nonsilent, data = ctrp_grid_summary_data[!is.na(ctrp_grid_summary_data$Mutation_Status_Nonsilent),], paired = FALSE)
@@ -1676,6 +1705,92 @@ ctrp_grid_summary_cn_plot
 # ggsave("./plots/manuscript/ctrp_grid_summary_mut_plot.png", ctrp_grid_summary_mut_plot, device = "png", dpi = 450, width = 3, height = 4, units = "in")
 # ggsave("./plots/manuscript/ctrp_grid_summary_ge_plot.png", ctrp_grid_summary_ge_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
 # ggsave("./plots/manuscript/ctrp_grid_summary_cn_plot.png", ctrp_grid_summary_cn_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
+```
+
+#### By lineage
+  
+Deriving n for Bonferroni correction:
+```{r}
+ttest_summ_res_mut <- g2p_druggenelin_p_ttest_res_list[, c("p_value", "Dataset", "group_general_lineage_name")]
+ttest_summ_res_mut$Metric <- "Mutation Status"
+mut_alphas <- ttest_summ_res_mut %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
+mut_alphas$alpha_adj <- 0.05 / mut_alphas$n
+
+ttest_summ_res_ge <- druggenelin_pearson_ttest_res_list[, c("p_value_GE", "Dataset", "group_general_lineage_name")]
+colnames(ttest_summ_res_ge) <- c("p_value", "Dataset", "group_general_lineage_name")
+ttest_summ_res_ge$Metric <- "Gene Expression"
+ge_alphas <- ttest_summ_res_ge %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
+ge_alphas$alpha_adj <- 0.05 / ge_alphas$n
+
+ttest_summ_res_cn <- druggenelin_pearson_ttest_res_list[, c("p_value_CN", "Dataset", "group_general_lineage_name")]
+colnames(ttest_summ_res_cn) <- c("p_value", "Dataset", "group_general_lineage_name")
+ttest_summ_res_cn$Metric <- "Copy Number"
+cn_alphas <- ttest_summ_res_cn %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
+cn_alphas$alpha_adj <- 0.05 / cn_alphas$n
+```
+
+Facted lineage summaries:
+```{r fig.height=4, fig.width=12}
+ttest_mut_summ_facet <- ggplot(data = ttest_summ_res, aes(x = p_value, fill = Dataset, color = Dataset)) +
+  facet_grid(Metric ~ Dataset) +
+  geom_histogram(bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_y_continuous(breaks = c(0:6), labels = c(0:6)) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.1), expand = c(0.01, 0.01)) +
+  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  theme(legend.position = c(0.5, 1.7), legend.direction = "horizontal", panel.grid.minor.y = element_blank()) +
+  labs(x = "P-value", y = "Frquency")
+ttest_mut_summ_facet
+
+# ggsave("./plots/manuscript/all_druggenelin_ttest_summ_facet_plot.png", ttest_mut_summ_facet, device = "png", dpi = 450, width = 12, height = 4, units = "in")
+```
+
+Stacked lineage summaries:
+```{r fig.height=7, fig.width=12}
+# margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")
+ttest_summ_res <- rbind(ttest_summ_res_mut, ttest_summ_res_ge, ttest_summ_res_cn)
+ttest_summ_res$Metric <- factor(ttest_summ_res$Metric, levels = c("Mutation Status", "Gene Expression", "Copy Number"))
+
+ttest_mut_summ_plot <- ggplot(data = g2p_druggenelin_p_ttest_res_list, aes(x = p_value)) +
+  geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_y_continuous(breaks = c(0:6), labels = c(0:6)) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), expand = c(0.01, 0.01)) +
+  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  theme(legend.position = c(0.5, 1.7), legend.direction = "horizontal", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.margin = unit(c(30, 5.5, 1, 5.5), "pt")) +
+  labs(x = "P-value", y = "Frquency", title = "Mutation status")
+
+ttest_ge_summ_plot <- ggplot(data = druggenelin_pearson_ttest_res_list, aes(x = p_value_GE)) +
+  geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_y_continuous(breaks = c(0:7), labels = c(0:7), expand = c(0.01, 0.01)) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), expand = c(0.01, 0.01)) +
+  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  theme(legend.position = "none", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.margin = unit(c(1, 5.5, 1, 5.5), "pt")) +
+  labs(x = "P-value", y = "Frquency", title = "Gene expression")
+
+ttest_cn_summ_plot <- ggplot(data = druggenelin_pearson_ttest_res_list, aes(x = p_value_CN)) +
+  geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_y_continuous(breaks = c(0:6), labels = c(0:6), expand = c(0.01, 0.01)) +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.05), expand = c(0.01, 0.01)) +
+  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  theme(legend.position = "none", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.margin = unit(c(1, 5.5, 5.5, 5.5), "pt")) +
+  labs(x = "P-value", y = "Frquency", title = "Copy number")
+
+ttest_mut_summ_plot <- ggplot_gtable(ggplot_build(ttest_mut_summ_plot))
+ttest_ge_summ_plot <- ggplot_gtable(ggplot_build(ttest_ge_summ_plot))
+ttest_cn_summ_plot <- ggplot_gtable(ggplot_build(ttest_cn_summ_plot))
+
+# p_maxWidth <-  grid::unit.pmax(ttest_mut_summ_plot$widths, ttest_ge_summ_plot$widths, ttest_cn_summ_plot$widths)
+# ttest_mut_summ_plot$widths <- as.list(p_maxWidth)
+# ttest_ge_summ_plot$widths <- as.list(p_maxWidth)
+# ttest_cn_summ_plot$widths <- as.list(p_maxWidth)
+
+ttest_summ_plot <- cowplot::plot_grid(ttest_mut_summ_plot, ttest_ge_summ_plot,ttest_cn_summ_plot, nrow = 3, rel_heights = c(1, 1.6, 1.6))
+ttest_summ_plot
+
+# ggsave("./plots/manuscript/all_druggenelin_ttest_summ_plot.png", ttest_summ_plot, device = "png", dpi = 450, width = 12, height = 7, units = "in")
 ```
 
 Big grid plot by lineages:
