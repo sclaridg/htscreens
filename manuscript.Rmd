@@ -45,9 +45,12 @@ R_MAX_VSIZE=100Gb
 
 ```{r}
 library(bsselectR)
+library(cowplot)
+theme_set(theme_light())
 library(data.table)
 library(ggpubr)
 library(ggrepel)
+library(gridExtra)
 library(ggsignif)
 library(htmlwidgets)
 library(kableExtra)
@@ -622,10 +625,12 @@ g2p[g2p == -1] <- NA
 g2p$Ref[g2p$Ref == "None"] <- NA
 g2p$Alt[g2p$Alt == "None"] <- NA
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
 g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
 g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
 g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 
+g2p_druggenelins <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
 g2p_drug_genes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
 g2p_genes <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[2]))
 g2p_drugs <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[1]))
@@ -764,6 +769,7 @@ ccle_data$AUC_zscore <- (ccle_data$AUC - mean(ccle_data$AUC)) / sd(ccle_data$AUC
 ccle_data$Color_Nonsilent <- ifelse(ccle_data$Mutation_Status_Nonsilent == "Wildtype", "palegreen3", "springgreen4")
 ccle_data$Color_Nonsilent <- factor(ccle_data$Color_Nonsilent)
 ccle_data$Drug_Gene <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol)
+ccle_data$Drug_Gene_Lin <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol, "_", ccle_data$group_general_lineage_name)
 saveRDS(ccle_data, "./data_munging/rds/ccle_data_18Q4_g2pgenes.rds", compress = "xz")
 
 # CTRP
@@ -785,6 +791,7 @@ ctrp_data$AUC_zscore <- (ctrp_data$AUC - mean(ctrp_data$AUC)) / sd(ctrp_data$AUC
 ctrp_data$Color_Nonsilent <- ifelse(ctrp_data$Mutation_Status_Nonsilent == "Wildtype", "slategray3", "steelblue4")
 ctrp_data$Color_Nonsilent <- factor(ctrp_data$Color_Nonsilent)
 ctrp_data$Drug_Gene <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol)
+ctrp_data$Drug_Gene_Lin <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol, "_", ctrp_data$group_general_lineage_name)
 saveRDS(ctrp_data, "./data_munging/rds/ctrp_data_18Q4_g2pgenes.rds", compress = "xz")
 
 # GDSC
@@ -806,6 +813,7 @@ gdsc_data$AUC_zscore <- (gdsc_data$AUC - mean(gdsc_data$AUC)) / sd(gdsc_data$AUC
 gdsc_data$Color_Nonsilent <- ifelse(gdsc_data$Mutation_Status_Nonsilent == "Wildtype", "paleturquoise3", "turquoise4")
 gdsc_data$Color_Nonsilent <- factor(gdsc_data$Color_Nonsilent)
 gdsc_data$Drug_Gene <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol)
+gdsc_data$Drug_Gene_Lin <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol, "_", gdsc_data$group_general_lineage_name)
 saveRDS(gdsc_data, "./data_munging/rds/gdsc_data_18Q4_g2pgenes.rds", compress = "xz")
 ```
 
@@ -839,6 +847,14 @@ ctrp_data_g2p <- filter(ctrp_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
 ctrp_data_g2p$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
 gdsc_data_g2p$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+
+# Filter drug screen datasets for G2P drug-gene-lineage associations
+ccle_data_g2p_dgl <- filter(ccle_data_ptmuts, Drug_Gene_Lin %in% g2p_druggenelins)
+ccle_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ccle_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+ctrp_data_g2p_dgl <- filter(ctrp_data_ptmuts, Drug_Gene_Lin %in% g2p_druggenelins)
+ctrp_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+gdsc_data_g2p_dgl <- filter(gdsc_data_ptmuts, Drug_Gene_Lin %in% g2p_druggenelins)
+gdsc_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 
 # Filter drug screen datasets for G2P drugs and genes
 ccle_data_g2p_grid <- filter(ccle_data_ptmuts, Drug %in% g2p_drugs)
@@ -997,19 +1013,25 @@ knitr::kable(ccle_signif_g2p_grid[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.fo
 ### G2P gene, drug, and lineage
 
 ```{r, eval=FALSE}
-ccle_signif_g2p_lineage <- lapply(unique(ccle_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ccle_data_g2p_grid, data_name = "ccle", grouping_var = "lineage")
-names(ccle_signif_g2p_lineage) <- unique(ccle_signif_g2p_lineage$Drug)
-ccle_signif_g2p_lineage <- rbindlist(ccle_signif_g2p_lineage, use.names = TRUE)
+ccle_signif_grid_lineage <- lapply(unique(ccle_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ccle_data_g2p_grid, data_name = "ccle", grouping_var = "lineage")
+names(ccle_signif_grid_lineage) <- unique(ccle_signif_grid_lineage$Drug)
+ccle_signif_grid_lineage <- rbindlist(ccle_signif_grid_lineage, use.names = TRUE)
+ccle_signif_grid_lineage <- ccle_signif_grid_lineage[order(ccle_signif_grid_lineage$p),]
+saveRDS(ccle_signif_grid_lineage, "./data_munging/rds/ccle_signif_grid_lineage.rds")
+
+ccle_signif_g2p_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = ccle_data_g2p_dgl, method = "wilcox.test", p.adjust.method = "BH")
+ccle_signif_g2p_lineage <- adj_signif(ccle_signif_g2p_lineage)
 ccle_signif_g2p_lineage <- ccle_signif_g2p_lineage[order(ccle_signif_g2p_lineage$p),]
 saveRDS(ccle_signif_g2p_lineage, "./data_munging/rds/ccle_signif_g2p_lineage.rds")
 ```
 
 ```{r}
 ccle_signif_g2p_lineage <- readRDS("./data_munging/rds/ccle_signif_g2p_lineage.rds")
-knitr::kable(ccle_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ccle_signif_grid_lineage <- readRDS("./data_munging/rds/ccle_signif_grid_lineage.rds")
 
+knitr::kable(ccle_signif_g2p_lineage[, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
-knitr::kable(ccle_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+knitr::kable(ccle_signif_grid_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## CTRP
@@ -1041,16 +1063,25 @@ knitr::kable(ctrp_signif_g2p_grid[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.fo
 ### G2P gene, drug, and lineage
 
 ```{r, eval=FALSE}
-ctrp_signif_g2p_lineage <- lapply(unique(ctrp_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ctrp_data_g2p_grid, data_name = "ctrp", grouping_var = "lineage")
-names(ctrp_signif_g2p_lineage) <- unique(ctrp_signif_g2p_lineage$Drug)
-ctrp_signif_g2p_lineage <- rbindlist(ctrp_signif_g2p_lineage, use.names = TRUE)
+ctrp_signif_grid_lineage <- lapply(unique(ctrp_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ctrp_data_g2p_grid, data_name = "ctrp", grouping_var = "lineage")
+names(ctrp_signif_grid_lineage) <- unique(ctrp_signif_grid_lineage$Drug)
+ctrp_signif_grid_lineage <- rbindlist(ctrp_signif_grid_lineage, use.names = TRUE)
+ctrp_signif_grid_lineage <- ctrp_signif_grid_lineage[order(ctrp_signif_grid_lineage$p),]
+saveRDS(ctrp_signif_grid_lineage, "./data_munging/rds/ctrp_signif_grid_lineage.rds")
+
+ctrp_signif_g2p_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = ctrp_data_g2p_dgl, method = "wilcox.test", p.adjust.method = "BH")
+ctrp_signif_g2p_lineage <- adj_signif(ctrp_signif_g2p_lineage)
 ctrp_signif_g2p_lineage <- ctrp_signif_g2p_lineage[order(ctrp_signif_g2p_lineage$p),]
 saveRDS(ctrp_signif_g2p_lineage, "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 ```
 
 ```{r}
 ctrp_signif_g2p_lineage <- readRDS("./data_munging/rds/ctrp_signif_g2p_lineage.rds")
-knitr::kable(ctrp_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ctrp_signif_grid_lineage <- readRDS("./data_munging/rds/ctrp_signif_grid_lineage.rds")
+
+knitr::kable(ctrp_signif_g2p_lineage[, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+
+knitr::kable(ctrp_signif_grid_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## GDSC
@@ -1082,16 +1113,25 @@ knitr::kable(gdsc_signif_g2p_grid[, c("Hugo_Symbol", "Drug", "p", "p.adj", "p.fo
 ### G2P gene, drug, and lineage
 
 ```{r, eval=FALSE}
-gdsc_signif_g2p_lineage <- lapply(unique(gdsc_data_g2p_grid$Drug), WilcoxonByDrug, dataset = gdsc_data_g2p_grid, data_name = "gdsc", grouping_var = "lineage")
-names(gdsc_signif_g2p_lineage) <- unique(gdsc_signif_g2p_lineage$Drug)
-gdsc_signif_g2p_lineage <- rbindlist(gdsc_signif_g2p_lineage, use.names = TRUE)
+gdsc_signif_grid_lineage <- lapply(unique(gdsc_data_g2p_grid$Drug), WilcoxonByDrug, dataset = gdsc_data_g2p_grid, data_name = "gdsc", grouping_var = "lineage")
+names(gdsc_signif_grid_lineage) <- unique(gdsc_signif_grid_lineage$Drug)
+gdsc_signif_grid_lineage <- rbindlist(gdsc_signif_grid_lineage, use.names = TRUE)
+gdsc_signif_grid_lineage <- gdsc_signif_grid_lineage[order(gdsc_signif_grid_lineage$p),]
+saveRDS(gdsc_signif_grid_lineage, "./data_munging/rds/gdsc_signif_grid_lineage.rds")
+
+gdsc_signif_g2p_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = gdsc_data_g2p_dgl, method = "wilcox.test", p.adjust.method = "BH")
+gdsc_signif_g2p_lineage <- adj_signif(gdsc_signif_g2p_lineage)
 gdsc_signif_g2p_lineage <- gdsc_signif_g2p_lineage[order(gdsc_signif_g2p_lineage$p),]
 saveRDS(gdsc_signif_g2p_lineage, "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
 ```{r}
 gdsc_signif_g2p_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
-knitr::kable(gdsc_signif_g2p_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+gdsc_signif_grid_lineage <- readRDS("./data_munging/rds/gdsc_signif_grid_lineage.rds")
+
+knitr::kable(gdsc_signif_g2p_lineage[, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+
+knitr::kable(gdsc_signif_grid_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## Drug screens: All CRISPR genes
@@ -1172,7 +1212,7 @@ rownames(crispr_data_g2p_summ) <- NULL
 knitr::kable(crispr_data_g2p_summ, caption = "CRISPR: Level A G2P genes mutation status summary") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-## Drugscreen: G2P evidence
+## G2P evidence
 
 G2P summary stats:
 ```{r}
@@ -1208,13 +1248,65 @@ crispr_signif_g2p_gene$p <- as.numeric(as.character(crispr_signif_g2p_gene$p))
 
 crispr_mut_heatmap_plot <- ggplot(data = crispr_signif_g2p_gene, aes(x = Hugo_Symbol, y = y_label)) +
   geom_tile(aes(fill = p)) +
-  scale_fill_gradientn(colors = c("darkgreen", "white", "white"), values = c(0, 0.05, 1), na.value = "darksalmon") +
+  scale_fill_gradientn(colors = c("darkgreen", "honeydew", "white"), values = c(0, 0.05, 1), na.value = "darksalmon") +
   scale_x_discrete(drop = FALSE) +
   theme(axis.title.y = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
   labs(x = "Gene")
+crispr_mut_heatmap_plot
 
 # write.table(crispr_signif_g2p_gene, file = "~/Desktop/crispr_signif_g2p_gene_20181203.csv", quote = FALSE, sep = ",", row.names = FALSE)
 # ggsave("./plots/manuscript/crispr_mut_heatmap_plot_example.png", crispr_mut_heatmap_plot, device = "png", dpi = 450, width = 12, height = 1.5, units = "in")
+```
+
+
+```{r fig.height=5, fig.width=12}
+crispr_res_mut <- select(crispr_signif_g2p_gene, Hugo_Symbol, p)
+crispr_res_mut$corr <- 0
+crispr_res_mut$Metric <- "Mutation Status"
+crispr_res_mut$p_log10 <- -log10(crispr_res_mut$p)
+
+crispr_pearson_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
+                    summarize(p = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
+                              corr = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
+                              Metric = "Gene Expression")
+subset(crispr_pearson_res_GE, p < 0.05)
+
+crispr_pearson_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
+                    summarize(p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$p.value,
+                              corr = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$estimate,
+                              Metric = "Copy Number")
+subset(crispr_pearson_res_CN, p < 0.05)
+
+crispr_pearson_res <- rbind(crispr_pearson_res_GE, crispr_pearson_res_CN)
+crispr_pearson_res$Metric <- factor(crispr_pearson_res$Metric, levels = c("Gene Expression", "Copy Number"))
+crispr_pearson_res$p_log10 <- -log10(crispr_pearson_res$p)
+
+crispr_summ_res_mut_plot <- ggplot(data = subset(crispr_res_mut, p < 0.05)) +
+  facet_grid(~ Metric) +
+  scale_y_continuous(breaks = seq(0, 50, by = 5), labels = seq(0, 50, by = 5)) +
+  coord_cartesian(ylim = c(0, 50)) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_label_repel(mapping = aes(y = p_log10, x = corr, label = Hugo_Symbol, color = Metric), force = 10, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  theme(legend.position = "none", panel.grid.major.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(5.5, 1.5, 5.5, 5.5), "pt")) +
+  scale_color_manual(values = c("Mutation Status" = "darkorchid4")) +
+  labs(y = "-log10(p-value)")
+
+crispr_summ_res_pearson_plot <- ggplot(data = subset(crispr_pearson_res, p < 0.05)) +
+  facet_grid(~ Metric, scales = "free_x", space = "free") +
+  scale_y_continuous(breaks = seq(0, 50, by = 5), labels = seq(0, 50, by = 5)) +
+  scale_x_continuous(breaks = seq(-0.6, 0.3, by = 0.1), labels = formatC(seq(-0.6, 0.3, by = 0.1), digits = 2, format = "f")) +
+  coord_cartesian(ylim = c(0, 50)) +
+  geom_vline(xintercept = 0, color = "grey50", lty = 2, lwd = 0.3) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_label_repel(mapping = aes(y = p_log10, x = corr, color = Metric, label = Hugo_Symbol), force = 10, nudge_y = 2, nudge_x = 0.05, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  scale_color_manual(values = c("Gene Expression" = "darkorchid1", "Copy Number" = "mediumorchid1")) +
+  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(), plot.margin = unit(c(5.5, 5.5, 5.5, 1.5), "pt")) +
+  labs(x = "Pearson correlation coefficient (r)")
+
+crispr_genomic_features_summ_plot <- plot_grid(crispr_summ_res_mut_plot, crispr_summ_res_pearson_plot, align = "h", rel_widths = c(1, 5))
+crispr_genomic_features_summ_plot
+
+# ggsave("./plots/manuscript/crispr_genomic_features_summ_plot.png", crispr_genomic_features_summ_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
 
@@ -1230,11 +1322,11 @@ colnames(g2p_druggene_p_summ)[colnames(g2p_druggene_p_summ) == "p"] <- "GDSC"
 
 g2p_druggene_p_summ_melt <- melt(g2p_druggene_p_summ, id.vars = c("Drug_Gene", "n"), measure.vars = c("CCLE", "CTRP", "GDSC"), variable.name = "Dataset", value.name = "p")
 
-g2p_druggene_p_summ_plot <- ggplot(data = g2p_druggene_p_summ_melt, aes(x = p, y = n, shape = Dataset, color = Dataset)) +
-  geom_point(size = 2) +
-  scale_color_manual(values = c("green3", "darkslategray4", "darkturquoise")) +
-  labs(x = "Gene-drug association p-value by mutation status", y = "Number of level A G2P associations")
-g2p_druggene_p_summ_plot
+# g2p_druggene_p_summ_plot <- ggplot(data = g2p_druggene_p_summ_melt, aes(x = p, y = n, shape = Dataset, color = Dataset)) +
+#   geom_point(size = 2) +
+#   scale_color_manual(values = c("green3", "darkslategray4", "darkturquoise")) +
+#   labs(x = "Gene-drug association p-value by mutation status", y = "Number of level A G2P associations")
+# g2p_druggene_p_summ_plot
 # ggsave("./plots/manuscript/g2p_druggene_p_summ_plot.png", g2p_druggene_p_summ_plot, device = "png", dpi = 450, width = 8, height = 4, units = "in")
 ```
 
@@ -1242,7 +1334,6 @@ g2p_druggene_p_summ_plot
 for_dan <- with(g2p_druggene_p_summ, cbind(n, CCLE, CTRP, GDSC, colsplit(Drug_Gene, pattern = "_", names = c("Drug", "Hugo_Symbol"))))
 write.table(for_dan, file = "~/Desktop/for_dan.tsv", sep = "\t")
 ```
-
 
 ```{r}
 ccle_druggene_summ <- merge(g2p_druggene_p_tally, ccle_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
@@ -1284,9 +1375,10 @@ plot_p_point <- ggplot(data = g2p_druggene_all_summ, aes(x = p, y = n, label = D
 
 plot_p_box <- ggplot(data = g2p_druggene_all_summ) +
   facet_wrap(~ Dataset, scales = "free_x") +
-  geom_violin(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.5) +
-  geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), alpha = 0.75, width = 0.25) +
+  geom_violin(mapping = aes(color = InG2P, fill = InG2P, y = p, x = InG2P), alpha = 0.35) +
+  geom_boxplot(mapping = aes(color = InG2P, y = p, x = InG2P), width = 0.25) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
+  scale_fill_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
   coord_flip() +
   labs(x = "In G2P?") +
   theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -1302,7 +1394,7 @@ g2p_druggene_mut_plot <- cowplot::plot_grid(plot_p_box,
                    rel_heights = c(1, 4))
 g2p_druggene_mut_plot
 
-ggsave("./plots/manuscript/g2p_druggene_mut_plot.png", g2p_druggene_mut_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+# ggsave("./plots/manuscript/g2p_druggene_mut_plot.png", g2p_druggene_mut_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
 ```{r, eval=FALSE}
@@ -1406,10 +1498,11 @@ plot_ge_point <- ggplot(data = g2p_druggene_pearson, aes(x = Pearson_GE_Abs, y =
 
 plot_ge_box <- ggplot(data = g2p_druggene_pearson) +
   facet_wrap(~ Dataset) +
-  geom_violin(mapping = aes(color = InG2P, y = Pearson_GE_Abs, x = InG2P), alpha = 0.5) +
-  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_GE_Abs, x = InG2P), alpha = 0.5, width = 0.25) +
-  scale_y_continuous(breaks = seq(0, 0.65, by = 0.1), labels = seq(0, 0.65, by = 0.1)) +
+  geom_violin(mapping = aes(color = InG2P, fill = InG2P, y = Pearson_GE_Abs, x = InG2P), alpha = 0.35) +
+  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_GE_Abs, x = InG2P), width = 0.25) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
+  scale_fill_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
+  scale_y_continuous(breaks = seq(0, 0.65, by = 0.1), labels = seq(0, 0.65, by = 0.1)) +
   coord_flip(ylim = c(0, 0.65)) +
   labs(x = "In G2P?") +
   theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -1424,8 +1517,6 @@ g2p_druggene_ge_plot
 
 # ggsave("./plots/manuscript/g2p_druggene_ge_plot.png", g2p_druggene_ge_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
-
-
 
 ```{r, eval=FALSE}
 plot_ge_point <- ggplot(data = g2p_druggene_pearson) +
@@ -1475,10 +1566,11 @@ plot_cn_point <- ggplot(data = g2p_druggene_pearson, aes(x = Pearson_CN_Abs, y =
 
 plot_cn_box <- ggplot(data = g2p_druggene_pearson) +
   facet_wrap(~ Dataset) +
-  geom_violin(mapping = aes(color = InG2P, y = Pearson_CN_Abs, x = InG2P), alpha = 0.5) +
-  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_CN_Abs, x = InG2P), alpha = 0.5, width = 0.25) +
-  scale_y_continuous(breaks = seq(0, 0.5, by = 0.1), labels = seq(0, 0.5, by = 0.1)) +
+  geom_violin(mapping = aes(color = InG2P, fill = InG2P, y = Pearson_CN_Abs, x = InG2P), alpha = 0.35) +
+  geom_boxplot(mapping = aes(color = InG2P, y = Pearson_CN_Abs, x = InG2P), width = 0.25) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
+  scale_fill_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
+  scale_y_continuous(breaks = seq(0, 0.5, by = 0.1), labels = seq(0, 0.5, by = 0.1)) +
   coord_flip(ylim = c(0, 0.5)) +
   labs(x = "In G2P?") +
   theme(legend.position = "none", axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(0.5, 0.5, 0.05, 0.5), "cm"))
@@ -1519,6 +1611,96 @@ plot_cn_box <- ggplot(data = g2p_druggene_pearson) +
 plot <- subplot(plot_cn_box, plot_cn_point, nrows = 2, titleX = TRUE, titleY = TRUE) %>% layout(margin = list(l = 75), xaxis5 = list(title = "Pearson correlation coefficient between drug-gene AUC and copy number"), yaxis = list(title = "In G2P?", domain = c(0.8, 1)), yaxis2 = list(title = "Number of level A G2P associations", domain = c(0, 0.79)))
 
 saveWidgetFix(widget = plot, file = "./plots/manuscript/g2p_druggene_cn_plot.html")
+```
+
+
+#### Summary: Test plots
+
+```{r fig.height=4, fig.width=12}
+ccle_res_mut <- select(ccle_signif_g2p, Drug_Gene, p, Drug_Gene_Ordered)
+ccle_res_mut$corr <- 0
+ccle_res_mut$Metric <- "Mutation Status"
+ccle_res_mut$p_log10 <- -log10(ccle_res_mut$p)
+ccle_res_mut$Dataset <- "CCLE"
+ccle_pearson_res_GE <- select(filter(ccle_pearson_res, InG2P == "Yes"), Drug_Gene, Pearson_Corr_GE, Pearson_Pval_GE, Dataset)
+colnames(ccle_pearson_res_GE) <- c("Drug_Gene", "corr", "p", "Dataset")
+ccle_pearson_res_GE$Metric <- "Gene Expression"
+subset(ccle_pearson_res_GE, p < 0.05)
+ccle_pearson_res_CN <- select(filter(ccle_pearson_res, InG2P == "Yes"), Drug_Gene, Pearson_Corr_CN, Pearson_Pval_CN, Dataset)
+colnames(ccle_pearson_res_CN) <- c("Drug_Gene", "corr", "p", "Dataset")
+ccle_pearson_res_CN$Metric <- "Copy Number"
+subset(ccle_pearson_res_CN, p < 0.05)
+ccle_pearson_res_filt <- rbind(ccle_pearson_res_GE, ccle_pearson_res_CN)
+ccle_pearson_res_filt$Metric <- factor(ccle_pearson_res_filt$Metric, levels = c("Gene Expression", "Copy Number"))
+ccle_pearson_res_filt$p_log10 <- -log10(ccle_pearson_res_filt$p)
+
+ccle_summ_res_mut_plot <- ggplot(data = subset(ccle_res_mut, p < 0.05)) +
+  facet_grid(Dataset ~ Metric) +
+  scale_y_continuous(breaks = seq(0, 35, by = 5), labels = seq(0, 35, by = 5)) +
+  coord_cartesian(ylim = c(0, 35)) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_label_repel(mapping = aes(y = p_log10, x = corr, label = Drug_Gene, color = Metric), force = 10, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  theme(legend.position = "none", panel.grid.major.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(5.5, 1.5, 5.5, 5.5), "pt"), strip.background.y = element_blank(), strip.text.y = element_blank()) +
+  scale_color_manual(values = c("Mutation Status" = "darkorchid4")) +
+  labs(y = "-log10(p-value)")
+
+ccle_summ_res_pearson_plot <- ggplot(data = subset(ccle_pearson_res_filt, p < 0.05)) +
+  facet_grid(Dataset ~ Metric) +
+  coord_cartesian(ylim = c(0, 35)) +
+  geom_vline(xintercept = 0, color = "grey50", lty = 2, lwd = 0.3) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_label_repel(mapping = aes(y = p_log10, x = corr, color = Metric, label = Drug_Gene), force = 10, nudge_y = 2, nudge_x = 0.05, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  scale_color_manual(values = c("Gene Expression" = "darkorchid1", "Copy Number" = "mediumorchid1")) +
+  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.y = element_blank(), axis.ticks.y = element_blank(), plot.margin = unit(c(5.5, 5.5, 5.5, 1.5), "pt")) +
+  labs(x = "Pearson correlation coefficient (r)")
+
+ccle_genomic_features_summ_plot <- plot_grid(ccle_summ_res_mut_plot, ccle_summ_res_pearson_plot, align = "h", rel_widths = c(1, 5))
+ccle_genomic_features_summ_plot
+
+# ggsave("./plots/manuscript/ccle_genomic_features_summ_plot.png", ccle_genomic_features_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
+```
+
+```{r fig.height=6, fig.width=12}
+ctrp_res_mut <- select(ctrp_signif_g2p, Drug_Gene, p, Drug_Gene_Ordered)
+ctrp_res_mut$corr <- 0
+ctrp_res_mut$Metric <- "Mutation Status"
+ctrp_res_mut$p_log10 <- -log10(ctrp_res_mut$p)
+ctrp_res_mut$Dataset <- "CTRP"
+ctrp_pearson_res_GE <- select(filter(ctrp_pearson_res, InG2P == "Yes"), Drug_Gene, Pearson_Corr_GE, Pearson_Pval_GE, Dataset)
+colnames(ctrp_pearson_res_GE) <- c("Drug_Gene", "corr", "p", "Dataset")
+ctrp_pearson_res_GE$Metric <- "Gene Expression"
+subset(ctrp_pearson_res_GE, p < 0.05)
+ctrp_pearson_res_CN <- select(filter(ctrp_pearson_res, InG2P == "Yes"), Drug_Gene, Pearson_Corr_CN, Pearson_Pval_CN, Dataset)
+colnames(ctrp_pearson_res_CN) <- c("Drug_Gene", "corr", "p", "Dataset")
+ctrp_pearson_res_CN$Metric <- "Copy Number"
+subset(ctrp_pearson_res_CN, p < 0.05)
+ctrp_pearson_res_filt <- rbind(ctrp_pearson_res_GE, ctrp_pearson_res_CN)
+ctrp_pearson_res_filt$Metric <- factor(ctrp_pearson_res_filt$Metric, levels = c("Gene Expression", "Copy Number"))
+ctrp_pearson_res_filt$p_log10 <- -log10(ctrp_pearson_res_filt$p)
+
+ctrp_summ_res_mut_plot <- ggplot(data = subset(ctrp_res_mut, p < 0.05)) +
+  facet_grid(Dataset ~ Metric) +
+  # scale_y_continuous(breaks = seq(0, 30, by = 5), labels = seq(0, 30, by = 5)) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_label_repel(mapping = aes(y = p_log10, x = corr, label = Drug_Gene_Ordered, color = Metric), force = 10, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 1) +
+  theme(legend.position = "none", panel.grid.major.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(5.5, 1.5, 5.5, 5.5), "pt"), strip.background.y = element_blank(), strip.text.y = element_blank()) +
+  scale_color_manual(values = c("Mutation Status" = "darkorchid4")) +
+  labs(y = "-log10(p-value)")
+
+ctrp_summ_res_pearson_plot <- ggplot(data = subset(ctrp_pearson_res_filt, p < 0.05)) +
+  facet_grid(Dataset ~ Metric) +
+  scale_y_continuous(breaks = seq(0, 30, by = 5), labels = seq(0, 30, by = 5)) +
+  geom_vline(xintercept = 0, color = "grey50", lty = 2, lwd = 0.3) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_label_repel(mapping = aes(y = p_log10, x = corr, color = Metric, label = Drug_Gene), force = 10, nudge_y = 2, nudge_x = 0.05, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  scale_color_manual(values = c("Gene Expression" = "darkorchid1", "Copy Number" = "mediumorchid1")) +
+  theme(legend.position = "none", plot.margin = unit(c(5.5, 5.5, 5.5, 1.5), "pt")) +
+  labs(x = "Pearson correlation coefficient (r)")
+
+ctrp_genomic_features_summ_plot <- plot_grid(ctrp_summ_res_mut_plot, ctrp_summ_res_pearson_plot, align = "h", rel_widths = c(1, 5))
+ctrp_genomic_features_summ_plot
+
+# ggsave("./plots/manuscript/ccle_genomic_features_summ_plot.png", ccle_genomic_features_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
 ```
 
 ### By lineage
@@ -1727,6 +1909,9 @@ colnames(ttest_summ_res_cn) <- c("p_value", "Dataset", "group_general_lineage_na
 ttest_summ_res_cn$Metric <- "Copy Number"
 cn_alphas <- ttest_summ_res_cn %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
 cn_alphas$alpha_adj <- 0.05 / cn_alphas$n
+
+ttest_summ_res <- rbind(ttest_summ_res_mut, ttest_summ_res_ge, ttest_summ_res_cn)
+ttest_summ_res$Metric <- factor(ttest_summ_res$Metric, levels = c("Mutation Status", "Gene Expression", "Copy Number"))
 ```
 
 Facted lineage summaries:
@@ -1747,9 +1932,7 @@ ttest_mut_summ_facet
 
 Stacked lineage summaries:
 ```{r fig.height=7, fig.width=12}
-# margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")
-ttest_summ_res <- rbind(ttest_summ_res_mut, ttest_summ_res_ge, ttest_summ_res_cn)
-ttest_summ_res$Metric <- factor(ttest_summ_res$Metric, levels = c("Mutation Status", "Gene Expression", "Copy Number"))
+# plot.margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")
 
 ttest_mut_summ_plot <- ggplot(data = g2p_druggenelin_p_ttest_res_list, aes(x = p_value)) +
   geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
