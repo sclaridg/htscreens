@@ -878,12 +878,6 @@ test_ctrp <- ctrp_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilen
 test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 ```
 
-```{r}
-unique(crispr_data_g2p$lineage_name)
-```
-
-
-
 # Mutation Status Wilcoxon tests
 
 --------------------------------------------------------------------------------
@@ -1702,8 +1696,91 @@ ctrp_summ_res_pearson_plot <- ggplot(data = subset(ctrp_pearson_res_filt, p < 0.
 ctrp_genomic_features_summ_plot <- plot_grid(ctrp_summ_res_mut_plot, ctrp_summ_res_pearson_plot, align = "h", rel_widths = c(1, 5))
 ctrp_genomic_features_summ_plot
 
-# ggsave("./plots/manuscript/ccle_genomic_features_summ_plot.png", ccle_genomic_features_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
+# ggsave("./plots/manuscript/ctrp_genomic_features_summ_plot.png", ctrp_genomic_features_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
 ```
+
+```{r fig.height=6, fig.width=12}
+gdsc_res_mut <- select(gdsc_signif_g2p, Drug_Gene, p)
+gdsc_res_mut$corr <- 0
+gdsc_res_mut$Metric <- "Mutation Status"
+gdsc_res_mut$p_log10 <- -log10(gdsc_res_mut$p)
+gdsc_res_mut$Dataset <- "GDSC"
+gdsc_pearson_res_GE <- select(filter(gdsc_pearson_res, InG2P == "Yes"), Drug_Gene, Pearson_Corr_GE, Pearson_Pval_GE, Dataset)
+colnames(gdsc_pearson_res_GE) <- c("Drug_Gene", "corr", "p", "Dataset")
+gdsc_pearson_res_GE$Metric <- "Gene Expression"
+subset(gdsc_pearson_res_GE, p < 0.05)
+gdsc_pearson_res_CN <- select(filter(gdsc_pearson_res, InG2P == "Yes"), Drug_Gene, Pearson_Corr_CN, Pearson_Pval_CN, Dataset)
+colnames(gdsc_pearson_res_CN) <- c("Drug_Gene", "corr", "p", "Dataset")
+gdsc_pearson_res_CN$Metric <- "Copy Number"
+subset(gdsc_pearson_res_CN, p < 0.05)
+gdsc_pearson_res_filt <- rbind(gdsc_pearson_res_GE, gdsc_pearson_res_CN)
+gdsc_pearson_res_filt$Metric <- factor(gdsc_pearson_res_filt$Metric, levels = c("Gene Expression", "Copy Number"))
+gdsc_pearson_res_filt$p_log10 <- -log10(gdsc_pearson_res_filt$p)
+
+gdsc_summ_res_mut_plot <- ggplot(data = subset(gdsc_res_mut, p < 0.05)) +
+  facet_grid(Dataset ~ Metric) +
+  # scale_y_continuous(breaks = seq(0, 30, by = 5), labels = seq(0, 30, by = 5)) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_text_repel(mapping = aes(y = p_log10, x = corr, label = Drug_Gene, color = Metric), box.padding = 0.75, force = 15, size = 2.5, segment.size = 0.2, segment.colour = "grey50") +
+  theme(legend.position = "none", panel.grid.major.x = element_blank(), axis.title.x = element_blank(), axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.margin = unit(c(5.5, 1.5, 5.5, 5.5), "pt"), strip.background.y = element_blank(), strip.text.y = element_blank()) +
+  scale_color_manual(values = c("Mutation Status" = "darkorchid4")) +
+  labs(y = "-log10(p-value)")
+
+gdsc_summ_res_pearson_plot <- ggplot(data = subset(gdsc_pearson_res_filt, p < 0.05)) +
+  facet_grid(Dataset ~ Metric) +
+  # scale_y_continuous(breaks = seq(0, 30, by = 5), labels = seq(0, 30, by = 5)) +
+  geom_vline(xintercept = 0, color = "grey50", lty = 2, lwd = 0.3) +
+  geom_point(aes(x = corr, y = p_log10, color = Metric), alpha = 0.5) +
+  geom_text_repel(mapping = aes(y = p_log10, x = corr, color = Metric, label = Drug_Gene), force = 10, nudge_y = 2.5, nudge_x = 0.05, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  scale_color_manual(values = c("Gene Expression" = "darkorchid1", "Copy Number" = "mediumorchid1")) +
+  theme(legend.position = "none", plot.margin = unit(c(5.5, 5.5, 5.5, 1.5), "pt")) +
+  labs(x = "Pearson correlation coefficient (r)", y = "-log10(p-value)")
+
+gdsc_genomic_features_summ_plot <- plot_grid(gdsc_summ_res_mut_plot, gdsc_summ_res_pearson_plot, align = "h", rel_widths = c(1, 5))
+gdsc_genomic_features_summ_plot
+
+# ggsave("./plots/manuscript/gdsc_genomic_features_summ_plot.png", gdsc_genomic_features_summ_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+```
+
+```{r fig.height=4, fig.width=8}
+all_res_mut <- rbind(ccle_res_mut, ctrp_res_mut, gdsc_res_mut)
+
+all_summ_res_plot <- ggplot(data = subset(all_res_mut, p < 0.05)) +
+  facet_grid(~ Dataset) +
+  geom_point(aes(x = corr, y = p_log10, color = Dataset), alpha = 0.5) +
+  scale_y_continuous(breaks = seq(0, 12, by = 2), labels = seq(0, 12, by = 2)) +
+  scale_x_continuous(breaks = seq(0, 0.1, by = 0.1), labels = seq(0, 0.1, by = 0.1)) +
+  coord_cartesian(xlim = c(0, 0.05)) +
+  geom_text_repel(mapping = aes(y = p_log10, x = corr, color = Dataset, label = Drug_Gene), nudge_x = 0.05, direction = "y", hjust = 0, size = 2.5, segment.size = 0.1, segment.colour = "grey50", box.padding = 0.6) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  theme(legend.position = "none", plot.margin = unit(c(5.5, 5.5, 5.5, 1.5), "pt"), panel.grid.major.x = element_blank(), panel.grid.minor.x = element_blank(), axis.title.x = element_blank(), axis.ticks.x = element_blank(), axis.text.x = element_blank()) +
+  labs(y = "-log10(p-value)")
+all_summ_res_plot
+
+# ggsave("./plots/manuscript/all_summ_mut_plot.png", all_summ_res_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+```
+
+```{r fig.height=12, fig.width=12}
+all_pearson_res <- rbind(ccle_pearson_res_filt, ctrp_pearson_res_filt, gdsc_pearson_res_filt)
+
+all_summ_res_pearson_plot <- ggplot(data = subset(all_pearson_res, p < 0.05)) +
+  facet_grid(Dataset ~ Metric, scales = "free", space = "free") +
+  geom_vline(xintercept = 0, color = "grey50", lty = 2, lwd = 0.3) +
+  geom_point(aes(x = corr, y = p_log10, color = Dataset), alpha = 0.5) +
+  scale_y_continuous(breaks = seq(0, 60, by = 10), labels = seq(0, 60, by = 10)) +
+  geom_text_repel(mapping = aes(y = p_log10, x = corr, color = Dataset, label = Drug_Gene), force = 10, nudge_y = 3, size = 2.5, segment.size = 0.2, segment.colour = "grey50", box.padding = 0.6) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  theme(legend.position = "none", plot.margin = unit(c(5.5, 5.5, 5.5, 1.5), "pt")) +
+  labs(x = "Pearson correlation coefficient (r)", y = "-log10(p-value)")
+all_summ_res_pearson_plot
+
+# ggsave("./plots/manuscript/all_summ_res_pearson_plot.png", all_summ_res_pearson_plot, device = "png", dpi = 450, width = 12, height = 10, units = "in")
+```
+
+```{r}
+levels(all_pearson_res$Dataset)
+```
+
 
 ### By lineage
 
@@ -2092,12 +2169,12 @@ all_druggenelin_mut$Sign <- "None"
 all_druggenelin_mut$Measure <- "Mutation Status"
 colnames(all_druggenelin_mut)[colnames(all_druggenelin_mut) == "p"] <- "Statistic"
 
-all_druggenelin_ge <- select(signif_all_lin, Drug_Gene, group_general_lineage_name, n, Pearson_GE_Abs, InG2P, Dataset, Pearson_GE_Sign)
+all_druggenelin_ge <- select(signif_lin_g2p_grid, Drug_Gene, group_general_lineage_name, n, Pearson_GE_Abs, InG2P, Dataset, Pearson_GE_Sign)
 all_druggenelin_ge$Measure <- "Gene Expression"
 colnames(all_druggenelin_ge)[colnames(all_druggenelin_ge) == "Pearson_GE_Abs"] <- "Statistic"
 colnames(all_druggenelin_ge)[colnames(all_druggenelin_ge) == "Pearson_GE_Sign"] <- "Sign"
 
-all_druggenelin_cn <- select(signif_all_lin, Drug_Gene, group_general_lineage_name, n, Pearson_CN_Abs, InG2P, Dataset, Pearson_CN_Sign)
+all_druggenelin_cn <- select(signif_lin_g2p_grid, Drug_Gene, group_general_lineage_name, n, Pearson_CN_Abs, InG2P, Dataset, Pearson_CN_Sign)
 all_druggenelin_cn$Measure <- "Copy Number"
 colnames(all_druggenelin_cn)[colnames(all_druggenelin_cn) == "Pearson_CN_Abs"] <- "Statistic"
 colnames(all_druggenelin_cn)[colnames(all_druggenelin_cn) == "Pearson_CN_Sign"] <- "Sign"
