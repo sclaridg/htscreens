@@ -144,7 +144,7 @@ PearsonByLineage <- function(lin, dataset, variable) {
     use_data_filt <- filter(use_data, Drug_Gene %in% as.character(unique(use_data_summ$Drug_Gene)))
     if(nrow(use_data_filt) > 0) {
       pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$p.value)
-      pearson_res <- merge(g2p_druggene_p_tally, pearson_res, all.y = TRUE)
+      pearson_res <- merge(g2p_druggene_tally, pearson_res, all.y = TRUE)
       pearson_res$group_general_lineage_name <- lin
       pearson_res$Pearson_GE_Abs <- abs(pearson_res$Pearson_Corr_GE)
       pearson_res$Pearson_GE_Sign <- ifelse(sign(pearson_res$Pearson_Corr_GE) == 1, "+",
@@ -159,7 +159,7 @@ PearsonByLineage <- function(lin, dataset, variable) {
     use_data_filt <- filter(use_data, Drug_Gene %in% as.character(unique(use_data_summ$Drug_Gene)))
     if(nrow(use_data_filt) > 0) {
       pearson_res <- use_data_filt %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$estimate, Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$p.value)
-      pearson_res <- merge(g2p_druggene_p_tally, pearson_res, all.y = TRUE)
+      pearson_res <- merge(g2p_druggene_tally, pearson_res, all.y = TRUE)
       pearson_res$group_general_lineage_name <- lin
       pearson_res$Pearson_CN_Abs <- abs(pearson_res$Pearson_Corr_CN)
       pearson_res$Pearson_CN_Sign <- ifelse(sign(pearson_res$Pearson_Corr_CN) == 1, "+",
@@ -639,11 +639,11 @@ g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$
 g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
 g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 
-g2p_druggenelins <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
-g2p_drug_genes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
+g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
+g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
 g2p_genes <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[2]))
 g2p_drugs <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[1]))
-g2p_drug_genes
+g2p_druggenes
 g2p_genes
 g2p_drugs
 # Order and genes taken from pink heatmapo from Daniel's analyses
@@ -788,11 +788,11 @@ gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
 gdsc_data_g2p$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 
 # Filter drug screen datasets for G2P drug-gene-lineage associations
-ccle_data_g2p_dgl <- filter(ccle_data_ptmuts, Drug_Gene_Lin %in% g2p_druggenelins)
+ccle_data_g2p_dgl <- filter(ccle_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
 ccle_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ccle_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-ctrp_data_g2p_dgl <- filter(ctrp_data_ptmuts, Drug_Gene_Lin %in% g2p_druggenelins)
+ctrp_data_g2p_dgl <- filter(ctrp_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
 ctrp_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-gdsc_data_g2p_dgl <- filter(gdsc_data_ptmuts, Drug_Gene_Lin %in% g2p_druggenelins)
+gdsc_data_g2p_dgl <- filter(gdsc_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
 gdsc_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 
 # Filter drug screen datasets for G2P drugs and genes
@@ -1191,30 +1191,29 @@ Pearson correlations for assessing effect of gene expression and copy number on 
 
 ```{r}
 crispr_pearson_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                    summarize(p = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
-                              corr = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
-                              Metric = "Gene Expression")
-
+                         summarize(p = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
+                                   corr = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
+                                   Metric = "Gene Expression")
 crispr_pearson_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                    summarize(p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$p.value,
-                              corr = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$estimate,
-                              Metric = "Copy Number")
-
+                         summarize(p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$p.value,
+                                   corr = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$estimate,
+                                   Metric = "Copy Number")
 crispr_spearman_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                    summarize(p = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
-                              corr = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
-                              Metric = "Gene Expression")
-
+                          summarize(p = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
+                                    corr = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
+                                    Metric = "Gene Expression")
 crispr_spearman_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                    summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value,
-                              corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                              Metric = "Copy Number")
+                          summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value,
+                                    corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                                    Metric = "Copy Number")
 ```
 
 ## Drug screens
 
 ```{r}
-g2p_druggene_p_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+g2p_druggene_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+
+# CCLE
 ccle_cor_res <- ccle_data_g2p_grid %>% group_by(Drug_Gene) %>%
                     summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
                               Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
@@ -1224,7 +1223,7 @@ ccle_cor_res <- ccle_data_g2p_grid %>% group_by(Drug_Gene) %>%
                               Spearman_Pval_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
                               Spearman_Corr_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$estimate,
                               Spearman_Pval_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$p.value)
-ccle_cor_res <- merge(g2p_druggene_p_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
+ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
 ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
 ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
 ccle_cor_res$Dataset <- "CCLE"
@@ -1237,6 +1236,7 @@ ccle_spearman_ttest_res_GE <- paste0("t(", round(ccle_spearman_ttest_GE$paramete
 ccle_spearman_ttest_CN <- t.test(ccle_cor_res$Spearman_Corr_CN ~ ccle_cor_res$InG2P)
 ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$parameter, 0), ") = ", round(ccle_spearman_ttest_CN$statistic, 2), ", p = ", formatC(ccle_spearman_ttest_CN$p.value, 2, format = "f"))
 
+# CTRP
 ctrp_cor_res <- ctrp_data_g2p_grid %>% group_by(Drug_Gene) %>%
                     summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
                               Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
@@ -1246,7 +1246,7 @@ ctrp_cor_res <- ctrp_data_g2p_grid %>% group_by(Drug_Gene) %>%
                               Spearman_Pval_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
                               Spearman_Corr_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$estimate,
                               Spearman_Pval_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$p.value)
-ctrp_cor_res <- merge(g2p_druggene_p_tally, ctrp_cor_res, by = "Drug_Gene", all.y = TRUE)
+ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y = TRUE)
 ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
 ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
 ctrp_cor_res$Dataset <- "CTRP"
@@ -1259,6 +1259,7 @@ ctrp_spearman_ttest_res_GE <- paste0("t(", round(ctrp_spearman_ttest_GE$paramete
 ctrp_spearman_ttest_CN <- t.test(ctrp_cor_res$Spearman_Corr_CN ~ ctrp_cor_res$InG2P)
 ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$parameter, 0), ") = ", round(ctrp_spearman_ttest_CN$statistic, 2), ", p = ", round(ctrp_spearman_ttest_CN$p.value, 2))
 
+# GDSC
 gdsc_cor_res <- gdsc_data_g2p_grid %>% group_by(Drug_Gene) %>%
                     summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
                               Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
@@ -1268,7 +1269,7 @@ gdsc_cor_res <- gdsc_data_g2p_grid %>% group_by(Drug_Gene) %>%
                               Spearman_Pval_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
                               Spearman_Corr_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$estimate,
                               Spearman_Pval_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$p.value)
-gdsc_cor_res <- merge(g2p_druggene_p_tally, gdsc_cor_res, by = "Drug_Gene", all.y = TRUE)
+gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y = TRUE)
 gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
 gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
 gdsc_cor_res$Dataset <- "GDSC"
@@ -1281,6 +1282,7 @@ gdsc_spearman_ttest_res_GE <- paste0("t(", round(gdsc_spearman_ttest_GE$paramete
 gdsc_spearman_ttest_CN <- t.test(gdsc_cor_res$Spearman_Corr_CN ~ gdsc_cor_res$InG2P)
 gdsc_spearman_ttest_res_CN <- paste0("t(", round(gdsc_spearman_ttest_CN$parameter, 0), ") = ", round(gdsc_spearman_ttest_CN$statistic, 2), ", p = ", round(gdsc_spearman_ttest_CN$p.value, 2))
 
+# All
 g2p_cor <- rbind(ccle_cor_res, ctrp_cor_res, gdsc_cor_res)
 g2p_cor$Pearson_GE_Abs <- abs(g2p_cor$Pearson_Corr_GE)
 g2p_cor$Pearson_GE_Sign <- ifelse(sign(g2p_cor$Pearson_Corr_GE) == 1, "+", ifelse(sign(g2p_cor$Pearson_Corr_GE) == -1, "-", "0"))
@@ -1290,7 +1292,6 @@ g2p_cor$Spearman_GE_Abs <- abs(g2p_cor$Spearman_Corr_GE)
 g2p_cor$Spearman_GE_Sign <- ifelse(sign(g2p_cor$Spearman_Corr_GE) == 1, "+", ifelse(sign(g2p_cor$Spearman_Corr_GE) == -1, "-", "0"))
 g2p_cor$Spearman_CN_Abs <- abs(g2p_cor$Spearman_Corr_CN)
 g2p_cor$Spearman_CN_Sign <- ifelse(sign(g2p_cor$Spearman_Corr_CN) == 1, "+", ifelse(sign(g2p_cor$Spearman_Corr_CN) == -1, "-", "0"))
-
 g2p_cor_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"),
                                Pearson_Test_Results_GE = c(ccle_pearson_ttest_res_GE, ctrp_pearson_ttest_res_GE, gdsc_pearson_ttest_res_GE),
                                Pearson_Test_Results_CN = c(ccle_pearson_ttest_res_CN, ctrp_pearson_ttest_res_CN, gdsc_pearson_ttest_res_CN),
@@ -1318,11 +1319,11 @@ knitr::kable(crispr_data_g2p_summ, caption = "CRISPR: Level A G2P genes mutation
 
 ```{r}
 print("Drug-Gene")
-g2p_druggene_p_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
-nrow(g2p_druggene_p_tally)
-range(g2p_druggene_p_tally$n)
-mean(g2p_druggene_p_tally$n)
-sd(g2p_druggene_p_tally$n)
+g2p_druggene_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+nrow(g2p_druggene_tally)
+range(g2p_druggene_tally$n)
+mean(g2p_druggene_tally$n)
+sd(g2p_druggene_tally$n)
 
 print("Drug")
 g2p_drug_tally <- g2p_filt %>% group_by(Drug) %>% tally() %>% drop_na()
@@ -1337,10 +1338,10 @@ mean(g2p_gene_tally$n)
 sd(g2p_gene_tally$n)
 
 print("Drug-Gene-Lineage")
-g2p_druggenelin_tally <- g2p_filt %>% group_by(Drug, Gene, Drug_Gene, group_general_lineage_name) %>% tally() %>% drop_na()
-nrow(g2p_druggenelin_tally)
-length(unique(g2p_druggenelin_tally$Drug))
-length(unique(g2p_druggenelin_tally$Gene))
+g2p_dgl_tally <- g2p_filt %>% group_by(Drug, Gene, Drug_Gene, group_general_lineage_name) %>% tally() %>% drop_na()
+nrow(g2p_dgl_tally)
+length(unique(g2p_dgl_tally$Drug))
+length(unique(g2p_dgl_tally$Gene))
 unique(g2p_filt$Phenotype.Description)
 ```
 
@@ -1366,47 +1367,22 @@ crispr_mut_heatmap_plot
 # ggsave("./plots/manuscript/crispr_mut_heatmap_plot_example.png", crispr_mut_heatmap_plot, device = "png", dpi = 450, width = 12, height = 1.5, units = "in")
 ```
 
-Drug screen test plot for G2P associations vs. p-value plot:
-```{r fig.height=4, fig.width=8}
-g2p_mut_summ <- merge(g2p_druggene_p_tally, ccle_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all.x = TRUE)
-g2p_mut_summ <- merge(g2p_mut_summ, ctrp_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all.x = TRUE, suffixes = c("_CCLE", "_CTRP"))
-g2p_mut_summ <- merge(g2p_mut_summ, gdsc_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all.x = TRUE)
-colnames(g2p_mut_summ)[colnames(g2p_mut_summ) == "p_CCLE"] <- "CCLE"
-colnames(g2p_mut_summ)[colnames(g2p_mut_summ) == "p_CTRP"] <- "CTRP"
-colnames(g2p_mut_summ)[colnames(g2p_mut_summ) == "p"] <- "GDSC"
-
-g2p_mut_summ_melt <- melt(g2p_mut_summ, id.vars = c("Drug_Gene", "n"), measure.vars = c("CCLE", "CTRP", "GDSC"), variable.name = "Dataset", value.name = "p")
-
-g2p_mut_summ_plot <- ggplot(data = g2p_mut_summ_melt, aes(x = p, y = n, shape = Dataset, color = Dataset)) +
-  geom_point(size = 2) +
-  scale_color_manual(values = c("green3", "darkslategray4", "darkturquoise")) +
-  labs(x = "Gene-drug association p-value by mutation status", y = "Number of level A G2P associations")
-g2p_mut_summ_plot
-# ggsave("./plots/manuscript/g2p_mut_summ_plot.png", g2p_mut_summ_plot, device = "png", dpi = 450, width = 8, height = 4, units = "in")
-```
-
-Code to write out dataframe of p-values for Dan to make green heatmaps:
 ```{r}
-# for_dan <- with(g2p_druggene_p_summ, cbind(n, CCLE, CTRP, GDSC, colsplit(Drug_Gene, pattern = "_", names = c("Drug", "Hugo_Symbol"))))
-# write.table(for_dan, file = "~/Desktop/for_dan.tsv", sep = "\t")
-```
-
-```{r}
-ccle_mut_summ <- merge(g2p_druggene_p_tally, ccle_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+ccle_mut_summ <- merge(g2p_druggene_tally, ccle_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
 ccle_mut_summ$n <- ifelse(is.na(ccle_mut_summ$n), 0, ccle_mut_summ$n)
 ccle_mut_summ$InG2P <- ifelse(ccle_mut_summ$n != 0, "Yes", "No")
 ccle_mut_summ$Dataset <- "CCLE"
 ccle_p_ttest <- t.test(ccle_mut_summ$p ~ ccle_mut_summ$InG2P)
 ccle_p_ttest_res <- paste0("t(", round(ccle_p_ttest$parameter, 0), ") = ", round(ccle_p_ttest$statistic, 2), ", p = ", round(ccle_p_ttest$p.value, 2))
 
-ctrp_mut_summ <- merge(g2p_druggene_p_tally, ctrp_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+ctrp_mut_summ <- merge(g2p_druggene_tally, ctrp_signif_g2p_grid[, c("`Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
 ctrp_mut_summ$n <- ifelse(is.na(ctrp_mut_summ$n), 0, ctrp_mut_summ$n)
 ctrp_mut_summ$InG2P <- ifelse(ctrp_mut_summ$n != 0, "Yes", "No")
 ctrp_mut_summ$Dataset <- "CTRP"
 ctrp_p_ttest <- t.test(ctrp_mut_summ$p ~ ctrp_mut_summ$InG2P)
 ctrp_p_ttest_res <- paste0("t(", round(ctrp_p_ttest$parameter, 0), ") = ", round(ctrp_p_ttest$statistic, 2), ", p = ", formatC(ctrp_p_ttest$p.value, digits = 2, format = "f"))
 
-gdsc_mut_summ <- merge(g2p_druggene_p_tally, gdsc_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+gdsc_mut_summ <- merge(g2p_druggene_tally, gdsc_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
 gdsc_mut_summ$n <- ifelse(is.na(gdsc_mut_summ$n), 0, gdsc_mut_summ$n)
 gdsc_mut_summ$InG2P <- ifelse(gdsc_mut_summ$n != 0, "Yes", "No")
 gdsc_mut_summ$Dataset <- "GDSC"
@@ -1763,8 +1739,223 @@ cn_spearman_plot <- subplot(plot_cn_box, plot_cn_point, nrows = 2, heights = c(0
 saveWidgetFix(widget = cn_spearman_plot, file = "./plots/manuscript/g2p_cn_spearman_plot.html")
 ```
 
+## Lineage-grouped
 
-### Genomic features supplementary plots
+### Mut: Grid
+
+Summarize the Wilcoxon test p-values of the grid tests by mutation status. Grid tests were all lineage-agnostic G2P drug-gene associations tested across all screened lineages in each dataset:
+```{r}
+g2p_dgl_mut_tally <- g2p %>% group_by(Drug_Gene, group_general_lineage_name) %>% tally()
+
+ccle_dgl_summ <- ccle_signif_grid_lineage
+ccle_dgl_summ$Drug_Gene <- paste0(ccle_dgl_summ$Drug, "_", ccle_dgl_summ$Hugo_Symbol)
+ccle_dgl_summ <- merge(g2p_dgl_mut_tally, ccle_dgl_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
+ccle_dgl_summ$Drug_Gene_Lin <- paste0(ccle_dgl_summ$Drug_Gene, "_", ccle_dgl_summ$group_general_lineage_name)
+ccle_dgl_summ$n <- ifelse(is.na(ccle_dgl_summ$n), 0, ccle_dgl_summ$n)
+ccle_dgl_summ$InG2P <- ifelse(ccle_dgl_summ$n != 0, "Yes", "No")
+ccle_dgl_summ$Dataset <- "CCLE"
+
+ctrp_dgl_summ <- ctrp_signif_grid_lineage
+ctrp_dgl_summ$Drug_Gene <- paste0(ctrp_dgl_summ$Drug, "_", ctrp_dgl_summ$Hugo_Symbol)
+ctrp_dgl_summ <- merge(g2p_dgl_mut_tally, ctrp_dgl_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
+ctrp_dgl_summ$Drug_Gene_Lin <- paste0(ctrp_dgl_summ$Drug_Gene, "_", ctrp_dgl_summ$group_general_lineage_name)
+ctrp_dgl_summ$n <- ifelse(is.na(ctrp_dgl_summ$n), 0, ctrp_dgl_summ$n)
+ctrp_dgl_summ$InG2P <- ifelse(ctrp_dgl_summ$n != 0, "Yes", "No")
+ctrp_dgl_summ$Dataset <- "CTRP"
+
+gdsc_dgl_summ <- gdsc_signif_grid_lineage
+gdsc_dgl_summ$Drug_Gene <- paste0(gdsc_dgl_summ$Drug, "_", gdsc_dgl_summ$Hugo_Symbol)
+gdsc_dgl_summ <- merge(g2p_dgl_mut_tally, gdsc_dgl_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
+gdsc_dgl_summ$Drug_Gene_Lin <- paste0(gdsc_dgl_summ$Drug_Gene, "_", gdsc_dgl_summ$group_general_lineage_name)
+gdsc_dgl_summ$n <- ifelse(is.na(gdsc_dgl_summ$n), 0, gdsc_dgl_summ$n)
+gdsc_dgl_summ$InG2P <- ifelse(gdsc_dgl_summ$n != 0, "Yes", "No")
+gdsc_dgl_summ$Dataset <- "GDSC"
+
+dgl_mut_grid_summ <- rbind(ccle_dgl_summ, ctrp_dgl_summ, gdsc_dgl_summ)
+```
+
+Make summary plots of mutation status tests by lineage and return a dataframe of all t-test results from comparing the p-value distributions of G2P and non-G2P drug-gene associaions:
+```{r, eval=FALSE, results = 'hide'}
+dgl_mut_g2p_grid_ttest_res <- lapply(as.character(unique(dgl_mut_grid_summ$group_general_lineage_name)), MutPlotsByLineage)
+dgl_mut_g2p_grid_ttest_res_list <- rbindlist(dgl_mut_g2p_grid_ttest_res, use.names = TRUE)
+dgl_mut_g2p_grid_ttest_res_list <- dgl_mut_g2p_grid_ttest_res_list[order(dgl_mut_g2p_grid_ttest_res_list$p_value),]
+saveRDS(dgl_mut_g2p_grid_ttest_res_list, "./data_munging/rds/dgl_mut_g2p_grid_ttest_res_list.rds")
+```
+
+```{r}
+dgl_mut_g2p_grid_ttest_res_list <- readRDS("./data_munging/rds/dgl_mut_g2p_grid_ttest_res_list.rds")
+knitr::kable(dgl_mut_g2p_grid_ttest_res_list, caption = "Mutation status: T-test results for level A G2P drug-gene associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+### GE/CN: G2P
+
+Drug-gene-lineage (DGL) overlaps between CCLE, CTRP, and GDSC:
+```{r}
+dgl_overlap_test_list <- list(CCLE = unique(ccle_data_g2p_dgl$Drug_Gene_Lin),
+                              CTRP = unique(ctrp_data_g2p_dgl$Drug_Gene_Lin),
+                              GDSC = unique(gdsc_data_g2p_dgl$Drug_Gene_Lin))
+
+ItemsList <- venn(dgl_overlap_test_list, show.plot = TRUE)
+ItemsList
+```
+
+Test the 102 level-A G2P DGL combinations:
+```{r, eval=FALSE}
+ccle_lineages4pearson <- as.character(unique(ccle_data_g2p_dgl$group_general_lineage_name))[!is.na(as.character(unique(ccle_data_g2p_dgl$group_general_lineage_name)))]
+ccle_signif_ge <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ccle_data_g2p_dgl)
+ccle_signif_ge_all_lin <- rbindlist(ccle_signif_ge, use.names = TRUE)
+ccle_signif_ge_all_lin$Dataset <- "CCLE"
+ccle_signif_cn <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ccle_data_g2p_dgl)
+ccle_signif_cn_all_lin <- rbindlist(ccle_signif_cn, use.names = TRUE)
+ccle_signif_cn_all_lin$Dataset <- "CCLE"
+ccle_signif_all_lin <- merge(ccle_signif_ge_all_lin, ccle_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
+
+ctrp_lineages4pearson <- as.character(unique(ctrp_data_g2p_dgl$group_general_lineage_name))[!is.na(as.character(unique(ctrp_data_g2p_dgl$group_general_lineage_name)))]
+ctrp_signif_ge <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ctrp_data_g2p_dgl)
+ctrp_signif_ge_all_lin <- rbindlist(ctrp_signif_ge, use.names = TRUE)
+ctrp_signif_ge_all_lin$Dataset <- "CTRP"
+ctrp_signif_cn <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ctrp_data_g2p_dgl)
+ctrp_signif_cn_all_lin <- rbindlist(ctrp_signif_cn, use.names = TRUE)
+ctrp_signif_cn_all_lin$Dataset <- "CTRP"
+ctrp_signif_all_lin <- merge(ctrp_signif_ge_all_lin, ctrp_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
+
+gdsc_lineages4pearson <- as.character(unique(gdsc_data_g2p_dgl$group_general_lineage_name))[!is.na(as.character(unique(gdsc_data_g2p_dgl$group_general_lineage_name)))]
+gdsc_signif_ge <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "GE", dataset = gdsc_data_g2p_dgl)
+gdsc_signif_ge_all_lin <- rbindlist(gdsc_signif_ge, use.names = TRUE)
+gdsc_signif_ge_all_lin$Dataset <- "GDSC"
+gdsc_signif_cn <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "CN", dataset = gdsc_data_g2p_dgl)
+gdsc_signif_cn_all_lin <- rbindlist(gdsc_signif_cn, use.names = TRUE)
+gdsc_signif_cn_all_lin$Dataset <- "GDSC"
+gdsc_signif_all_lin <- merge(gdsc_signif_ge_all_lin, gdsc_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
+
+signif_all_lin <- rbind(ccle_signif_all_lin, ctrp_signif_all_lin, gdsc_signif_all_lin)
+signif_all_lin$n <- ifelse(is.na(signif_all_lin$n), 0, signif_all_lin$n)
+signif_all_lin$InG2P <- ifelse(signif_all_lin$n != 0, "Yes", "No")
+signif_all_lin$Drug_Gene_Lin <- paste0(signif_all_lin$Drug_Gene, "_", signif_all_lin$group_general_lineage_name)
+saveRDS(signif_all_lin, "./data_munging/rds/dgl_signif_pearson_g2p.rds")
+```
+
+```{r}
+dgl_signif_pearson_g2p <- readRDS("./data_munging/rds/dgl_signif_pearson_g2p.rds")
+```
+
+```{r}
+# CCLE mut, n = 7
+ccle_mut <- filter(select(ccle_signif_g2p_lineage, Drug_Gene_Lin, p), p < 0.05)
+ccle_mut_n <- nrow(select(ccle_signif_g2p_lineage, Drug_Gene_Lin, p))
+# CCLE GE/CN, n = 9
+ccle_ge <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CCLE"), Pearson_Pval_GE < 0.05), Drug_Gene_Lin, Pearson_Pval_GE, Pearson_Corr_GE)
+ccle_cn <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CCLE"), Pearson_Pval_CN < 0.05), Drug_Gene_Lin, Pearson_Pval_CN, Pearson_Corr_CN)
+ccle_Pear_n <- nrow(filter(dgl_signif_pearson_g2p, Dataset == "CCLE"))
+ccle_dgl_summ <- merge(ccle_mut, merge(ccle_ge, ccle_cn, by = "Drug_Gene_Lin", all = TRUE), all = TRUE)
+ccle_dgl_summ <- with(ccle_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_", names = c("Drug", "Gene", "Lineage")), 
+                                           CCLE_p = p,
+                                           CCLE_p_Bonf = ifelse(p < 0.05 / ccle_mut_n, "Sig", NA),
+                                           CCLE_r_GE = Pearson_Corr_GE,
+                                           CCLE_p_GE = Pearson_Pval_GE,
+                                           CCLE_p_GE_Bonf = ifelse(Pearson_Pval_GE < 0.05 / ccle_Pear_n, "Sig", NA),
+                                           CCLE_r_CN = Pearson_Corr_CN,
+                                           CCLE_p_CN = Pearson_Pval_CN,
+                                           CCLE_p_CN_Bonf = ifelse(Pearson_Pval_CN < 0.05 / ccle_Pear_n, "Sig", NA)))
+
+# CTRP mut, n = 48
+ctrp_mut <- filter(select(ctrp_signif_g2p_lineage, Drug_Gene_Lin, p), p < 0.05)
+ctrp_mut_n <- nrow(select(ctrp_signif_g2p_lineage, Drug_Gene_Lin, p))
+# CTRP GE/CN, n = 61
+ctrp_ge <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CTRP"), Pearson_Pval_GE < 0.05), Drug_Gene_Lin, Pearson_Pval_GE, Pearson_Corr_GE)
+ctrp_cn <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CTRP"), Pearson_Pval_CN < 0.05), Drug_Gene_Lin, Pearson_Pval_CN, Pearson_Corr_CN)
+ctrp_Pear_n <- nrow(filter(dgl_signif_pearson_g2p, Dataset == "CTRP"))
+ctrp_dgl_summ <- merge(ctrp_mut, merge(ctrp_ge, ctrp_cn, by = "Drug_Gene_Lin", all = TRUE), all = TRUE)
+ctrp_dgl_summ <- with(ctrp_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_", names = c("Drug", "Gene", "Lineage")), 
+                                           CTRP_p = p,
+                                           CTRP_p_Bonf = ifelse(p < 0.05 / ctrp_mut_n, "Sig", NA),
+                                           CTRP_r_GE = Pearson_Corr_GE,
+                                           CTRP_p_GE = Pearson_Pval_GE,
+                                           CTRP_p_GE_Bonf = ifelse(Pearson_Pval_GE < 0.05 / ctrp_Pear_n, "Sig", NA),
+                                           CTRP_r_CN = Pearson_Corr_CN,
+                                           CTRP_p_CN = Pearson_Pval_CN,
+                                           CTRP_p_CN_Bonf = ifelse(Pearson_Pval_CN < 0.05 / ctrp_Pear_n, "Sig", NA)))
+
+# GDSC mut, n = 39
+gdsc_mut <- filter(select(gdsc_signif_g2p_lineage, Drug_Gene_Lin, p), p < 0.05)
+gdsc_mut_n <- nrow(select(gdsc_signif_g2p_lineage, Drug_Gene_Lin, p))
+# GDSC GE/CN, n = 53
+gdsc_ge <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "GDSC"), Pearson_Pval_GE < 0.05), Drug_Gene_Lin, Pearson_Pval_GE, Pearson_Corr_GE)
+gdsc_cn <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "GDSC"), Pearson_Pval_CN < 0.05), Drug_Gene_Lin, Pearson_Pval_CN, Pearson_Corr_CN)
+gdsc_Pear_n <- nrow(filter(dgl_signif_pearson_g2p, Dataset == "GDSC"))
+gdsc_dgl_summ <- merge(gdsc_mut, merge(gdsc_ge, gdsc_cn, by = "Drug_Gene_Lin", all = TRUE), all = TRUE)
+gdsc_dgl_summ <- with(gdsc_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_", names = c("Drug", "Gene", "Lineage")), 
+                                           GDSC_p = p,
+                                           GDSC_p_Bonf = ifelse(p < 0.05 / gdsc_mut_n, "Sig", NA),
+                                           GDSC_r_GE = Pearson_Corr_GE,
+                                           GDSC_p_GE = Pearson_Pval_GE,
+                                           GDSC_p_GE_Bonf = ifelse(Pearson_Pval_GE < 0.05 / gdsc_Pear_n, "Sig", NA),
+                                           GDSC_r_CN = Pearson_Corr_CN,
+                                           GDSC_p_CN = Pearson_Pval_CN,
+                                           GDSC_p_CN_Bonf = ifelse(Pearson_Pval_CN < 0.05 / gdsc_Pear_n, "Sig", NA)))
+
+g2p_dgl_sig_summ <- merge(merge(ccle_dgl_summ, ctrp_dgl_summ, by = c("Drug", "Gene", "Lineage"), all = TRUE), gdsc_dgl_summ, by = c("Drug", "Gene", "Lineage"), all = TRUE)
+```
+
+### GE/CN: Grid
+
+Test all combinations of G2P drugs and genes in all lineages. InG2P indicates G2P drug-gene associations test across all lineages.
+```{r, eval=FALSE}
+ccle_lineages4pearson <- as.character(unique(ccle_data_g2p_grid$group_general_lineage_name))[!is.na(as.character(unique(ccle_data_g2p_grid$group_general_lineage_name)))]
+ccle_signif_ge <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ccle_data_g2p_grid)
+ccle_signif_ge_all_lin <- rbindlist(ccle_signif_ge, use.names = TRUE)
+ccle_signif_ge_all_lin$Dataset <- "CCLE"
+ccle_signif_cn <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ccle_data_g2p_grid)
+ccle_signif_cn_all_lin <- rbindlist(ccle_signif_cn, use.names = TRUE)
+ccle_signif_cn_all_lin$Dataset <- "CCLE"
+ccle_signif_all_lin <- merge(ccle_signif_ge_all_lin, ccle_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
+
+ctrp_lineages4pearson <- as.character(unique(ctrp_data_g2p_grid$group_general_lineage_name))[!is.na(as.character(unique(ctrp_data_g2p_grid$group_general_lineage_name)))]
+ctrp_signif_ge <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ctrp_data_g2p_grid)
+ctrp_signif_ge_all_lin <- rbindlist(ctrp_signif_ge, use.names = TRUE)
+ctrp_signif_ge_all_lin$Dataset <- "CTRP"
+ctrp_signif_cn <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ctrp_data_g2p_grid)
+ctrp_signif_cn_all_lin <- rbindlist(ctrp_signif_cn, use.names = TRUE)
+ctrp_signif_cn_all_lin$Dataset <- "CTRP"
+ctrp_signif_all_lin <- merge(ctrp_signif_ge_all_lin, ctrp_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
+
+gdsc_lineages4pearson <- as.character(unique(gdsc_data_g2p_grid$group_general_lineage_name))[!is.na(as.character(unique(gdsc_data_g2p_grid$group_general_lineage_name)))]
+gdsc_signif_ge <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "GE", dataset = gdsc_data_g2p_grid)
+gdsc_signif_ge_all_lin <- rbindlist(gdsc_signif_ge, use.names = TRUE)
+gdsc_signif_ge_all_lin$Dataset <- "GDSC"
+gdsc_signif_cn <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "CN", dataset = gdsc_data_g2p_grid)
+gdsc_signif_cn_all_lin <- rbindlist(gdsc_signif_cn, use.names = TRUE)
+gdsc_signif_cn_all_lin$Dataset <- "GDSC"
+gdsc_signif_all_lin <- merge(gdsc_signif_ge_all_lin, gdsc_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
+
+signif_all_lin <- rbind(ccle_signif_all_lin, ctrp_signif_all_lin, gdsc_signif_all_lin)
+signif_all_lin$n <- ifelse(is.na(signif_all_lin$n), 0, signif_all_lin$n)
+signif_all_lin$InG2P <- ifelse(signif_all_lin$n != 0, "Yes", "No")
+signif_all_lin$Drug_Gene_Lin <- paste0(signif_all_lin$Drug_Gene, "_", signif_all_lin$group_general_lineage_name)
+saveRDS(signif_all_lin, "./data_munging/rds/dgl_signif_pearson_g2p_grid.rds")
+```
+
+```{r}
+dgl_signif_pearson_g2p_grid <- readRDS("./data_munging/rds/dgl_signif_pearson_g2p_grid.rds")
+```
+
+```{r, results='hide', eval=FALSE}
+dgl_pearson_g2p_grid_ttest_res <- lapply(as.character(unique(dgl_signif_pearson_g2p_grid$group_general_lineage_name)), PearsonPlotsByLineage)
+dgl_pearson_g2p_grid_ttest_res_list <- rbindlist(dgl_pearson_g2p_grid_ttest_res, use.names = TRUE)
+saveRDS(dgl_pearson_g2p_grid_ttest_res_list, "./data_munging/rds/dgl_pearson_g2p_grid_ttest_res_list.rds")
+```
+
+```{r}
+dgl_pearson_g2p_grid_ttest_res_list <- readRDS("./data_munging/rds/dgl_pearson_g2p_grid_ttest_res_list.rds")
+
+knitr::kable(dgl_pearson_g2p_grid_ttest_res_list[order(dgl_pearson_g2p_grid_ttest_res_list$p_value_GE), c("Dataset", "group_general_lineage_name", "t_statistic_GE", "df_GE", "p_value_GE")], caption = "Gene expression: T-test results for level A G2P drug-gene/gene expression associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+
+knitr::kable(dgl_pearson_g2p_grid_ttest_res_list[order(dgl_pearson_g2p_grid_ttest_res_list$p_value_CN), c("Dataset", "group_general_lineage_name", "t_statistic_CN", "df_CN", "p_value_CN")], caption = "Copy number: T-test results for level A G2P drug-gene/gene expression associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+```
+
+## Mut/GE/CN
+
+### Lineage-agnostic
 
 This section contains summary plots for the Wilcoxon tests and Pearson/Spearman correlations done for only level A G2P drug-gene associations (i.e. not the grid tests) and G2P genes in the case of the CRISPR dataset.
 
@@ -2137,247 +2328,7 @@ all_spearman_summ_plot
 # ggsave("./plots/manuscript/all_spearman_summ_plot.png", all_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 10, units = "in")
 ```
 
-## Lineage-grouped
-
-### Mut: Grid
-
-Summarize the Wilcoxon test p-values of the grid tests by mutation status. Grid tests were all lineage-agnostic G2P drug-gene associations tested across all screened lineages in each dataset:
-```{r}
-g2p_druggenelin_p_tally <- g2p %>% group_by(Drug_Gene, group_general_lineage_name) %>% tally()
-
-ccle_druggenelin_summ <- ccle_signif_grid_lineage
-ccle_druggenelin_summ$Drug_Gene <- paste0(ccle_druggenelin_summ$Drug, "_", ccle_druggenelin_summ$Hugo_Symbol)
-ccle_druggenelin_summ <- merge(g2p_druggenelin_p_tally, ccle_druggenelin_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
-ccle_druggenelin_summ$Drug_Gene_Lin <- paste0(ccle_druggenelin_summ$Drug_Gene, "_", ccle_druggenelin_summ$group_general_lineage_name)
-ccle_druggenelin_summ$n <- ifelse(is.na(ccle_druggenelin_summ$n), 0, ccle_druggenelin_summ$n)
-ccle_druggenelin_summ$InG2P <- ifelse(ccle_druggenelin_summ$n != 0, "Yes", "No")
-ccle_druggenelin_summ$Dataset <- "CCLE"
-
-ctrp_druggenelin_summ <- ctrp_signif_grid_lineage
-ctrp_druggenelin_summ$Drug_Gene <- paste0(ctrp_druggenelin_summ$Drug, "_", ctrp_druggenelin_summ$Hugo_Symbol)
-ctrp_druggenelin_summ <- merge(g2p_druggenelin_p_tally, ctrp_druggenelin_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
-ctrp_druggenelin_summ$Drug_Gene_Lin <- paste0(ctrp_druggenelin_summ$Drug_Gene, "_", ctrp_druggenelin_summ$group_general_lineage_name)
-ctrp_druggenelin_summ$n <- ifelse(is.na(ctrp_druggenelin_summ$n), 0, ctrp_druggenelin_summ$n)
-ctrp_druggenelin_summ$InG2P <- ifelse(ctrp_druggenelin_summ$n != 0, "Yes", "No")
-ctrp_druggenelin_summ$Dataset <- "CTRP"
-
-gdsc_druggenelin_summ <- gdsc_signif_grid_lineage
-gdsc_druggenelin_summ$Drug_Gene <- paste0(gdsc_druggenelin_summ$Drug, "_", gdsc_druggenelin_summ$Hugo_Symbol)
-gdsc_druggenelin_summ <- merge(g2p_druggenelin_p_tally, gdsc_druggenelin_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
-gdsc_druggenelin_summ$Drug_Gene_Lin <- paste0(gdsc_druggenelin_summ$Drug_Gene, "_", gdsc_druggenelin_summ$group_general_lineage_name)
-gdsc_druggenelin_summ$n <- ifelse(is.na(gdsc_druggenelin_summ$n), 0, gdsc_druggenelin_summ$n)
-gdsc_druggenelin_summ$InG2P <- ifelse(gdsc_druggenelin_summ$n != 0, "Yes", "No")
-gdsc_druggenelin_summ$Dataset <- "GDSC"
-
-dgl_mut_grid_summ <- rbind(ccle_druggenelin_summ, ctrp_druggenelin_summ, gdsc_druggenelin_summ)
-```
-
-Make summary plots of mutation status tests by lineage and return a dataframe of all t-test results from comparing the p-value distributions of G2P and non-G2P drug-gene associaions:
-```{r, eval=FALSE, results = 'hide'}
-dgl_mut_g2p_grid_ttest_res <- lapply(as.character(unique(dgl_mut_grid_summ$group_general_lineage_name)), MutPlotsByLineage)
-dgl_mut_g2p_grid_ttest_res_list <- rbindlist(dgl_mut_g2p_grid_ttest_res, use.names = TRUE)
-dgl_mut_g2p_grid_ttest_res_list <- dgl_mut_g2p_grid_ttest_res_list[order(dgl_mut_g2p_grid_ttest_res_list$p_value),]
-saveRDS(dgl_mut_g2p_grid_ttest_res_list, "./data_munging/rds/dgl_mut_g2p_grid_ttest_res_list.rds")
-```
-
-```{r}
-dgl_mut_g2p_grid_ttest_res_list <- readRDS("./data_munging/rds/dgl_mut_g2p_grid_ttest_res_list.rds")
-knitr::kable(dgl_mut_g2p_grid_ttest_res_list, caption = "Mutation status: T-test results for level A G2P drug-gene associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
-```
-
-### GE/CN: G2P
-
-Drug-gene-lineage (DGL) overlaps between CCLE, CTRP, and GDSC:
-```{r}
-dgl_overlap_test_list <- list(CCLE = unique(ccle_data_g2p_dgl$Drug_Gene_Lin),
-                              CTRP = unique(ctrp_data_g2p_dgl$Drug_Gene_Lin),
-                              GDSC = unique(gdsc_data_g2p_dgl$Drug_Gene_Lin))
-
-ItemsList <- venn(dgl_overlap_test_list, show.plot = TRUE)
-ItemsList
-```
-
-Test the 102 level-A G2P DGL combinations:
-```{r, eval=FALSE}
-ccle_lineages4pearson <- as.character(unique(ccle_data_g2p_dgl$group_general_lineage_name))[!is.na(as.character(unique(ccle_data_g2p_dgl$group_general_lineage_name)))]
-ccle_signif_ge <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ccle_data_g2p_dgl)
-ccle_signif_ge_all_lin <- rbindlist(ccle_signif_ge, use.names = TRUE)
-ccle_signif_ge_all_lin$Dataset <- "CCLE"
-ccle_signif_cn <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ccle_data_g2p_dgl)
-ccle_signif_cn_all_lin <- rbindlist(ccle_signif_cn, use.names = TRUE)
-ccle_signif_cn_all_lin$Dataset <- "CCLE"
-ccle_signif_all_lin <- merge(ccle_signif_ge_all_lin, ccle_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
-
-ctrp_lineages4pearson <- as.character(unique(ctrp_data_g2p_dgl$group_general_lineage_name))[!is.na(as.character(unique(ctrp_data_g2p_dgl$group_general_lineage_name)))]
-ctrp_signif_ge <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ctrp_data_g2p_dgl)
-ctrp_signif_ge_all_lin <- rbindlist(ctrp_signif_ge, use.names = TRUE)
-ctrp_signif_ge_all_lin$Dataset <- "CTRP"
-ctrp_signif_cn <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ctrp_data_g2p_dgl)
-ctrp_signif_cn_all_lin <- rbindlist(ctrp_signif_cn, use.names = TRUE)
-ctrp_signif_cn_all_lin$Dataset <- "CTRP"
-ctrp_signif_all_lin <- merge(ctrp_signif_ge_all_lin, ctrp_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
-
-gdsc_lineages4pearson <- as.character(unique(gdsc_data_g2p_dgl$group_general_lineage_name))[!is.na(as.character(unique(gdsc_data_g2p_dgl$group_general_lineage_name)))]
-gdsc_signif_ge <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "GE", dataset = gdsc_data_g2p_dgl)
-gdsc_signif_ge_all_lin <- rbindlist(gdsc_signif_ge, use.names = TRUE)
-gdsc_signif_ge_all_lin$Dataset <- "GDSC"
-gdsc_signif_cn <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "CN", dataset = gdsc_data_g2p_dgl)
-gdsc_signif_cn_all_lin <- rbindlist(gdsc_signif_cn, use.names = TRUE)
-gdsc_signif_cn_all_lin$Dataset <- "GDSC"
-gdsc_signif_all_lin <- merge(gdsc_signif_ge_all_lin, gdsc_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
-
-signif_all_lin <- rbind(ccle_signif_all_lin, ctrp_signif_all_lin, gdsc_signif_all_lin)
-signif_all_lin$n <- ifelse(is.na(signif_all_lin$n), 0, signif_all_lin$n)
-signif_all_lin$InG2P <- ifelse(signif_all_lin$n != 0, "Yes", "No")
-signif_all_lin$Drug_Gene_Lin <- paste0(signif_all_lin$Drug_Gene, "_", signif_all_lin$group_general_lineage_name)
-saveRDS(signif_all_lin, "./data_munging/rds/dgl_signif_pearson_g2p.rds")
-```
-
-```{r}
-dgl_signif_pearson_g2p <- readRDS("./data_munging/rds/dgl_signif_pearson_g2p.rds")
-```
-
-```{r}
-# CCLE mut, n = 7
-ccle_mut <- filter(select(ccle_signif_g2p_lineage, Drug_Gene_Lin, p), p < 0.05)
-ccle_mut_n <- nrow(select(ccle_signif_g2p_lineage, Drug_Gene_Lin, p))
-# CCLE GE/CN, n = 9
-ccle_ge <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CCLE"), Pearson_Pval_GE < 0.05), Drug_Gene_Lin, Pearson_Pval_GE, Pearson_Corr_GE)
-ccle_cn <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CCLE"), Pearson_Pval_CN < 0.05), Drug_Gene_Lin, Pearson_Pval_CN, Pearson_Corr_CN)
-ccle_Pear_n <- nrow(filter(dgl_signif_pearson_g2p, Dataset == "CCLE"))
-ccle_dgl_summ <- merge(ccle_mut, merge(ccle_ge, ccle_cn, by = "Drug_Gene_Lin", all = TRUE), all = TRUE)
-ccle_dgl_summ <- with(ccle_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_", names = c("Drug", "Gene", "Lineage")), 
-                                           CCLE_p = p,
-                                           CCLE_p_Bonf = ifelse(p < 0.05 / ccle_mut_n, "Sig", NA),
-                                           CCLE_r_GE = Pearson_Corr_GE,
-                                           CCLE_p_GE = Pearson_Pval_GE,
-                                           CCLE_p_GE_Bonf = ifelse(Pearson_Pval_GE < 0.05 / ccle_Pear_n, "Sig", NA),
-                                           CCLE_r_CN = Pearson_Corr_CN,
-                                           CCLE_p_CN = Pearson_Pval_CN,
-                                           CCLE_p_CN_Bonf = ifelse(Pearson_Pval_CN < 0.05 / ccle_Pear_n, "Sig", NA)))
-
-# CTRP mut, n = 48
-ctrp_mut <- filter(select(ctrp_signif_g2p_lineage, Drug_Gene_Lin, p), p < 0.05)
-ctrp_mut_n <- nrow(select(ctrp_signif_g2p_lineage, Drug_Gene_Lin, p))
-# CTRP GE/CN, n = 61
-ctrp_ge <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CTRP"), Pearson_Pval_GE < 0.05), Drug_Gene_Lin, Pearson_Pval_GE, Pearson_Corr_GE)
-ctrp_cn <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "CTRP"), Pearson_Pval_CN < 0.05), Drug_Gene_Lin, Pearson_Pval_CN, Pearson_Corr_CN)
-ctrp_Pear_n <- nrow(filter(dgl_signif_pearson_g2p, Dataset == "CTRP"))
-ctrp_dgl_summ <- merge(ctrp_mut, merge(ctrp_ge, ctrp_cn, by = "Drug_Gene_Lin", all = TRUE), all = TRUE)
-ctrp_dgl_summ <- with(ctrp_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_", names = c("Drug", "Gene", "Lineage")), 
-                                           CTRP_p = p,
-                                           CTRP_p_Bonf = ifelse(p < 0.05 / ctrp_mut_n, "Sig", NA),
-                                           CTRP_r_GE = Pearson_Corr_GE,
-                                           CTRP_p_GE = Pearson_Pval_GE,
-                                           CTRP_p_GE_Bonf = ifelse(Pearson_Pval_GE < 0.05 / ctrp_Pear_n, "Sig", NA),
-                                           CTRP_r_CN = Pearson_Corr_CN,
-                                           CTRP_p_CN = Pearson_Pval_CN,
-                                           CTRP_p_CN_Bonf = ifelse(Pearson_Pval_CN < 0.05 / ctrp_Pear_n, "Sig", NA)))
-
-# GDSC mut, n = 39
-gdsc_mut <- filter(select(gdsc_signif_g2p_lineage, Drug_Gene_Lin, p), p < 0.05)
-gdsc_mut_n <- nrow(select(gdsc_signif_g2p_lineage, Drug_Gene_Lin, p))
-# GDSC GE/CN, n = 53
-gdsc_ge <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "GDSC"), Pearson_Pval_GE < 0.05), Drug_Gene_Lin, Pearson_Pval_GE, Pearson_Corr_GE)
-gdsc_cn <- select(subset(filter(dgl_signif_pearson_g2p, Dataset == "GDSC"), Pearson_Pval_CN < 0.05), Drug_Gene_Lin, Pearson_Pval_CN, Pearson_Corr_CN)
-gdsc_Pear_n <- nrow(filter(dgl_signif_pearson_g2p, Dataset == "GDSC"))
-gdsc_dgl_summ <- merge(gdsc_mut, merge(gdsc_ge, gdsc_cn, by = "Drug_Gene_Lin", all = TRUE), all = TRUE)
-gdsc_dgl_summ <- with(gdsc_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_", names = c("Drug", "Gene", "Lineage")), 
-                                           GDSC_p = p,
-                                           GDSC_p_Bonf = ifelse(p < 0.05 / gdsc_mut_n, "Sig", NA),
-                                           GDSC_r_GE = Pearson_Corr_GE,
-                                           GDSC_p_GE = Pearson_Pval_GE,
-                                           GDSC_p_GE_Bonf = ifelse(Pearson_Pval_GE < 0.05 / gdsc_Pear_n, "Sig", NA),
-                                           GDSC_r_CN = Pearson_Corr_CN,
-                                           GDSC_p_CN = Pearson_Pval_CN,
-                                           GDSC_p_CN_Bonf = ifelse(Pearson_Pval_CN < 0.05 / gdsc_Pear_n, "Sig", NA)))
-
-g2p_dgl_sig_summ <- merge(merge(ccle_dgl_summ, ctrp_dgl_summ, by = c("Drug", "Gene", "Lineage"), all = TRUE), gdsc_dgl_summ, by = c("Drug", "Gene", "Lineage"), all = TRUE)
-```
-
-### GE/CN: Grid
-
-Test all combinations of G2P drugs and genes in all lineages. InG2P indicates G2P drug-gene associations test across all lineages.
-```{r, eval=FALSE}
-ccle_lineages4pearson <- as.character(unique(ccle_data_g2p_grid$group_general_lineage_name))[!is.na(as.character(unique(ccle_data_g2p_grid$group_general_lineage_name)))]
-ccle_signif_ge <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ccle_data_g2p_grid)
-ccle_signif_ge_all_lin <- rbindlist(ccle_signif_ge, use.names = TRUE)
-ccle_signif_ge_all_lin$Dataset <- "CCLE"
-ccle_signif_cn <- lapply(ccle_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ccle_data_g2p_grid)
-ccle_signif_cn_all_lin <- rbindlist(ccle_signif_cn, use.names = TRUE)
-ccle_signif_cn_all_lin$Dataset <- "CCLE"
-ccle_signif_all_lin <- merge(ccle_signif_ge_all_lin, ccle_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
-
-ctrp_lineages4pearson <- as.character(unique(ctrp_data_g2p_grid$group_general_lineage_name))[!is.na(as.character(unique(ctrp_data_g2p_grid$group_general_lineage_name)))]
-ctrp_signif_ge <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "GE", dataset = ctrp_data_g2p_grid)
-ctrp_signif_ge_all_lin <- rbindlist(ctrp_signif_ge, use.names = TRUE)
-ctrp_signif_ge_all_lin$Dataset <- "CTRP"
-ctrp_signif_cn <- lapply(ctrp_lineages4pearson, PearsonByLineage, variable = "CN", dataset = ctrp_data_g2p_grid)
-ctrp_signif_cn_all_lin <- rbindlist(ctrp_signif_cn, use.names = TRUE)
-ctrp_signif_cn_all_lin$Dataset <- "CTRP"
-ctrp_signif_all_lin <- merge(ctrp_signif_ge_all_lin, ctrp_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
-
-gdsc_lineages4pearson <- as.character(unique(gdsc_data_g2p_grid$group_general_lineage_name))[!is.na(as.character(unique(gdsc_data_g2p_grid$group_general_lineage_name)))]
-gdsc_signif_ge <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "GE", dataset = gdsc_data_g2p_grid)
-gdsc_signif_ge_all_lin <- rbindlist(gdsc_signif_ge, use.names = TRUE)
-gdsc_signif_ge_all_lin$Dataset <- "GDSC"
-gdsc_signif_cn <- lapply(gdsc_lineages4pearson, PearsonByLineage, variable = "CN", dataset = gdsc_data_g2p_grid)
-gdsc_signif_cn_all_lin <- rbindlist(gdsc_signif_cn, use.names = TRUE)
-gdsc_signif_cn_all_lin$Dataset <- "GDSC"
-gdsc_signif_all_lin <- merge(gdsc_signif_ge_all_lin, gdsc_signif_cn_all_lin, by = c("Drug_Gene", "group_general_lineage_name", "n", "Dataset"), all = TRUE)
-
-signif_all_lin <- rbind(ccle_signif_all_lin, ctrp_signif_all_lin, gdsc_signif_all_lin)
-signif_all_lin$n <- ifelse(is.na(signif_all_lin$n), 0, signif_all_lin$n)
-signif_all_lin$InG2P <- ifelse(signif_all_lin$n != 0, "Yes", "No")
-signif_all_lin$Drug_Gene_Lin <- paste0(signif_all_lin$Drug_Gene, "_", signif_all_lin$group_general_lineage_name)
-saveRDS(signif_all_lin, "./data_munging/rds/dgl_signif_pearson_g2p_grid.rds")
-```
-
-```{r}
-dgl_signif_pearson_g2p_grid <- readRDS("./data_munging/rds/dgl_signif_pearson_g2p_grid.rds")
-```
-
-```{r, results='hide', eval=FALSE}
-dgl_pearson_g2p_grid_ttest_res <- lapply(as.character(unique(dgl_signif_pearson_g2p_grid$group_general_lineage_name)), PearsonPlotsByLineage)
-dgl_pearson_g2p_grid_ttest_res_list <- rbindlist(dgl_pearson_g2p_grid_ttest_res, use.names = TRUE)
-saveRDS(dgl_pearson_g2p_grid_ttest_res_list, "./data_munging/rds/dgl_pearson_g2p_grid_ttest_res_list.rds")
-```
-
-```{r}
-dgl_pearson_g2p_grid_ttest_res_list <- readRDS("./data_munging/rds/dgl_pearson_g2p_grid_ttest_res_list.rds")
-
-knitr::kable(dgl_pearson_g2p_grid_ttest_res_list[order(dgl_pearson_g2p_grid_ttest_res_list$p_value_GE), c("Dataset", "group_general_lineage_name", "t_statistic_GE", "df_GE", "p_value_GE")], caption = "Gene expression: T-test results for level A G2P drug-gene/gene expression associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
-
-knitr::kable(dgl_pearson_g2p_grid_ttest_res_list[order(dgl_pearson_g2p_grid_ttest_res_list$p_value_CN), c("Dataset", "group_general_lineage_name", "t_statistic_CN", "df_CN", "p_value_CN")], caption = "Copy number: T-test results for level A G2P drug-gene/gene expression associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
-```
-
-## Mut/GE/CN
-
-### Lineage-agnostic
-
-Mutation status summary stats:
-```{r}
-g2p_druggene_all_summ_stats <- g2p_druggene_all_summ
-g2p_druggene_all_summ_stats$n_true <- TRUE
-g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05), n_sig_perc = n_signif / n * 100)
-```
-
-Pearson summary stats:
-```{r fig.height=4, fig.width=5}
-g2p_mut_cor_stats <- g2p_mut_cor
-g2p_mut_cor_stats$n_true <- TRUE
-g2p_mut_cor_stats <- g2p_mut_cor_stats %>% group_by(Dataset, InG2P) %>% drop_na() %>% summarize(
-          ge_mean = round(mean(Pearson_GE_Abs), 5),
-          ge_sd = round(sd(Pearson_GE_Abs), 5),
-          ge_n = sum(n_true),
-          ge_n_signif = sum(Pearson_Pval_GE < 0.05),
-          ge_n_sig_perc = ge_n_signif / ge_n * 100,
-          cn_mean = round(mean(Pearson_CN_Abs), 3),
-          cn_sd = round(sd(Pearson_CN_Abs), 5),
-          cn_n = sum(n_true),
-          cn_n_signif = sum(Pearson_Pval_CN < 0.05),
-          cn_n_sig_perc = cn_n_signif / cn_n * 100)
-```
+#### Drug: P-values
 
 ```{r fig.height=6, fig.width=12}
 pval_summ_mut <- g2p_mut_all_summ
@@ -2411,6 +2362,32 @@ pval_summ_plot
 
 # ggsave("./plots/manuscript/all_pval_summ_plot.png", pval_summ_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
+
+#### Summary stats
+
+```{r}
+# Mutation status
+g2p_druggene_all_summ_stats <- g2p_druggene_all_summ
+g2p_druggene_all_summ_stats$n_true <- TRUE
+g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05), n_sig_perc = n_signif / n * 100)
+
+# Pearson correlations
+g2p_mut_cor_stats <- g2p_mut_cor
+g2p_mut_cor_stats$n_true <- TRUE
+g2p_mut_cor_stats <- g2p_mut_cor_stats %>% group_by(Dataset, InG2P) %>% drop_na() %>% summarize(
+          ge_mean = round(mean(Pearson_GE_Abs), 5),
+          ge_sd = round(sd(Pearson_GE_Abs), 5),
+          ge_n = sum(n_true),
+          ge_n_signif = sum(Pearson_Pval_GE < 0.05),
+          ge_n_sig_perc = ge_n_signif / ge_n * 100,
+          cn_mean = round(mean(Pearson_CN_Abs), 3),
+          cn_sd = round(sd(Pearson_CN_Abs), 5),
+          cn_n = sum(n_true),
+          cn_n_signif = sum(Pearson_Pval_CN < 0.05),
+          cn_n_sig_perc = cn_n_signif / cn_n * 100)
+```
+
+#### CTRP example derivation
 
 Example p-value and Pearson correlation coefficient derivations for afatinib and ERBB2 in the CTRP dataset:
 ```{r}
@@ -2582,7 +2559,7 @@ dgl_all_plot <- ggplot(data = dgl_all, aes(x = InG2P, y = Statistic)) +
 # ggsave("./plots/manuscript/all_dgl_plot.png", dgl_all_plot, device = "png", dpi = 450, width = 12, height = 40, units = "in")
 ```
 
-## DO THIS: Cell line overlap
+## Cell line overlap
 
 ```{r, eval=FALSE}
 crispr_ccl <- unique(select(crispr_data, DepMap_ID, CCLE_Name))
