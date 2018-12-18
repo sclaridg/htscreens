@@ -641,8 +641,8 @@ g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 
 g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
 g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
-g2p_genes <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[2]))
-g2p_drugs <- unique(sapply(strsplit(g2p_drug_genes, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_druggenes, "_", fixed = TRUE), function(x) x[2]))
+g2p_drugs <- unique(sapply(strsplit(g2p_druggenes, "_", fixed = TRUE), function(x) x[1]))
 g2p_druggenes
 g2p_genes
 g2p_drugs
@@ -780,11 +780,11 @@ gdsc_data_ptmuts$Dataset <- "GDSC"
 gdsc_data_ptmuts$Hugo_Symbol <- ordered(gdsc_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
 
 # Filter drug screen datasets for G2P drug-gene associations
-ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
+ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_druggenes)
 ccle_data_g2p$Mutation_Status_Nonsilent <- factor(ccle_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-ctrp_data_g2p <- filter(ctrp_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
+ctrp_data_g2p <- filter(ctrp_data_ptmuts, Drug_Gene %in% g2p_druggenes)
 ctrp_data_g2p$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_drug_genes)
+gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_druggenes)
 gdsc_data_g2p$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 
 # Filter drug screen datasets for G2P drug-gene-lineage associations
@@ -1345,9 +1345,11 @@ length(unique(g2p_dgl_tally$Gene))
 unique(g2p_filt$Phenotype.Description)
 ```
 
-## Lineage-agnostic
+# PANCANCER
 
-### Mut
+--------------------------------------------------------------------------------
+
+## Mut
 
 CRISPR mutation status plots of p-values:
 ```{r fig.height=1.5, fig.width=12}
@@ -1375,7 +1377,7 @@ ccle_mut_summ$Dataset <- "CCLE"
 ccle_p_ttest <- t.test(ccle_mut_summ$p ~ ccle_mut_summ$InG2P)
 ccle_p_ttest_res <- paste0("t(", round(ccle_p_ttest$parameter, 0), ") = ", round(ccle_p_ttest$statistic, 2), ", p = ", round(ccle_p_ttest$p.value, 2))
 
-ctrp_mut_summ <- merge(g2p_druggene_tally, ctrp_signif_g2p_grid[, c("`Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+ctrp_mut_summ <- merge(g2p_druggene_tally, ctrp_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
 ctrp_mut_summ$n <- ifelse(is.na(ctrp_mut_summ$n), 0, ctrp_mut_summ$n)
 ctrp_mut_summ$InG2P <- ifelse(ctrp_mut_summ$n != 0, "Yes", "No")
 ctrp_mut_summ$Dataset <- "CTRP"
@@ -1401,8 +1403,8 @@ plot_p_point <- ggplot(data = g2p_mut_all_summ, aes(x = p, y = n, label = Drug_G
   geom_point(mapping = aes(color = InG2P), alpha = 0.5) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
   scale_y_continuous(breaks = seq(0, 120, by = 10), labels = seq(0, 120, by = 10)) +
-  geom_text_repel(data = subset(g2p_druggene_all_summ, InG2P == "Yes" & n > 10), size = 3, segment.size = 0.2, segment.color = "grey50") +
-  geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = 0.5, y = 115, label = Test_Results_p)) +
+  geom_text_repel(data = subset(g2p_mut_all_summ, InG2P == "Yes" & n > 10), size = 3, segment.size = 0.2, segment.color = "grey50") +
+  geom_text(data = g2p_mut_all_summ_text, mapping = aes(x = 0.5, y = 115, label = Test_Results_p)) +
   labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations") +
   theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
@@ -1436,7 +1438,7 @@ plot_p_point <- ggplot(data = g2p_mut_all_summ) +
   geom_point(mapping = aes(label = Drug_Gene, color = InG2P, x = p, y = n), alpha = 0.5) +
   scale_color_manual(values = c("Yes" = "darkorchid4", "No" = "lightpink")) +
   scale_y_continuous(breaks = seq(0, 120, by = 10), labels = seq(0, 120, by = 10)) +
-  geom_text(data = g2p_druggene_all_summ_text, mapping = aes(x = 0.5, y = 115, label = Test_Results_p)) +
+  geom_text(data = g2p_mut_all_summ_text, mapping = aes(x = 0.5, y = 115, label = Test_Results_p)) +
   labs(x = "Gene-drug association p-value between mutation groups", y = "Number of level A G2P associations") +
   theme(legend.position = "none", plot.margin = unit(c(0.05, 0.5, 0.5, 0.5), "cm"), strip.background = element_blank(), strip.text.x = element_blank())
 
@@ -1455,9 +1457,9 @@ saveWidgetFix(widget = plot, file = "./plots/manuscript/g2p_mut_plot.html")
 ```
 
 
-### GE
+## GE
 
-#### Pearson
+### Pearson
 
 ```{r fig.height=5, fig.width=12}
 plot_ge_pearson_point <- ggplot(data = g2p_cor, aes(x = Pearson_GE_Abs, y = n, label = Drug_Gene)) +
@@ -1527,7 +1529,7 @@ ge_pearson_plot <- subplot(plot_ge_box, plot_ge_point, nrows = 2, heights = c(0.
 saveWidgetFix(widget = ge_pearson_plot, file = "./plots/manuscript/g2p_ge_pearson_plot.html")
 ```
 
-#### Spearman
+### Spearman
 
 ```{r fig.height=5, fig.width=12}
 plot_ge_spearman_point <- ggplot(data = g2p_cor, aes(x = Spearman_GE_Abs, y = n, label = Drug_Gene)) +
@@ -1597,9 +1599,9 @@ ge_spearman_plot <- subplot(plot_ge_box, plot_ge_point, nrows = 2, heights = c(0
 saveWidgetFix(widget = ge_spearman_plot, file = "./plots/manuscript/g2p_ge_spearman_plot.html")
 ```
 
-### CN
+## CN
 
-#### Pearson
+### Pearson
 
 ```{r fig.height=5, fig.width=12}
 plot_cn_pearson_point <- ggplot(data = g2p_cor, aes(x = Pearson_CN_Abs, y = n, label = Drug_Gene)) +
@@ -1669,7 +1671,7 @@ cn_pearson_plot <- subplot(plot_cn_box, plot_cn_point, nrows = 2, heights = c(0.
 saveWidgetFix(widget = ge_pearson_plot, file = "./plots/manuscript/g2p_cn_pearson_plot.html")
 ```
 
-#### Spearman
+### Spearman
 
 ```{r fig.height=5, fig.width=12}
 plot_cn_spearman_point <- ggplot(data = g2p_cor, aes(x = Spearman_CN_Abs, y = n, label = Drug_Gene)) +
@@ -1739,9 +1741,11 @@ cn_spearman_plot <- subplot(plot_cn_box, plot_cn_point, nrows = 2, heights = c(0
 saveWidgetFix(widget = cn_spearman_plot, file = "./plots/manuscript/g2p_cn_spearman_plot.html")
 ```
 
-## Lineage-grouped
+# BY LINEAGE
 
-### Mut: Grid
+--------------------------------------------------------------------------------
+
+## Mut: Grid
 
 Summarize the Wilcoxon test p-values of the grid tests by mutation status. Grid tests were all lineage-agnostic G2P drug-gene associations tested across all screened lineages in each dataset:
 ```{r}
@@ -1787,7 +1791,7 @@ dgl_mut_g2p_grid_ttest_res_list <- readRDS("./data_munging/rds/dgl_mut_g2p_grid_
 knitr::kable(dgl_mut_g2p_grid_ttest_res_list, caption = "Mutation status: T-test results for level A G2P drug-gene associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-### GE/CN: G2P
+## GE/CN: G2P
 
 Drug-gene-lineage (DGL) overlaps between CCLE, CTRP, and GDSC:
 ```{r}
@@ -1897,7 +1901,7 @@ gdsc_dgl_summ <- with(gdsc_dgl_summ, cbind(colsplit(Drug_Gene_Lin, pattern = "_"
 g2p_dgl_sig_summ <- merge(merge(ccle_dgl_summ, ctrp_dgl_summ, by = c("Drug", "Gene", "Lineage"), all = TRUE), gdsc_dgl_summ, by = c("Drug", "Gene", "Lineage"), all = TRUE)
 ```
 
-### GE/CN: Grid
+## GE/CN: Grid
 
 Test all combinations of G2P drugs and genes in all lineages. InG2P indicates G2P drug-gene associations test across all lineages.
 ```{r, eval=FALSE}
@@ -1953,13 +1957,15 @@ knitr::kable(dgl_pearson_g2p_grid_ttest_res_list[order(dgl_pearson_g2p_grid_ttes
 knitr::kable(dgl_pearson_g2p_grid_ttest_res_list[order(dgl_pearson_g2p_grid_ttest_res_list$p_value_CN), c("Dataset", "group_general_lineage_name", "t_statistic_CN", "df_CN", "p_value_CN")], caption = "Copy number: T-test results for level A G2P drug-gene/gene expression associations across lineages") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
-## Mut/GE/CN
+# MUT/GE/CN
 
-### Lineage-agnostic
+--------------------------------------------------------------------------------
+
+## Pancancer
 
 This section contains summary plots for the Wilcoxon tests and Pearson/Spearman correlations done for only level A G2P drug-gene associations (i.e. not the grid tests) and G2P genes in the case of the CRISPR dataset.
 
-#### CRISPR
+### CRISPR
 
 G2P genes with a significant effect on CERES score by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
 ```{r fig.height=5, fig.width=12}
@@ -2031,7 +2037,7 @@ crispr_genomic_features_spearman_summ_plot
 # ggsave("./plots/manuscript/crispr_genomic_features_spearman_summ_plot.png", crispr_genomic_features_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
-#### CCLE
+### CCLE
 
 G2P drug-gene associations with a significant effect on AUC by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
 ```{r fig.height=4, fig.width=12}
@@ -2113,7 +2119,7 @@ ccle_genomic_features_spearman_summ_plot
 # ggsave("./plots/manuscript/ccle_genomic_features_spearman_summ_plot.png", ccle_genomic_features_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
 ```
 
-#### CTRP
+### CTRP
 
 G2P drug-gene associations with a significant effect on AUC by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
 ```{r fig.height=4, fig.width=12}
@@ -2195,7 +2201,7 @@ ctrp_genomic_features_spearman_summ_plot
 # ggsave("./plots/manuscript/ctrp_genomic_features_spearman_summ_plot.png", ctrp_genomic_features_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
 ```
 
-#### GDSC
+### GDSC
 
 G2P drug-gene associations with a significant effect on AUC by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
 ```{r fig.height=4, fig.width=12}
@@ -2276,13 +2282,13 @@ gdsc_genomic_features_spearman_summ_plot
 # ggsave("./plots/manuscript/gdsc_genomic_features_spearman_summ_plot.png", gdsc_genomic_features_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 4, units = "in")
 ```
 
-#### Drug: Mut
+### Drug: Mut
 
 G2P drug-gene associations with a significant effect on AUC by mutation status:
 ```{r fig.height=4, fig.width=8}
 all_mut_res <- rbind(ccle_res_mut, ctrp_res_mut, gdsc_res_mut)
 
-all_mut_summ_plot <- ggplot(data = subset(all_res_mut, p < 0.05)) +
+all_mut_summ_plot <- ggplot(data = subset(all_mut_res, p < 0.05)) +
   facet_grid(~ Dataset) +
   geom_point(aes(x = corr, y = p_log10, color = Dataset), alpha = 0.5) +
   scale_y_continuous(breaks = seq(0, 12, by = 2), labels = seq(0, 12, by = 2)) +
@@ -2297,7 +2303,7 @@ all_mut_summ_plot
 # ggsave("./plots/manuscript/all_mut_summ_plot.png", all_mut_summ_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
-#### Drug: GE and CN
+### Drug: GE and CN
 
 G2P drug-gene associations with a significant effect on AUC by gene expression and copy number:
 ```{r fig.height=12, fig.width=12}
@@ -2328,7 +2334,7 @@ all_spearman_summ_plot
 # ggsave("./plots/manuscript/all_spearman_summ_plot.png", all_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 10, units = "in")
 ```
 
-#### Drug: P-values
+### Drug: P-values
 
 ```{r fig.height=6, fig.width=12}
 pval_summ_mut <- g2p_mut_all_summ
@@ -2363,18 +2369,18 @@ pval_summ_plot
 # ggsave("./plots/manuscript/all_pval_summ_plot.png", pval_summ_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
-#### Summary stats
+### Summary stats
 
 ```{r}
 # Mutation status
-g2p_druggene_all_summ_stats <- g2p_druggene_all_summ
-g2p_druggene_all_summ_stats$n_true <- TRUE
-g2p_druggene_all_summ_stats <- g2p_druggene_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05), n_sig_perc = n_signif / n * 100)
+g2p_mut_all_summ_stats <- g2p_mut_all_summ
+g2p_mut_all_summ_stats$n_true <- TRUE
+g2p_mut_all_summ_stats <- g2p_mut_all_summ_stats %>% drop_na(p) %>% group_by(Dataset, InG2P) %>% summarize(p_mean = round(mean(p), 2), p_sd = round(sd(p), 2), n = sum(n_true), n_signif = sum(p < 0.05), n_sig_perc = n_signif / n * 100)
 
 # Pearson correlations
-g2p_mut_cor_stats <- g2p_mut_cor
-g2p_mut_cor_stats$n_true <- TRUE
-g2p_mut_cor_stats <- g2p_mut_cor_stats %>% group_by(Dataset, InG2P) %>% drop_na() %>% summarize(
+g2p_cor_stats <- g2p_cor
+g2p_cor_stats$n_true <- TRUE
+g2p_cor_stats <- g2p_cor_stats %>% group_by(Dataset, InG2P) %>% drop_na() %>% summarize(
           ge_mean = round(mean(Pearson_GE_Abs), 5),
           ge_sd = round(sd(Pearson_GE_Abs), 5),
           ge_n = sum(n_true),
@@ -2387,7 +2393,7 @@ g2p_mut_cor_stats <- g2p_mut_cor_stats %>% group_by(Dataset, InG2P) %>% drop_na(
           cn_n_sig_perc = cn_n_signif / cn_n * 100)
 ```
 
-#### CTRP example derivation
+### CTRP example derivation
 
 Example p-value and Pearson correlation coefficient derivations for afatinib and ERBB2 in the CTRP dataset:
 ```{r}
@@ -2438,33 +2444,101 @@ ctrp_grid_summary_cn_plot
 # ggsave("./plots/manuscript/ctrp_grid_summary_cn_plot.png", ctrp_grid_summary_cn_plot, device = "png", dpi = 450, width = 5, height = 4, units = "in")
 ```
 
-### Lineage-grouped
-  
-Deriving n for Bonferroni correction:
+## By lineage
+
+### Kolmogorov-Smirnov tests
+
 ```{r}
+MakeCorrResSummaryTable <- function(df_list, dataset_name) {
+  res_full <- data.frame(matrix(ncol = 8, nrow = 0))
+  for(i in 1:length(df_list)) {
+    corr_res <- df_list[[i]] %>% group_by(G2P_DGL) %>% summarize(Dataset = dataset_name,
+                Drug_Gene = names(df_list)[i],
+                Lineages = paste(as.character(unique(group_general_lineage_name)), collapse = ", "),
+                N_Lineages = length(as.character(unique(group_general_lineage_name))),
+                Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
+                Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$estimate,
+                Spearman_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
+                Spearman_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$estimate)
+    corr_res <- merge(corr_res, compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, data = df_list[[i]], group.by = "G2P_DGL", method = "wilcox.test")[, c("G2P_DGL", "p")], by = "G2P_DGL", all = TRUE)
+    corr_res$Mut_Signif <- ifelse(corr_res$p < 0.05, 1, 0)
+    res_full <- rbind(res_full, corr_res)
+  }
+  return(res_full)
+}
+```
+
+```{r}
+ccle_data_g2p$G2P_DGL <- ifelse(ccle_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+ccle_data_g2p_split <- split(ccle_data_g2p, f = ccle_data_g2p$Drug_Gene)
+ccle_corr_all <- MakeCorrResSummaryTable(ccle_data_g2p_split, dataset_name = "CCLE")
+
+ctrp_data_g2p$G2P_DGL <- ifelse(ctrp_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+ctrp_data_g2p_split <- split(ctrp_data_g2p, f = ctrp_data_g2p$Drug_Gene)
+ctrp_corr_all <- MakeCorrResSummaryTable(ctrp_data_g2p_split, dataset_name = "CTRP")
+
+gdsc_data_g2p$G2P_DGL <- ifelse(gdsc_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+gdsc_data_g2p_split <- split(gdsc_data_g2p, f = gdsc_data_g2p$Drug_Gene)
+gdsc_corr_all <- MakeCorrResSummaryTable(gdsc_data_g2p_split, dataset_name = "GDSC")
+
+g2p_corr_all <- rbind(ccle_corr_all, ctrp_corr_all, gdsc_corr_all)
+```
+
+```{r}
+G2PCorr_KStest <- function(dataset, dataset_name) {
+  Metric <- colnames(dataset)[6:9]
+  D_stat <- NULL
+  pval <- NULL
+  signif <- NULL
+  
+  yes <- dataset[dataset$G2P_DGL == "Yes",]
+  no <- dataset[dataset$G2P_DGL == "No",]
+  
+  for(i in 6:9) {
+    # print(yes[[colnames(yes)[i]]])
+    # print(no[[colnames(no)[i]]])
+    test <- ks.test(yes[[colnames(yes)[i]]], no[[colnames(no)[i]]])
+    D_stat <- c(D_stat, test$statistic)
+    pval <- c(pval, test$p.value)
+    signif <- c(signif, ifelse(test$p.value < 0.001, "***", ifelse(test$p.value < 0.01, "**", ifelse(test$p.value < 0.05, "*", NA))))
+  }
+  df <- data.frame(Metric, D_stat, pval, signif)
+  df$Dataset <- dataset_name
+  return(df)
+}
+```
+
+```{r}
+ccle_corr_stats <- G2PCorr_KStest(ccle_corr_all, "CCLE")
+ctrp_corr_stats <- G2PCorr_KStest(ctrp_corr_all, "CTRP")
+gdsc_corr_stats <- G2PCorr_KStest(gdsc_corr_all, "GDSC")
+g2p_corr_stats <- rbind(ccle_corr_stats, ctrp_corr_stats, gdsc_corr_stats)
+g2p_corr_stats
+
+g2p_mut_stats <- g2p_corr_all %>% group_by(Dataset, G2P_DGL) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif),
+                                                                                                   Total_Tests = length(Mut_Signif),
+                                                                                                   Perc_Signif = N_Signif_Muts / Total_Tests * 100)
+g2p_mut_stats
+```
+
+### Grid t-test summaries
+
+Faceted lineage summaries:
+```{r fig.height=4, fig.width=12}
 ttest_summ_res_mut <- dgl_mut_g2p_grid_ttest_res_list[, c("p_value", "Dataset", "group_general_lineage_name")]
 ttest_summ_res_mut$Metric <- "Mutation Status"
-mut_alphas <- ttest_summ_res_mut %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
-mut_alphas$alpha_adj <- 0.05 / mut_alphas$n
 
 ttest_summ_res_ge <- dgl_pearson_g2p_grid_ttest_res_list[, c("p_value_GE", "Dataset", "group_general_lineage_name")]
 colnames(ttest_summ_res_ge) <- c("p_value", "Dataset", "group_general_lineage_name")
 ttest_summ_res_ge$Metric <- "Gene Expression"
-ge_alphas <- ttest_summ_res_ge %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
-ge_alphas$alpha_adj <- 0.05 / ge_alphas$n
 
 ttest_summ_res_cn <- dgl_pearson_g2p_grid_ttest_res_list[, c("p_value_CN", "Dataset", "group_general_lineage_name")]
 colnames(ttest_summ_res_cn) <- c("p_value", "Dataset", "group_general_lineage_name")
 ttest_summ_res_cn$Metric <- "Copy Number"
-cn_alphas <- ttest_summ_res_cn %>% drop_na(p_value) %>% group_by(Dataset) %>% tally()
-cn_alphas$alpha_adj <- 0.05 / cn_alphas$n
 
 ttest_summ_res <- rbind(ttest_summ_res_mut, ttest_summ_res_ge, ttest_summ_res_cn)
 ttest_summ_res$Metric <- factor(ttest_summ_res$Metric, levels = c("Mutation Status", "Gene Expression", "Copy Number"))
-```
 
-Faceted lineage summaries:
-```{r fig.height=4, fig.width=12}
 ttest_mut_summ_facet <- ggplot(data = ttest_summ_res, aes(x = p_value, fill = Dataset, color = Dataset)) +
   facet_grid(Metric ~ Dataset) +
   geom_histogram(bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
@@ -2482,7 +2556,6 @@ ttest_mut_summ_facet
 Stacked lineage summaries:
 ```{r fig.height=7, fig.width=12}
 # plot.margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")
-
 ttest_mut_summ_plot <- ggplot(data = dgl_mut_g2p_grid_ttest_res_list, aes(x = p_value)) +
   geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
   scale_y_continuous(breaks = c(0:6), labels = c(0:6)) +
@@ -2570,7 +2643,7 @@ gdsc_ccl <- unique(select(gdsc_data, DepMap_ID, CCLE_Name, accession_id))
 ```
 
 
-# BOXPLOTS
+# OLD: BOXPLOTS
 
 --------------------------------------------------------------------------------
 
@@ -2726,7 +2799,7 @@ gdsc_data_g2p_plot
 # ggsave("./plots/manuscript/gdsc_data_g2p_plot.png", gdsc_data_g2p_plot, device = "png", dpi = 450, width = 12, height = 7, units = "in")
 ```
 
-# CRISPR: POINT MUT MAPPING
+# OLD: CRISPR POINT MUT MAPPING
 
 --------------------------------------------------------------------------------
 
