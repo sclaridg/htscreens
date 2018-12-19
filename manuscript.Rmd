@@ -1,0 +1,107 @@
+---
+title             : "Manuscript"
+shorttitle        : "Subtitle"
+
+author: 
+  - name          : "Sally E. Claridge"
+    affiliation   : "1"
+  - name          : "Daniel M. Charytonowicz"
+    affiliation   : "1"
+  - name          : "Adam A. Margolin"
+    affiliation   : "1, 2"
+    corresponding : yes    # Define only one corresponding author
+    address       : "Icahn School of Medicine at Mount Sinai, Deparment of Genetics and Genomic Sciences, One Gustave L. Levy Place, Box 1498, New York, NY 10029"
+    email         : "adam.margolin@mssm.edu"
+
+affiliation:
+  - id            : "1"
+    institution   : "Department of Genetics and Genomic Sciences, Icahn Institute for Data Science and Genomic Technology, Icahn School of Medicine at Mount Sinai, New York, NY"
+  - id            : "2"
+    institution   : "Cancer Target Discovery and Development Network (Oregon Health and Science University, Portland, OR), National Cancer Institute, National Institutes of Health"
+
+authornote: |
+  Add complete departmental affiliations for each author here. Each new line herein must be indented, like this line.
+
+  Enter author note here.
+
+abstract: |
+  One or two sentences providing a **basic introduction** to the field,  comprehensible to a scientist in any discipline.
+  
+  Two to three sentences of **more detailed background**, comprehensible  to scientists in related disciplines.
+  
+  One sentence clearly stating the **general problem** being addressed by  this particular study.
+  
+  One sentence summarizing the main result (with the words "**here we show**" or their equivalent).
+  
+  Two or three sentences explaining what the **main result** reveals in direct comparison to what was thought to be the case previously, or how the  main result adds to previous knowledge.
+  
+  One or two sentences to put the results into a more **general context**.
+  
+  Two or three sentences to provide a **broader perspective**, readily comprehensible to a scientist in any discipline.
+  
+  <!-- https://tinyurl.com/ybremelq -->
+  
+keywords          : "keywords"
+wordcount         : "X"
+
+bibliography      : ["manuscript.bib"]
+
+floatsintext      : no
+figurelist        : no
+tablelist         : no
+footnotelist      : no
+linenumbers       : yes
+mask              : no
+draft             : no
+
+documentclass     : "apa6"
+classoption       : "man"
+biblio-style      : "apa"
+output            :
+  papaja::apa6_pdf:
+    citation_package: biblatex
+---
+
+```{r setup, include = FALSE}
+library("papaja")
+# install.packages("tinytex")
+# tinytex::install_tinytex()
+# install.packages("citr")
+```
+
+```{r analysis-preferences}
+# Seed for random number generation
+set.seed(42)
+knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
+```
+
+[@aksoy2017]
+
+# Introduction
+
+# Results
+
+# Discussion
+
+\newpage
+
+# Methods
+
+We used `r cite_r("manuscript_r_references.bib")` for all our analyses.
+
+\newpage
+
+# References
+
+```{r create_r-references}
+r_refs(file = "manuscript_r_references.bib")
+```
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+Finally, the APA guidelines require a note at the start of the reference section that explains what an asterisk means. This note can be added at the end of the document as follows.
+
+<div id = "refs"></div>
+\endgroup
