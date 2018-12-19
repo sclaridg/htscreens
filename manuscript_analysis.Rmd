@@ -55,11 +55,13 @@ library(gplots)
 library(gridExtra)
 library(htmlwidgets)
 library(kableExtra)
+library(papaja)
 library(plotly)
 library(reshape2)
 library(scales)
 library(tidyverse)
 library(VennDiagram)
+# devtools::install_github("crsh/papaja")
 ```
 
 # FUNCTIONS {.tabset .tabset-fade .tabset-pills}
@@ -596,7 +598,7 @@ saveRDS(cn_melt, "./data_munging/rds/cn_melt_18Q4.rds", compress = "xz")
 
 18Q3, Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
 ```{r, eval=FALSE}
-ge_18Q3 <- read.delim("./../htscreen_lineages_giant_files/CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
+ge_18Q3 <- read.delim("./../htscreens_giant_files/CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
 # Edit columns
 ge_18Q3$Name <- NULL
 colnames(ge_18Q3)[1] <- "Hugo_Symbol"
@@ -606,12 +608,12 @@ ge_melt_18Q3 <- melt(data = ge_18Q3, id.vars = "Hugo_Symbol", measure.vars = col
 ge_melt_18Q3 <- with(ge_melt_18Q3, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "DepMap_ID")), RPKM))
 ## Remove parentheses around Broad IDs
 ge_melt_18Q3$DepMap_ID <- gsub("\\(|\\)", "", ge_melt_18Q3$DepMap_ID)
-saveRDS(ge_melt_18Q3, "./../htscreen_lineages_giant_files/ge_melt_18Q3.rds", compress = "xz")
+saveRDS(ge_melt_18Q3, "./../htscreens_giant_files/ge_melt_18Q3.rds", compress = "xz")
 ```
 
 18Q4, CCLE RNAseq gene expression data (log2(TPM+1)):
 ```{r, eval=FALSE}
-ge_18Q4 <- read.delim("./../htscreen_lineages_giant_files/CCLE_depMap_18Q4_TPM_v2_20181115.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+ge_18Q4 <- read.delim("./../htscreens_giant_files/CCLE_depMap_18Q4_TPM_v2_20181115.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 # Format: Hugo_Symbol (Entrez ID)
 colnames(ge_18Q4) <- gsub(" .*", "", colnames(ge_18Q4))
@@ -663,7 +665,7 @@ summ
 ```{r, eval=FALSE}
 maf_df <- readRDS("./data_munging/rds/maf_df_18Q4.rds")
 cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q4.rds")
-ge_melt_18Q3 <- readRDS("./../htscreen_lineages_giant_files/ge_melt_18Q3.rds")
+ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 # ge_melt_18Q4 <- readRDS("./data_munging/rds/ge_melt_18Q4.rds")
 
 # maf_filt_dan <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
@@ -866,11 +868,11 @@ ge_crispr_18Q3 <- filter(ge_melt_18Q3, Hugo_Symbol %in% as.character(unique(cris
 # ge_crispr_18Q4 <- filter(ge_melt_18Q4, Hugo_Symbol %in% as.character(unique(crispr_melt$Hugo_Symbol)))
 crispr_data <- merge(crispr_data, ge_crispr_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
 # crispr_data <- merge(crispr_data, ge_crispr_18Q4, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-saveRDS(crispr_data, "./../htscreen_lineages_giant_files/crispr_data_18Q4.rds", compress = "xz")
+saveRDS(crispr_data, "./../htscreens_giant_files/crispr_data_18Q4.rds", compress = "xz")
 ```
 
 ```{r}
-crispr_data <- readRDS("./../htscreen_lineages_giant_files/crispr_data_18Q4.rds")
+crispr_data <- readRDS("./../htscreens_giant_files/crispr_data_18Q4.rds")
 crispr_data_ptmuts <- filter(crispr_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
 crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele_Length == 1 | is.na(crispr_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
 crispr_data_ptmuts <- filter(crispr_data_ptmuts, Keep_PtMut_Tests == TRUE)
@@ -2367,6 +2369,20 @@ pval_summ_plot <- ggplot(data = pval_summ, aes(x = p_log10, y = n, color = Datas
 pval_summ_plot
 
 # ggsave("./plots/manuscript/all_pval_summ_plot.png", pval_summ_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+
+pval_summ_plot2 <- ggplot(data = pval_summ, aes(x = p_log10, y = n, color = Dataset, shape = Dataset, label = Drug_Gene)) +
+  facet_wrap(~ Measure, scales = "free_x") +
+  geom_point(alpha = 0.7) +
+  scale_color_manual(values = c("green3", "darkslategray4", "darkturquoise")) +
+  geom_text_repel(data = filter(pval_summ, p_log10 > 5 & Measure == "Mutation Status"), mapping = aes(x = p_log10, y = n, color = Dataset, label = Drug_Gene), direction = "y", nudge_y = 10, hjust = 0, size = 2.5, segment.size = 0.1, segment.colour = "grey50", box.padding = 0.6, show.legend = FALSE) +
+  geom_text_repel(data = filter(pval_summ, p_log10 > 20 & Measure == "Gene Expression"), mapping = aes(x = p_log10, y = n, color = Dataset, label = Drug_Gene), direction = "y", nudge_y = 10, hjust = 0, size = 2.5, segment.size = 0.1, segment.colour = "grey50", box.padding = 0.6, show.legend = FALSE) +
+  geom_text_repel(data = filter(pval_summ, p_log10 > 7.5 & Measure == "Copy Number"), mapping = aes(x = p_log10, y = n, color = Dataset, label = Drug_Gene), direction = "y", nudge_y = 10, hjust = 0, size = 2.5, segment.size = 0.1, segment.colour = "grey50", box.padding = 0.6, show.legend = FALSE) +
+  scale_y_continuous(breaks = seq(0, 120, by = 10), labels = seq(0, 120, by = 10)) +
+  labs(x = "-log10(p-value)", y = "Number of level A G2P associations") +
+  theme(legend.position = "bottom")
+pval_summ_plot2
+
+# ggsave("./plots/manuscript/all_pval_summ_plot2.png", pval_summ_plot2, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
 ### Summary stats
@@ -2523,7 +2539,7 @@ g2p_mut_stats
 
 ### Grid t-test summaries
 
-Faceted lineage summaries:
+Figure #. Histograms of p-values from t-tests comparing distributions of summary statistics for CCLE, CTRP, and GDSC drug screen results in the context of G2P level A evidence and lineage. Each p-value is derived from comparisons similar to those shown in Figure 2, but for these p-values, the data is grouped by lineage prior to conducting the t-test rather than the test being lineage-agnostic. To produce these p-values, AUC was correlated with each genomic feature for all possible pairwise combinations of G2P drugs and genes in all lineages represented in each dataset. For each lineage, t-tests were used to compare distributions of p-values (mutation status) or Pearson correlation coefficients (gene expression and copy number) that were grouped by whether or not the underlying drug-gene combination had level-A G2P evidence. For each dataset, if there were two or more correlation results in each G2P presence/absence group in a specific lineage, a t-test was conducted and the p-value appears in the appropriate histogram. Mutation status histograms are sparse due to limited mutation annotations for many of the G2P genes in all screened cell lines.
 ```{r fig.height=4, fig.width=12}
 ttest_summ_res_mut <- dgl_mut_g2p_grid_ttest_res_list[, c("p_value", "Dataset", "group_general_lineage_name")]
 ttest_summ_res_mut$Metric <- "Mutation Status"
@@ -2551,51 +2567,6 @@ ttest_mut_summ_facet <- ggplot(data = ttest_summ_res, aes(x = p_value, fill = Da
 ttest_mut_summ_facet
 
 # ggsave("./plots/manuscript/all_dgl_ttest_summ_facet_plot.png", ttest_mut_summ_facet, device = "png", dpi = 450, width = 12, height = 4, units = "in")
-```
-
-Stacked lineage summaries:
-```{r fig.height=7, fig.width=12}
-# plot.margin(t = 0, r = 0, b = 0, l = 0, unit = "pt")
-ttest_mut_summ_plot <- ggplot(data = dgl_mut_g2p_grid_ttest_res_list, aes(x = p_value)) +
-  geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
-  scale_y_continuous(breaks = c(0:6), labels = c(0:6)) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), expand = c(0.01, 0.01)) +
-  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
-  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
-  theme(legend.position = c(0.5, 1.7), legend.direction = "horizontal", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.margin = unit(c(30, 5.5, 1, 5.5), "pt")) +
-  labs(x = "P-value", y = "Frquency", title = "Mutation status")
-
-ttest_ge_summ_plot <- ggplot(data = dgl_pearson_g2p_grid_ttest_res_list, aes(x = p_value_GE)) +
-  geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
-  scale_y_continuous(breaks = c(0:7), labels = c(0:7), expand = c(0.01, 0.01)) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), expand = c(0.01, 0.01)) +
-  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
-  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
-  theme(legend.position = "none", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.margin = unit(c(1, 5.5, 1, 5.5), "pt")) +
-  labs(x = "P-value", y = "Frquency", title = "Gene expression")
-
-ttest_cn_summ_plot <- ggplot(data = dgl_pearson_g2p_grid_ttest_res_list, aes(x = p_value_CN)) +
-  geom_histogram(aes(fill = Dataset, color = Dataset), position = "stack", bins = 40, binwidth = 0.025, boundary = 0, closed = "left") +
-  scale_y_continuous(breaks = c(0:6), labels = c(0:6), expand = c(0.01, 0.01)) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.05), expand = c(0.01, 0.01)) +
-  scale_fill_manual(values = c("CCLE" = "palegreen3", "CTRP" = "slategray3", "GDSC" = "paleturquoise3")) +
-  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
-  theme(legend.position = "none", panel.grid.minor.y = element_blank(), panel.grid.minor.x = element_blank(), plot.margin = unit(c(1, 5.5, 5.5, 5.5), "pt")) +
-  labs(x = "P-value", y = "Frquency", title = "Copy number")
-
-ttest_mut_summ_plot <- ggplot_gtable(ggplot_build(ttest_mut_summ_plot))
-ttest_ge_summ_plot <- ggplot_gtable(ggplot_build(ttest_ge_summ_plot))
-ttest_cn_summ_plot <- ggplot_gtable(ggplot_build(ttest_cn_summ_plot))
-
-# p_maxWidth <-  grid::unit.pmax(ttest_mut_summ_plot$widths, ttest_ge_summ_plot$widths, ttest_cn_summ_plot$widths)
-# ttest_mut_summ_plot$widths <- as.list(p_maxWidth)
-# ttest_ge_summ_plot$widths <- as.list(p_maxWidth)
-# ttest_cn_summ_plot$widths <- as.list(p_maxWidth)
-
-ttest_summ_plot <- cowplot::plot_grid(ttest_mut_summ_plot, ttest_ge_summ_plot,ttest_cn_summ_plot, nrow = 3, rel_heights = c(1, 1.6, 1.6))
-ttest_summ_plot
-
-# ggsave("./plots/manuscript/all_dgl_ttest_summ_plot.png", ttest_summ_plot, device = "png", dpi = 450, width = 12, height = 7, units = "in")
 ```
 
 Big grid plot by lineages:
