@@ -643,11 +643,14 @@ g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 
 g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
 g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
-g2p_genes <- unique(sapply(strsplit(g2p_druggenes, "_", fixed = TRUE), function(x) x[2]))
-g2p_drugs <- unique(sapply(strsplit(g2p_druggenes, "_", fixed = TRUE), function(x) x[1]))
+g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
 g2p_druggenes
-g2p_genes
 g2p_drugs
+g2p_genes
+g2p_lins
+
 # Order and genes taken from pink heatmapo from Daniel's analyses
 g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
 ```
@@ -2039,6 +2042,56 @@ crispr_genomic_features_spearman_summ_plot
 # ggsave("./plots/manuscript/crispr_genomic_features_spearman_summ_plot.png", crispr_genomic_features_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 5, units = "in")
 ```
 
+Pearson correlations for gene expression and copy number:
+```{r fig.height=6, fig.width=12}
+crispr_pearson_res_GE <- transform(crispr_pearson_res_GE, Hugo_Symbol = reorder(Hugo_Symbol, corr)) 
+crispr_pearson_res_GE$p_log10 <- -log10(crispr_pearson_res_GE$p)
+crispr_pearson_res_CN <- transform(crispr_pearson_res_CN, Hugo_Symbol = reorder(Hugo_Symbol, corr)) 
+crispr_pearson_res_CN$p_log10 <- -log10(crispr_pearson_res_CN$p)
+
+crispr_ge_pearson_corr_plot <- ggplot(data = crispr_pearson_res_GE, aes(x = Hugo_Symbol, y = corr)) +
+  geom_point(aes(fill = p_log10), pch = 21, size = 5) +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  coord_cartesian(ylim = c(-0.65, 0.25)) +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  labs(fill = "-log10(p)", x = "Gene", y = "Pearson Correlation Coefficient (r_s)", subtitle = "CRISPR: Correlation between AUC z-score and gene expression")
+crispr_cn_pearson_corr_plot <- ggplot(data = crispr_pearson_res_CN, aes(x = Hugo_Symbol, y = corr)) +
+  geom_point(aes(fill = p_log10), pch = 21, size = 5) +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  coord_cartesian(ylim = c(-0.65, 0.25)) +
+  theme(legend.position = "bottom", axis.title.y = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  labs(fill = "-log10(p)", x = "Gene", y = "Pearson Correlation Coefficient (r_s)", subtitle = "CRISPR: Correlation between AUC z-score and copy number")
+
+crispr_pearson_corr_plot <- plot_grid(crispr_ge_pearson_corr_plot, crispr_cn_pearson_corr_plot, align = "h")
+crispr_pearson_corr_plot
+# ggsave("./plots/manuscript/crispr_pearson_corr_plot.png", crispr_pearson_corr_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+```
+
+Spearman correlations for gene expression and copy number:
+```{r fig.height=6, fig.width=12}
+crispr_spearman_res_GE <- transform(crispr_spearman_res_GE, Hugo_Symbol = reorder(Hugo_Symbol, corr)) 
+crispr_spearman_res_GE$p_log10 <- -log10(crispr_spearman_res_GE$p)
+crispr_spearman_res_CN <- transform(crispr_spearman_res_CN, Hugo_Symbol = reorder(Hugo_Symbol, corr)) 
+crispr_spearman_res_CN$p_log10 <- -log10(crispr_spearman_res_CN$p)
+
+crispr_ge_spearman_corr_plot <- ggplot(data = crispr_spearman_res_GE, aes(x = Hugo_Symbol, y = corr)) +
+  geom_point(aes(fill = p_log10), pch = 21, size = 5) +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  coord_cartesian(ylim = c(-0.45, 0.2)) +
+  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)", subtitle = "CRISPR: Correlation between AUC z-score and gene expression")
+crispr_cn_spearman_corr_plot <- ggplot(data = crispr_spearman_res_CN, aes(x = Hugo_Symbol, y = corr)) +
+  geom_point(aes(fill = p_log10), pch = 21, size = 5) +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  coord_cartesian(ylim = c(-0.45, 0.2)) +
+  theme(legend.position = "bottom", axis.title.y = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)", subtitle = "CRISPR: Correlation between AUC z-score and copy number")
+
+crispr_spearman_corr_plot <- plot_grid(crispr_ge_spearman_corr_plot, crispr_cn_spearman_corr_plot, align = "h")
+crispr_spearman_corr_plot
+# ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+```
+
 ### CCLE
 
 G2P drug-gene associations with a significant effect on AUC by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
@@ -2482,25 +2535,7 @@ MakeCorrResSummaryTable <- function(df_list, dataset_name) {
   }
   return(res_full)
 }
-```
 
-```{r}
-ccle_data_g2p$G2P_DGL <- ifelse(ccle_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
-ccle_data_g2p_split <- split(ccle_data_g2p, f = ccle_data_g2p$Drug_Gene)
-ccle_corr_all <- MakeCorrResSummaryTable(ccle_data_g2p_split, dataset_name = "CCLE")
-
-ctrp_data_g2p$G2P_DGL <- ifelse(ctrp_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
-ctrp_data_g2p_split <- split(ctrp_data_g2p, f = ctrp_data_g2p$Drug_Gene)
-ctrp_corr_all <- MakeCorrResSummaryTable(ctrp_data_g2p_split, dataset_name = "CTRP")
-
-gdsc_data_g2p$G2P_DGL <- ifelse(gdsc_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
-gdsc_data_g2p_split <- split(gdsc_data_g2p, f = gdsc_data_g2p$Drug_Gene)
-gdsc_corr_all <- MakeCorrResSummaryTable(gdsc_data_g2p_split, dataset_name = "GDSC")
-
-g2p_corr_all <- rbind(ccle_corr_all, ctrp_corr_all, gdsc_corr_all)
-```
-
-```{r}
 G2PCorr_KStest <- function(dataset, dataset_name) {
   Metric <- colnames(dataset)[6:9]
   D_stat <- NULL
@@ -2525,16 +2560,53 @@ G2PCorr_KStest <- function(dataset, dataset_name) {
 ```
 
 ```{r}
+ccle_data_g2p$G2P_DGL <- ifelse(ccle_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+ccle_data_g2p_split <- split(ccle_data_g2p, f = ccle_data_g2p$Drug_Gene)
+ccle_corr_all <- MakeCorrResSummaryTable(ccle_data_g2p_split, dataset_name = "CCLE")
+
+ctrp_data_g2p$G2P_DGL <- ifelse(ctrp_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+ctrp_data_g2p_split <- split(ctrp_data_g2p, f = ctrp_data_g2p$Drug_Gene)
+ctrp_corr_all <- MakeCorrResSummaryTable(ctrp_data_g2p_split, dataset_name = "CTRP")
+
+gdsc_data_g2p$G2P_DGL <- ifelse(gdsc_data_g2p$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+gdsc_data_g2p_split <- split(gdsc_data_g2p, f = gdsc_data_g2p$Drug_Gene)
+gdsc_corr_all <- MakeCorrResSummaryTable(gdsc_data_g2p_split, dataset_name = "GDSC")
+
+g2p_corr_all <- rbind(ccle_corr_all, ctrp_corr_all, gdsc_corr_all)
+
 ccle_corr_stats <- G2PCorr_KStest(ccle_corr_all, "CCLE")
 ctrp_corr_stats <- G2PCorr_KStest(ctrp_corr_all, "CTRP")
 gdsc_corr_stats <- G2PCorr_KStest(gdsc_corr_all, "GDSC")
 g2p_corr_stats <- rbind(ccle_corr_stats, ctrp_corr_stats, gdsc_corr_stats)
+g2p_corr_stats <- g2p_corr_stats %>% separate(col = Metric, into = c("Correlation_Method", "corr", "Metric"), sep = "_")
 g2p_corr_stats
 
 g2p_mut_stats <- g2p_corr_all %>% group_by(Dataset, G2P_DGL) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif),
                                                                                                    Total_Tests = length(Mut_Signif),
                                                                                                    Perc_Signif = N_Signif_Muts / Total_Tests * 100)
 g2p_mut_stats
+```
+
+Plot of Kolmogorov-Smirnov test results comparing correlations between CN/GE and AUC z-score in G2P and non-G2P lineages:
+```{r fig.height=6, fig.width=12}
+g2p_corr_4plot <- g2p_corr_all
+g2p_corr_4plot$p <- NULL
+g2p_corr_4plot$Mut_Signif <- NULL
+g2p_corr_4plot <- melt(g2p_corr_4plot, id.vars = colnames(g2p_corr_4plot)[1:5], measure.vars = colnames(g2p_corr_4plot)[6:9], value.name = "Correlation")
+g2p_corr_4plot <- g2p_corr_4plot %>% separate(col = variable, into = c("Correlation_Method", "corr", "Metric"), sep = "_", remove = FALSE)
+
+g2p_ks_res_plot <- ggplot(data = g2p_corr_4plot) +
+  facet_grid(Correlation_Method ~ Metric * Dataset) +
+  geom_violin(aes(y = Correlation, x = G2P_DGL, fill = G2P_DGL, color = G2P_DGL), alpha = 0.3) +
+  geom_boxplot(width = 0.075, aes(y = Correlation, x = G2P_DGL, color = G2P_DGL)) +
+  geom_jitter(width = 0.3, alpha = 0.7, aes(y = Correlation, x = G2P_DGL, color = G2P_DGL)) +
+  theme(legend.position = "none") +
+  coord_cartesian(ylim = c(-1, 1)) +
+  geom_text(data = g2p_corr_stats, aes(x = 1.5, y = 0.8, label = paste0("D = ", formatC(D_stat, digits = 2, format = "f"), ", p = ", ifelse(pval > 0.1, round(pval, 2), round(pval, 3)), "\n", ifelse(is.na(signif), "", signif)))) +
+  labs(x = "Is the lineage in a G2P DGL?", y = "Correlation Coefficint", subtitle = "Kolmogorov-Smirnov test results comparing correlations between CN/GE and AUC z-score in G2P and non-G2P lineages.")
+g2p_ks_res_plot
+
+# ggsave("./plots/manuscript/g2p_ks_res_plot.png", g2p_ks_res_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
 ### Grid t-test summaries
@@ -2602,6 +2674,100 @@ dgl_all_plot <- ggplot(data = dgl_all, aes(x = InG2P, y = Statistic)) +
   
 # ggsave("./plots/manuscript/all_dgl_plot.png", dgl_all_plot, device = "png", dpi = 450, width = 12, height = 40, units = "in")
 ```
+
+## Pancancer vs. Lineage
+
+```{r}
+compare_grid <- expand.grid(g2p_druggenes, unique(ccl_converter$group_general_lineage_name), c("CCLE", "CTRP", "GDSC"), c("Gene Expression", "Copy Number", "Mutation Status"))
+colnames(compare_grid) <- c("Drug_Gene", "group_general_lineage_name", "Dataset", "Metric")
+
+pancan_ge <- select(filter(all_pearson_res, Metric == "Gene Expression"), Drug_Gene, p, Dataset, p_log10)
+colnames(pancan_ge)[colnames(pancan_ge) == "p"] <- "p_pancan"
+colnames(pancan_ge)[colnames(pancan_ge) == "p_log10"] <- "p_log10_pancan"
+compare_ge <- select(dgl_signif_pearson_g2p_grid, Drug_Gene, group_general_lineage_name, n, Pearson_Pval_GE, Drug_Gene_Lin, InG2P, Dataset)
+colnames(compare_ge)[colnames(compare_ge) == "Pearson_Pval_GE"] <- "p"
+compare_ge$p_log10 <- -log10(compare_ge$p)
+compare_ge <- merge(compare_ge, pancan_ge, by = c("Drug_Gene", "Dataset"), all = TRUE)
+compare_ge$Compare_Pvals <- ifelse(compare_ge$p_log10 < compare_ge$p_log10_pancan, "Under", "Above")
+compare_ge$Metric <- "Gene Expression"
+
+pancan_cn <- select(filter(all_pearson_res, Metric == "Copy Number"), Drug_Gene, p, Dataset, p_log10)
+colnames(pancan_cn)[colnames(pancan_cn) == "p"] <- "p_pancan"
+colnames(pancan_cn)[colnames(pancan_cn) == "p_log10"] <- "p_log10_pancan"
+compare_cn <- select(dgl_signif_pearson_g2p_grid, Drug_Gene, group_general_lineage_name, n, Pearson_Pval_CN, Drug_Gene_Lin, InG2P, Dataset)
+colnames(compare_cn)[colnames(compare_cn) == "Pearson_Pval_CN"] <- "p"
+compare_cn$p_log10 <- -log10(compare_cn$p)
+compare_cn <- merge(compare_cn, pancan_cn, by = c("Drug_Gene", "Dataset"), all = TRUE)
+compare_cn$Compare_Pvals <- ifelse(compare_cn$p_log10 < compare_cn$p_log10_pancan, "Under", "Above")
+compare_cn$Metric <- "Copy Number"
+
+pancan_mut <- all_mut_res
+pancan_mut$Metric <- NULL
+pancan_mut$corr <- NULL
+colnames(pancan_mut)[colnames(pancan_mut) == "p"] <- "p_pancan"
+colnames(pancan_mut)[colnames(pancan_mut) == "p_log10"] <- "p_log10_pancan"
+compare_mut <- dgl_mut_grid_summ
+compare_mut$p_log10 <- -log10(compare_mut$p)
+compare_mut <- merge(compare_mut, pancan_mut, by = c("Drug_Gene", "Dataset"), all = TRUE)
+compare_mut$Compare_Pvals <- ifelse(compare_mut$p_log10 < compare_mut$p_log10_pancan, "Under", "Above")
+compare_mut$Metric <- "Mutation Status"
+
+compare_data <- filter(rbind(compare_ge, compare_cn, compare_mut), Drug_Gene %in% g2p_druggenes)
+compare_data <- merge(compare_grid, compare_data, by = c("Drug_Gene", "group_general_lineage_name", "Dataset", "Metric"), all.x = TRUE)
+```
+
+```{r}
+compare_data_stats <- compare_data %>% count(Metric, Compare_Pvals)
+compare_data_stats
+```
+
+
+```{r fig.height=12, fig.width=12}
+compare_mut_plot <- ggplot(data = filter(compare_data, Metric == "Mutation Status"), aes(x = group_general_lineage_name, y = Drug_Gene)) +
+  facet_wrap(~ Dataset) +
+  geom_point(aes(shape = Compare_Pvals, fill = p_log10), color = "gray50") +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  scale_shape_manual(values = c(25, 24), labels = c("Below", "Above")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4), legend.position = "top") +
+  labs(title = "Mutation Status",
+       subtitle = paste0("Above: ", filter(compare_data_stats, Metric == "Mutation Status" & Compare_Pvals == "Above")$nn, "\n",
+                         "Under: ", filter(compare_data_stats, Metric == "Mutation Status" & Compare_Pvals == "Under")$nn, "\n",
+                         "Not tested: ", filter(compare_data_stats, Metric == "Mutation Status" & is.na(Compare_Pvals))$nn),
+       x = "Lineage", y = "Drug-Gene", shape = "Compare linege p-value to pancancer p-value:", fill = "-log10(p)")
+# ggsave("./plots/manuscript/compare_mut_plot.png", compare_mut_plot, device = "png", dpi = 450, width = 12, height = 12, units = "in")
+
+compare_ge_plot <- ggplot(data = filter(compare_data, Metric == "Gene Expression"), aes(x = group_general_lineage_name, y = Drug_Gene)) +
+  facet_wrap(~ Dataset) +
+  geom_point(aes(shape = Compare_Pvals, fill = p_log10), color = "gray50") +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  scale_shape_manual(values = c(25, 24), labels = c("Below", "Above")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4), legend.position = "top") +
+  labs(title = "Gene Expression",
+       subtitle = paste0("Above: ", filter(compare_data_stats, Metric == "Gene Expression" & Compare_Pvals == "Above")$nn, "\n",
+                         "Under: ", filter(compare_data_stats, Metric == "Gene Expression" & Compare_Pvals == "Under")$nn, "\n",
+                         "Not tested: ", filter(compare_data_stats, Metric == "Gene Expression" & is.na(Compare_Pvals))$nn),
+       x = "Lineage", y = "Drug-Gene", shape = "Compare linege p-value to pancancer p-value:", fill = "-log10(p)")
+# ggsave("./plots/manuscript/compare_ge_plot.png", compare_ge_plot, device = "png", dpi = 450, width = 12, height = 12, units = "in")
+
+compare_cn_plot <- ggplot(data = filter(compare_data, Metric == "Copy Number"), aes(x = group_general_lineage_name, y = Drug_Gene)) +
+  facet_wrap(~ Dataset) +
+  geom_point(aes(shape = Compare_Pvals, fill = p_log10), color = "gray50") +
+  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  scale_shape_manual(values = c(25, 24), labels = c("Below", "Above")) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4), legend.position = "top") +
+  labs(title = "Copy Number",
+       subtitle = paste0("Above: ", filter(compare_data_stats, Metric == "Copy Number" & Compare_Pvals == "Above")$nn, "\n",
+                         "Under: ", filter(compare_data_stats, Metric == "Copy Number" & Compare_Pvals == "Under")$nn, "\n",
+                         "Not tested: ", filter(compare_data_stats, Metric == "Copy Number" & is.na(Compare_Pvals))$nn),
+       x = "Lineage", y = "Drug-Gene", shape = "Compare linege p-value to pancancer p-value:", fill = "-log10(p)")
+# ggsave("./plots/manuscript/compare_cn_plot.png", compare_cn_plot, device = "png", dpi = 450, width = 12, height = 12, units = "in")
+```
+
+```{r}
+test <- filter(compare_mut, Drug_Gene == "nilotinib_ABL1" & Dataset == "CCLE" & group_general_lineage_name == "bone cancer")
+```
+
+
 
 ## Cell line overlap
 
