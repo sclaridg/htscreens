@@ -230,6 +230,35 @@ CRISPR yield results comparable to functional drug screens.
 \subsection{Comparison of G2P drug-gene associations and CCLE, CTRP, and
 GDSC}\label{comparison-of-g2p-drug-gene-associations-and-ccle-ctrp-and-gdsc}
 
+\begin{table}[tbp]
+\begin{center}
+\begin{threeparttable}
+\caption{\label{tab:table-g2p-nonCID}Distribution of level-A G2P drugs excluded from analyses}
+\begin{tabular}{llll}
+\toprule
+Compound & \multicolumn{1}{c}{Compound identifier} & \multicolumn{1}{c}{Number of G2P interpretations} & \multicolumn{1}{c}{Proportion of excluded interpretations (\%)}\\
+\midrule
+cetuximab & CHEMBL1201577 & 74 & 18.41\\
+cisplatin & CHEMBL2068237 & 3 & 0.75\\
+egfr & SID160769799 & 1 & 0.25\\
+ipilimumab & CHEMBL1789844 & 2 & 0.50\\
+mab & CHEMBL2109423 & 16 & 3.98\\
+nivolumab & CHEMBL2108738 & 4 & 1.00\\
+panitumumab & CHEMBL1201827 & 75 & 18.66\\
+pembrolizumab & CHEMBL3137343 & 3 & 0.75\\
+pertuzumab & CHEMBL2007641 & 1 & 0.25\\
+trastuzumab & CHEMBL1201585 & 9 & 2.24\\
+NA & NA & 214 & 53.23\\
+\bottomrule
+\addlinespace
+\end{tabular}
+\begin{tablenotes}[para]
+\normalsize{\textit{Note.} mAb = monoclonal antibody; NA indicates G2P interpretation does not have an associated compound}
+\end{tablenotes}
+\end{threeparttable}
+\end{center}
+\end{table}
+
 G2P designed a set of standards for stratifying their database's cancer
 variant interpretations, ranging from preclinical data at the
 low-evidence end (level D) to clinically actionable interpretations at
@@ -245,41 +274,41 @@ antibodies), that had level-A G2P evidence could not be included in our
 comparisons. Thus, G2P interpretations for which the compound did not
 have a matching CID code were excluded from further analysis as were
 interpretations that did not have an associated compound, resulting in
-removal of 402 interpretations (Table 1). It should be noted that
-cisplatin, a small molecule, was excluded due to its being indexed with
-a ChEMBLdb identifier (\url{https://www.ebi.ac.uk/chembl/}), which we
-did not manually re-index to a CID to avoid accidental
-mischaracterization.
+removal of 402 interpretations Table~\ref{tab:table-g2p-nonCID}. It
+should be noted that cisplatin, a small molecule, was excluded due to
+its being indexed with a ChEMBLdb identifier
+(\url{https://www.ebi.ac.uk/chembl/}), which we did not manually
+re-index to a CID to avoid accidental mischaracterization.
 
 After filtering, 894 level-A G2P interpretations were carried forward in
 subsequent analyses, constituting 57 unique drugs and 34 unique genes in
-88 distinct level-A combinations (Figure 1A). The number of level-A
-interpretations per drug ranged from 1 to 176 (M = 15.7, SD = 34.6),
-from 1 to 264 (M = 26.2, SD = 61.6) per gene, and for each level-A
-drug-gene combination, the range was 1 to 103 (M = 10.1, SD = 19.8).
-These unique drugs, genes, and combinations are hereafter referred to as
-G2P drugs, G2P genes, and G2P associations. Of the 57 unique G2P drugs,
-37 of them were screened in at least one of the drug screen datasets, 14
-were screened in two of the three datasets, and only three drugs were
-screened in all three datasets. The remaining 20 un-screened G2P drugs
-suggests an incompleteness of these drug screens, though these projects
-frequently release new screening data that may include these drugs in
-future releases.
+88 distinct level-A combinations (\emph{Figure 1A}). The number of
+level-A interpretations per drug ranged from 1 to 176 (\(M =\) 15.68,
+\(SD =\) 34.63), 1 to 264 (\(M =\) 26.24, \(SD =\) 61.58) per gene, and
+for each level-A drug-gene combination, the range was 1 to 103 (\(M =\)
+10.14, \(SD =\) 19.80). These unique drugs, genes, and combinations are
+hereafter referred to as G2P drugs, G2P genes, and G2P associations. Of
+the 57 unique G2P drugs, 37 of them were screened in at least one of the
+drug screen datasets, 14 were screened in two of the three datasets, and
+only three drugs were screened in all three datasets. The remaining 20
+un-screened G2P drugs suggests an incompleteness of these drug screens,
+though these projects frequently release new screening data that may
+include these drugs in future releases.
 
 Using cell-line-specific point mutation annotations from the CCLE, we
 compared z-score-transformed area under the dose-response curve (AUC)
 distributions between mutant and wildtype cell lines for all G2P genes
 for each G2P drug tested in the CCLE, CTRP, and GDSC drug screens
-(Figures 1B and 2A). At uncorrected \(\alpha\) = 0.05, Wilcoxon rank-sum
-tests revealed that in CCLE, the AUC distributions of mutant and
-wildtype groups for 10 out of 170 (5.88\%) tested drug-gene combinations
-were significantly different, 91 out of 918 (9.91\%) were significantly
-different for CTRP, and 61 out of 850 (7.18\%) for GDSC. We observe
-little concordance between the number of interpretations for each G2P
-association and the significance of mutation status on AUC for said G2P
-association, suggesting that mutation status alone is not a robust
-predictor of clinically actionable genetic targets. This led us to
-examine the correlations between AUC and gene expression and AUC and
+(\emph{Figures 1B and 2A}). At uncorrected \(\alpha = 0.05\), Wilcoxon
+rank-sum tests revealed that in CCLE, the AUC distributions of mutant
+and wildtype groups for 10 out of 170 (5.88\%) tested drug-gene
+combinations were significantly different, 91 out of 918 (9.91\%) were
+significantly different for CTRP, and 61 out of 850 (7.18\%) for GDSC.
+We observe little concordance between the number of interpretations for
+each G2P association and the significance of mutation status on AUC for
+said G2P association, suggesting that mutation status alone is not a
+robust predictor of clinically actionable genetic targets. This led us
+to examine the correlations between AUC and gene expression and AUC and
 copy number, two other genomic features that are known to associate with
 cancer and drug response.
 
@@ -287,29 +316,29 @@ cancer and drug response.
 clinical drug-gene
 associations?}\label{do-small-molecule-screens-in-cancer-cell-lines-recapitulate-clinical-drug-gene-associations}
 
-We compared the distribution of level-A G2P associations (Figure 1A) and
-the associated p-values from the mutation status comparisons (Figure 1B)
-with a null distribution of p-values derived from all pairwise
-combinations of G2P genes and the G2P drugs tested in each dataset, less
-any of the 88 distinct combinations with G2P interpretations, i.e.~the
-non-gray squares in the right heatmap of Figure 1A (Figure 3A). To
-formally test concordance between clinically actionable variants and
-drug screen results, we conducted an independent, two-group t-test to
-compare the distributions of p-values of drug-gene combinations that
-either were or were not represented with level-A evidence in G2P, which
-indicated that the distributions of p-values did not significantly
-differ for CCLE {[}t(9) = 0.25, p = 0.81{]}, CTRP {[}t(51) = 0.85, p =
-0.40{]}, nor GDSC {[}t(47) = -0.56, p = 0.58{]} (Table 2). This further
-supports that mutation status is not a robust genomic feature for
-predicting therapeutic responses.
+We compared the distribution of level-A G2P associations (\emph{Figure
+1A}) and the associated p-values from the mutation status comparisons
+(\emph{Figure 1B}) with a null distribution of p-values derived from all
+pairwise combinations of G2P genes and the G2P drugs tested in each
+dataset, less any of the 88 distinct combinations with G2P
+interpretations, i.e.~the non-gray squares in the right heatmap of
+\emph{Figure 1A (Figure 3A}). To formally test concordance between
+clinically actionable variants and drug screen results, we conducted an
+independent, two-group t-test to compare the distributions of p-values
+of drug-gene combinations that either were or were not represented with
+level-A evidence in G2P, which indicated that the distributions of
+p-values did not significantly differ for CCLE {[}t(9) = 0.25, p =
+0.81{]}, CTRP {[}t(51) = 0.85, p = 0.40{]}, nor GDSC {[}t(47) = -0.56, p
+= 0.58{]} (Table 2). This further supports that mutation status is not a
+robust genomic feature for predicting therapeutic responses.
 
 Similar tests were conducted for the distributions of Pearson
 correlation coefficients (r) between the number of level-A G2P
 associations and gene expression (RPKM) and copy number (log2 ratio) of
-the gene in the association (Figures 3B-C). Example r derivations are
-shown in Figures 2B-C. Absolute values of r were used to simplify
-extreme values in both directions for testing. The difference in the
-CCLE \textbar{}r\textbar{} distributions for both gene expression
+the gene in the association (\emph{Figures 3B-C}). Example r derivations
+are shown in \emph{Figures 2B-C}. Absolute values of r were used to
+simplify extreme values in both directions for testing. The difference
+in the CCLE \textbar{}r\textbar{} distributions for both gene expression
 {[}t(8) = 1.43, p = 0.19{]} and copy number {[}t(8) = 2.48, p = 0.23{]}
 were non-significant, which is likely explained by the small sample size
 since only five G2P drugs were screened in the CCLE dataset. For both
@@ -338,11 +367,11 @@ its possible level-A G2P associations than GDSC, and similarly, GDSC
 identified a higher percentage than CCLE. In the CCLE-GDSC debate,
 inconsistency between the datasets was attributed to the groups using
 two very different assays for generating AUC measurements though it was
-undecided which was more accurate (Haibe-Kains et al., 2013; Jang et
-al., 2014; Weinstein \& Lorenzi, 2013). Our results provide very
-preliminary evidence that GDSC is more accurate than CCLE in regards to
-reproducing clinical associations. However, CTRP may be even more
-accurate than both GDSC and CCLE.
+undecided which was more accurate(Haibe-Kains et al., 2013; Jang et al.,
+2014; Weinstein \& Lorenzi, 2013). Our results provide very preliminary
+evidence that GDSC is more accurate than CCLE in regards to reproducing
+clinical associations. However, CTRP may be even more accurate than both
+GDSC and CCLE.
 
 \subsection{Do these pancancer drug-gene associations penetrate to the
 lineage-specific
@@ -386,33 +415,33 @@ cancer, skin cancer, and thyroid cancer. CCLE had data for nine DGLs,
 CTRP had data for 61, and GDSC had data for 53, yielding a total of 73
 unique DGLs across all three datasets.
 
-At an alpha of 0.05, no DGLs were identified in the CCLE screen when
+At an \(\alpha = 0.05\), no DGLs were identified in the CCLE screen when
 using mutation status as a correlate (n = 7), but CTRP and GDSC
 identified six and five, respectively, in skin cancer, lung cancer, and
 cancer. These significant associations did not hold after Bonferroni
-correction in CTRP (n = 48, \(\alpha\)adjusted = 0.001) or GDSC (n = 39,
-\(\alpha\)adjusted = 0.001).
+correction in CTRP (\(n = 48\), \(\alpha_{adjusted} = 0.001\)) or GDSC
+(\(n = 39\), \(\alpha_{adjusted} = 0.001\)).
 
 When using gene expression as the genomic feature, three CCLE DGLs had
-significant correlations at an adjusted alpha of 0.006 (n = 9). Two of
-these three DGLs were also significantly correlated with copy number (n
-= 9, \(\alpha\)adjusted = 0.006).
+significant correlations at an adjusted \(\alpha = 0.006\) (\(n = 9\)).
+Two of these three DGLs were also significantly correlated with copy
+number (\(n = 9\), \(\alpha_{adjusted} = 0.006\)).
 
 In CTRP, AUC of 19 DGLs significantly correlated with gene expression,
-12 of which were significant after correction (n = 61,
-\(\alpha\)adjusted = 0.0008). Copy number correlations were significant
-for 12 DGLs, with three DGLs significant post-correction (n = 61,
-\(\alpha\)adjusted = 0.0008).
+12 of which were significant after correction (\(n = 61\),
+\(\alpha_{adjusted} = 0.0008\)). Copy number correlations were
+significant for 12 DGLs, with three DGLs significant post-correction
+(\(n = 61\), \(\alpha_{adjusted} = 0.0008\)).
 
 AUC of 16 DGLs in GDSC significantly correlated with gene expression. At
-an adjusted alpha of 0.0009 (n = 53) eight of them were significant.
-Fewer DGLs were significant when correlating AUC with copy number with 6
-significant at an alpha of 0.05 and 1 significant at an adjusted alpha
-of 0.0009 (n = 53).
+an adjusted \(\alpha\) of 0.0009 (\(n = 53\)) eight of them were
+significant. Fewer DGLs were significant when correlating AUC with copy
+number with 6 significant at an \(\alpha\) of 0.05 and 1 significant at
+an adjusted \(\alpha\) of 0.0009 (\(n = 53\)).
 
 Interestingly, when we test the effect of mutation status on drug
 response for the DGLs derived from all pairwise combinations of G2P
-drugs and genes\ldots{} (Figure \#\#1).
+drugs and genes\ldots{} (\emph{Figure \#\#1}).
 
 \subsection{Are CRISPR/Cas9 gene essentiality results comparable to
 those of functional drug
@@ -430,15 +459,15 @@ targeted by an sgRNA in the CRISPR dataset.
 
 When we don't account for lineage, Wilcoxon rank-sum tests revealed that
 mutations in eight of the 33 (24.2\%) G2P genes significantly correlated
-with CERES score (\(\alpha\) = 0.05): KRAS (p \textless{} 0.001), BRAF
-(p \textless{} 0.001), BRCA2 (p \textless{} 0.001), CYP19A1 (p = 0.004),
-TSC2 (p = 0.005), JAK2 (p = 0.031), DPYD (p = 0.042), and UGT1A1 (p =
-0.048). Gene expression (RPKM) of 17 (51.5\%) G2P genes significantly
-correlated with CERES score, as did copy number (log2-ratio) for 14
-(42.4\%) G2P genes (Figure \#\#2). For the purpose of comparison to the
-drug screen data, if we treat CRISPR knockdown like a small-molecule
-drug, then these results are similar to the results from CCLE, CTRP, and
-GDSC (Table 2).
+with CERES score (\(\alpha = 0.05\)): KRAS (\(p < 0.001\)), BRAF
+(\(p < 0.001\)), BRCA2 (\(p < 0.001\)), CYP19A1 (\(p = 0.004\)), TSC2
+(\(p = 0.005\)), JAK2 (\(p = 0.031\)), DPYD (\(p = 0.042\)), and UGT1A1
+(\(p = 0.048\)). Gene expression (RPKM) of 17 (51.5\%) G2P genes
+significantly correlated with CERES score, as did copy number
+(log2-ratio) for 14 (42.4\%) G2P genes (Figure \#\#2). For the purpose
+of comparison to the drug screen data, if we treat CRISPR knockdown like
+a small-molecule drug, then these results are similar to the results
+from CCLE, CTRP, and GDSC (Table 2).
 
 \begin{itemize}
 \tightlist
@@ -456,19 +485,21 @@ as would gene expression is expression and copy number are associated.
 
 In a lineage-agnostic context of the CRISPR screen, ERBB2 gene
 essentiality score had a significant negative correlation with ERBB2
-gene expression (p \textless{} 10-12, r = -0.31) and ERBB2 copy number
-(p \textless{} 10-15, r = -0.34) (Figure \#\#2). Similarly, MET gene
-essentiality also correlated with both MET gene expression (p
-\textless{} 10-12, r = -0.31) and copy number (p \textless{} 10-8, r =
--0.25). Notably, BRCA1 also significantly correlated with both gene
-expression (p \textless{} 0.001, r = 0.16) and copy number (p
-\textless{} 0.01, r = 0.14). BRCA2 significantly correlated with all
-three of the genomic features tested: gene expression (p \textless{}
-0.05, r = 0.10), copy number (p \textless{} 10-7, r = 0.23), and
-mutation status (p \textless{} 0.001).
+gene expression (\(p < 10^{-12}\), \(r = -0.31\)) and ERBB2 copy number
+(\(p < 10^{-15}\), \(r = -0.34\)) (\emph{Figure \#\#2}). Similarly, MET
+gene essentiality also correlated with both MET gene expression
+(\(p < 10^{-12}\), \(r = -0.31\)) and copy number (\(p < 10^{-8}\),
+\(r = -0.25\)). Notably, BRCA1 also significantly correlated with both
+gene expression (\(p < 0.001\), \(r = 0.16\)) and copy number
+(\(p < 0.01\), \(r = 0.14\)). BRCA2 significantly correlated with all
+three of the genomic features tested: gene expression (\(p < 0.05\),
+\(r = 0.10\)), copy number (\(p < 10^{-7}\), \(r = 0.23\)), and mutation
+status (\(p < 0.001\)).
 
 \subsection{Which genomic features drive KRAS, EGFR, and BRAF drug-gene
 associations?}\label{which-genomic-features-drive-kras-egfr-and-braf-drug-gene-associations}
+
+\textbf{Should we do this?}
 
 \section{Discussion}\label{discussion}
 
@@ -481,7 +512,7 @@ expression fare better as predictors. However, for these three genomic
 features in all three datasets, only 11.1\% (mutation status, 1 of 9,
 CCLE) to 47.9\% (gene expression, 23 of 48, CTRP) (Table 2), of the
 level-A G2P drug-gene associations in the respective dataset were
-significant at an uncorrected \(\alpha\) = 0.05. This suggests that
+significant at an uncorrected \(\alpha = 0.05\). This suggests that
 while the drug screens successfully identify some clinically relevant
 drug-gene associations, many associations are also missed, which raises
 the question of the extent to which clinical researchers can rely on in
@@ -608,11 +639,13 @@ accessed 15 November 2018).
 
 \subsubsection{Mutation calls}\label{mutation-calls}
 
-The CCLE provided mutation annotations in 19,280 genes across 1,596 cell
-lines (dataset: depmap\_18Q4\_mutation\_calls.csv, accessed 14 November
-2018). CCLE called substitutions using MuTect (Cibulskis et al., 2013)
-and annotated variants using Oncotator (Ramos et al., 2015) and indels
-using Indelocator
+To preclude variation in genomic feature calls across the datasets, we
+used identical annotations from CCLE for all cell lines screened in the
+three datasets. The CCLE provided mutation annotations in 19,280 genes
+across 1,596 cell lines (dataset: depmap\_18Q4\_mutation\_calls.csv,
+accessed 14 November 2018). CCLE called substitutions using MuTect
+(Cibulskis et al., 2013) and annotated variants using Oncotator (Ramos
+et al., 2015) and indels using Indelocator
 (\url{https://software.broadinstitute.org/cancer/cga/indelocator}). We
 filtered mutation calls for point mutations, defined as
 single-nucleotide insertions, deletions, and substitutions, regardless
@@ -683,7 +716,7 @@ The CCLE reports cell line sensitivity to small molecules as an activity
 area measured above the dose-response curve (ActArea), while both CTRP
 and GDSC report small molecule activity as area under the dose-response
 curve (AUC). Since ActArea is reported with a scale of 0 to 8, we
-converted CCLE's ActArea values to AUC via:
+converted CCLE's ActArea values to AUC via
 
 \[AUC=1- \frac{ActArea}{8}\]
 
@@ -697,7 +730,7 @@ dataset and AUC is the standard deviation.
 
 \subsection{Computational}\label{computational}
 
-For Figure 1, all data were imported and manipulated using pandas
+For \emph{Figure 1}, all data were imported and manipulated using pandas
 (v0.23.0) (McKinney, 2011) and plotted using seaborn (v0.90) (Waskom,
 2012), which sat on top of matplotlib (v2.2.2) (Hunter, 2007) and was
 executed on Python (v2.7.15) (Python Software Foundation,
@@ -1060,6 +1093,14 @@ Shoemaker, R. H. (2006). The NCI60 human tumour cell line anticancer
 drug screen. \emph{Nature Reviews Cancer}, \emph{6}(10), 813--823.
 doi:\href{https://doi.org/10.1038/nrc1951}{10.1038/nrc1951}
 
+\hypertarget{ref-sirota2011}{}
+Sirota, M., Dudley, J. T., Kim, J., Chiang, A. P., Morgan, A. A.,
+Sweet-Cordero, A., \ldots{} Butte, A. J. (2011). Discovery and
+preclinical validation of drug indications using compendia of public
+gene expression data. \emph{Science Translational Medicine},
+\emph{3}(96), 96ra77.
+doi:\href{https://doi.org/10.1126/scitranslmed.3001318}{10.1126/scitranslmed.3001318}
+
 \hypertarget{ref-stinson1992}{}
 Stinson, S., Alley, M., Kopp, W., Fiebig, H., Mullendore, L., Pittman,
 A., \ldots{} Boyd, M. (1992). Morphological and immunocytochemical
@@ -1096,6 +1137,11 @@ doi:\href{https://doi.org/10.1126/science.aac7041}{10.1126/science.aac7041}
 \hypertarget{ref-waskom2012}{}
 Waskom, M. (2012). Seaborn: Statistical data visualization (Version
 0.9.0). Retrieved from \url{http://seaborn.pydata.org/}
+
+\hypertarget{ref-weinstein2013}{}
+Weinstein, J. N., \& Lorenzi, P. L. (2013). Discrepancies in drug
+sensitivity, \emph{504}(7480), 381--313.
+doi:\href{https://doi.org/10.1038/504383a}{10.1038/504383a}
 
 \hypertarget{ref-wickham2016}{}
 Wickham, H. (2016). Ggplot2: Elegant Graphics for Data Analysis (Version
