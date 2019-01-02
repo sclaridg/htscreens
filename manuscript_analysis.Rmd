@@ -1220,14 +1220,14 @@ g2p_druggene_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 
 # CCLE
 ccle_cor_res <- ccle_data_g2p_grid %>% group_by(Drug_Gene) %>%
-                    summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
-                              Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
-                              Pearson_Corr_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$estimate,
-                              Pearson_Pval_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$p.value,
-                              Spearman_Corr_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
-                              Spearman_Pval_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
-                              Spearman_Corr_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                              Spearman_Pval_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$p.value)
+                    summarize(Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
+                              Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
+                              Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$estimate,
+                              Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$p.value,
+                              Spearman_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
+                              Spearman_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
+                              Spearman_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                              Spearman_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$p.value)
 ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
 ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
 ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
@@ -1243,14 +1243,14 @@ ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$paramete
 
 # CTRP
 ctrp_cor_res <- ctrp_data_g2p_grid %>% group_by(Drug_Gene) %>%
-                    summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
-                              Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
-                              Pearson_Corr_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$estimate,
-                              Pearson_Pval_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$p.value,
-                              Spearman_Corr_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
-                              Spearman_Pval_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
-                              Spearman_Corr_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                              Spearman_Pval_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$p.value)
+                    summarize(Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
+                              Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
+                              Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$estimate,
+                              Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$p.value,
+                              Spearman_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
+                              Spearman_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
+                              Spearman_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                              Spearman_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$p.value)
 ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y = TRUE)
 ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
 ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
@@ -1266,14 +1266,14 @@ ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$paramete
 
 # GDSC
 gdsc_cor_res <- gdsc_data_g2p_grid %>% group_by(Drug_Gene) %>%
-                    summarize(Pearson_Corr_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
-                              Pearson_Pval_GE = cor.test(y = AUC, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
-                              Pearson_Corr_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$estimate,
-                              Pearson_Pval_CN = cor.test(y = AUC, x = CN, method = "pearson", use = "complete.obs")$p.value,
-                              Spearman_Corr_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
-                              Spearman_Pval_GE = cor.test(y = AUC, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
-                              Spearman_Corr_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                              Spearman_Pval_CN = cor.test(y = AUC, x = CN, method = "spearman", use = "complete.obs")$p.value)
+                    summarize(Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
+                              Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
+                              Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$estimate,
+                              Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs")$p.value,
+                              Spearman_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
+                              Spearman_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
+                              Spearman_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                              Spearman_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs")$p.value)
 gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y = TRUE)
 gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
 gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
