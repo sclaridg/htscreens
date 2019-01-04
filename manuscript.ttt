@@ -10,9 +10,9 @@ Compound & \multicolumn{1}{c}{Compound identifier} & \multicolumn{1}{c}{Number o
 \midrule
 cetuximab & CHEMBL1201577 & 74 & 18.41\\
 cisplatin & CHEMBL2068237 & 3 & 0.75\\
-egfr & SID160769799 & 1 & 0.25\\
+EGFR & SID160769799 & 1 & 0.25\\
 ipilimumab & CHEMBL1789844 & 2 & 0.50\\
-mab & CHEMBL2109423 & 16 & 3.98\\
+mAb & CHEMBL2109423 & 16 & 3.98\\
 nivolumab & CHEMBL2108738 & 4 & 1.00\\
 panitumumab & CHEMBL1201827 & 75 & 18.66\\
 pembrolizumab & CHEMBL3137343 & 3 & 0.75\\

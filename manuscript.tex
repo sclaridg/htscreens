@@ -23,7 +23,7 @@
 }{}
 \usepackage{hyperref}
 \hypersetup{unicode=true,
-            pdftitle={Manuscript},
+            pdftitle={Manuscript Draft},
             pdfauthor={Sally E. Claridge, Daniel M. Charytonowicz, \& Adam A. Margolin},
             pdfkeywords={keywords},
             pdfborder={0 0 0},
@@ -63,7 +63,7 @@
 \def\footnote{\protect\rmarkdownfootnote}
 
 
-  \title{Manuscript}
+  \title{Manuscript Draft}
     \author{Sally E. Claridge\textsuperscript{1}, Daniel M.
 Charytonowicz\textsuperscript{1}, \& Adam A.
 Margolin\textsuperscript{1, 2}}
@@ -199,10 +199,11 @@ associations that are currently used in clinical decision-making.
 We derived our clinical associations from a new project conducted by the
 Variant Interpretation for Cancer Consortium (VICC;
 \url{https://cancervariants.org/}), a Driver Project for the Global
-Alliance for Genomics and Health (GA4GH) (Genomics \& Health, 2016). The
-VICC has curated annotations of known cancer variants at varying levels
-of evidence from multiple resources (A. H. Wagner et al., 2018): the
-Precision Medicine Knowledgebase (L. Huang et al., 2016), MolecularMatch
+Alliance for Genomics and Health (GA4GH) (The Global Alliance for
+Genomics and Health, 2016). The VICC has curated annotations of known
+cancer variants at varying levels of evidence from multiple resources
+(A. H. Wagner et al., 2018): the Precision Medicine Knowledgebase (L.
+Huang et al., 2016), MolecularMatch
 (\url{https://www.molecularmatch.com/index.html}), OncoKB (Chakravarty
 et al., 2017), Jackson Labs Clinical Knowledgebase (S. E. Patterson et
 al., 2016), Clinical Interpretations of Variance in Cancers (CIViC)
@@ -213,14 +214,14 @@ ElasticSearch (Kibana v6.0) platform called Genotype to Phenotype (G2P,
 and filter aggregated evidence from the various databases listed above
 as well as the GA4GH beacon service
 (\url{http://beacon-network.org/\#/}), which yields access to genetic
-mutation data from over 200 datasets as of 2016 (Genomics \& Health,
-2016). For drug screen datasets, we focus on three well-known,
-large-scale drug projects: the CCLE and GDSC, which were mentioned
-above, and the Center for the Science of Therapeutics at the Broad
-Institute's Cancer Therapeutics Response Portal (CTRP) dataset (Basu et
-al., 2013; M. G. Rees et al., 2016; B. Seashore-Ludlow et al., 2015). We
-also analyzed the results from a large-scale CRISPR/Cas9 screen
-conducted by the Broad Institute's Cancer Dependency Map project
+mutation data from over 200 datasets as of 2016 (The Global Alliance for
+Genomics and Health, 2016). For drug screen datasets, we focus on three
+well-known, large-scale drug projects: the CCLE and GDSC, which were
+mentioned above, and the Center for the Science of Therapeutics at the
+Broad Institute's Cancer Therapeutics Response Portal (CTRP) dataset
+(Basu et al., 2013; M. G. Rees et al., 2016; B. Seashore-Ludlow et al.,
+2015). We also analyzed the results from a large-scale CRISPR/Cas9
+screen conducted by the Broad Institute's Cancer Dependency Map project
 (DepMap) using the Avana knockout library (Doench et al., 2016; Meyers
 et al., 2017), which will address whether gene essentiality screens via
 CRISPR yield results comparable to functional drug screens.
@@ -240,9 +241,9 @@ Compound & \multicolumn{1}{c}{Compound identifier} & \multicolumn{1}{c}{Number o
 \midrule
 cetuximab & CHEMBL1201577 & 74 & 18.41\\
 cisplatin & CHEMBL2068237 & 3 & 0.75\\
-egfr & SID160769799 & 1 & 0.25\\
+EGFR & SID160769799 & 1 & 0.25\\
 ipilimumab & CHEMBL1789844 & 2 & 0.50\\
-mab & CHEMBL2109423 & 16 & 3.98\\
+mAb & CHEMBL2109423 & 16 & 3.98\\
 nivolumab & CHEMBL2108738 & 4 & 1.00\\
 panitumumab & CHEMBL1201827 & 75 & 18.66\\
 pembrolizumab & CHEMBL3137343 & 3 & 0.75\\
@@ -274,7 +275,7 @@ antibodies), that had level-A G2P evidence could not be included in our
 comparisons. Thus, G2P interpretations for which the compound did not
 have a matching CID code were excluded from further analysis as were
 interpretations that did not have an associated compound, resulting in
-removal of 402 interpretations Table~\ref{tab:table-g2p-nonCID}. It
+removal of 402 interpretations (Table~\ref{tab:table-g2p-nonCID}). It
 should be noted that cisplatin, a small molecule, was excluded due to
 its being indexed with a ChEMBLdb identifier
 (\url{https://www.ebi.ac.uk/chembl/}), which we did not manually
@@ -287,13 +288,15 @@ level-A interpretations per drug ranged from 1 to 176 (\(M =\) 15.68,
 \(SD =\) 34.63), 1 to 264 (\(M =\) 26.24, \(SD =\) 61.58) per gene, and
 for each level-A drug-gene combination, the range was 1 to 103 (\(M =\)
 10.14, \(SD =\) 19.80). These unique drugs, genes, and combinations are
-hereafter referred to as G2P drugs, G2P genes, and G2P associations. Of
-the 57 unique G2P drugs, 37 of them were screened in at least one of the
-drug screen datasets, 14 were screened in two of the three datasets, and
-only three drugs were screened in all three datasets. The remaining 20
-un-screened G2P drugs suggests an incompleteness of these drug screens,
-though these projects frequently release new screening data that may
-include these drugs in future releases.
+hereafter referred to as G2P drugs, G2P genes, and G2P associations.
+Filtering our screening datasets by these clinical criteria yields
+panels of potentially clinically relevant omic features. Of the 57
+unique G2P drugs, 37 of them were screened in at least one of the drug
+screen datasets, 17 drugs were screened in at least two of the three
+datasets, and only 3 were screened in all three datasets. The remaining
+20 un-screened G2P drugs suggests an incompleteness of these drug
+screens, though these projects frequently release new screening data
+that may include these drugs in future releases.
 
 Using cell-line-specific point mutation annotations from the CCLE, we
 compared z-score-transformed area under the dose-response curve (AUC)
@@ -301,9 +304,9 @@ distributions between mutant and wildtype cell lines for all G2P genes
 for each G2P drug tested in the CCLE, CTRP, and GDSC drug screens
 (\emph{Figures 1B and 2A}). At uncorrected \(\alpha = 0.05\), Wilcoxon
 rank-sum tests revealed that in CCLE, the AUC distributions of mutant
-and wildtype groups for 10 out of 170 (5.88\%) tested drug-gene
-combinations were significantly different, 91 out of 918 (9.91\%) were
-significantly different for CTRP, and 61 out of 850 (7.18\%) for GDSC.
+and wildtype groups for 18 out of 170 (10.59\%) tested drug-gene
+combinations were significantly different, 135 out of 918 (14.71\%) were
+significantly different for CTRP, and 89 out of 850 (10.47\%) for GDSC.
 We observe little concordance between the number of interpretations for
 each G2P association and the significance of mutation status on AUC for
 said G2P association, suggesting that mutation status alone is not a
@@ -410,10 +413,11 @@ cancer cell line database (see METHODS).
 
 In the level-A G2P interpretations, there were 102 unique
 drug-gene-lineage combinations (DGLs), representing seven of our curated
-cancer lineages: cancer, breast cancer, leukemia, lung cancer, ovarian
-cancer, skin cancer, and thyroid cancer. CCLE had data for nine DGLs,
-CTRP had data for 61, and GDSC had data for 53, yielding a total of 73
-unique DGLs across all three datasets.
+cancer lineages: cancer, lung cancer, breast cancer, leukemia, thyroid
+cancer, skin cancer, and ovarian cancer. CCLE had data for 9 DGLs, CTRP
+had data for 61, and GDSC had data for 53, yielding a total of 73 unique
+DGLs across all three datasets. Only 7 DGLs were screened in all three
+datasets,
 
 At an \(\alpha = 0.05\), no DGLs were identified in the CCLE screen when
 using mutation status as a correlate (n = 7), but CTRP and GDSC
@@ -612,7 +616,7 @@ processing}\label{depmap-data-retrieval-and-processing}
 CRISPR/Cas9, CCLE mutation calls, and CCLE copy number data were all
 retrieved from the Broad Institute's Cancer Dependency Map (DepMap)
 Public 18Q4 release via the DepMap data portal
-(\url{https://depmap.org/portal/download/}) (DepMap, 2018). Gene
+(\url{https://depmap.org/portal/download/}) (Broad DepMap, 2018). Gene
 expression data was retrieved from the DepMap Public 18Q3 release (Broad
 DepMap, 2018) from the same data portal. For cell lines with no CCLE
 annotation, the DepMap group drew raw copy number and mutation data from
@@ -630,12 +634,12 @@ a CRISPR/Cas9 (clustered regularly interspaced short palindromic
 repeats/CRISPR-associated 9) screen using the Broad Institute's Avana
 knockout library (Doench et al., 2016). The Broad Institute's data
 processing and screening methods are available from the figshare record
-(DepMap, 2018) and the original publication of CERES, the algorithm that
-computes inferred gene dependency scores (Meyers et al., 2017). The
-DepMap releases new data quarterly, with the current data set being the
-18Q4 release. This release has 175 more cell lines than the original
-data release that was published with CERES (dataset: gene\_effect.csv,
-accessed 15 November 2018).
+(Broad DepMap, 2018) and the original publication of CERES, the
+algorithm that computes inferred gene dependency scores (Meyers et al.,
+2017). The DepMap releases new data quarterly, with the current data set
+being the 18Q4 release. This release has 175 more cell lines than the
+original data release that was published with CERES (dataset:
+gene\_effect.csv, accessed 15 November 2018).
 
 \subsubsection{Mutation calls}\label{mutation-calls}
 
@@ -649,22 +653,23 @@ et al., 2015) and indels using Indelocator
 (\url{https://software.broadinstitute.org/cancer/cga/indelocator}). We
 filtered mutation calls for point mutations, defined as
 single-nucleotide insertions, deletions, and substitutions, regardless
-of result, i.e.~frameshift or missense mutation. For this analysis, cell
-lines harboring non-silent point mutations were considered
-\enquote{mutant} for the gene in question. All other mutations and genes
-without annotation in the Mutation Annotation Format (MAF) file were
-considered \enquote{wildtype.} \enquote{Mutant} and \enquote{wildtype}
-calls were binarily encoded per-gene/per-cell line, regardless of
-quantity of harbored mutations per gene in a given cell line.
+of result, i.e.~frameshift, missense, or nonsense mutation. For this
+analysis, cell lines harboring non-silent point mutations were
+considered \enquote{mutant} for the gene in question. All other
+mutations and genes without annotation in the Mutation Annotation Format
+(MAF) file were considered \enquote{wildtype.} \enquote{Mutant} and
+\enquote{wildtype} calls were binarily encoded per-gene/per-cell line,
+regardless of quantity of harbored mutations per gene in a given cell
+line.
 
 \subsubsection{Copy number data}\label{copy-number-data}
 
 The CCLE generated genomic copy number (CN) data using the Affymetrix
-Genome-Wide Human SNP Array 6.0 and GenePattern pipeline (Network, 2008)
-and normalized segmented CN log2-ratios for 23,299 genes across 1,098
-cell lines using circular binary segmentation (Olshen, Venkatraman,
-Lucito, \& Wigler, 2004) (dataset: public\_18Q4\_gene\_cn.csv, accessed
-15 November 2018).
+Genome-Wide Human SNP Array 6.0 and GenePattern pipeline (The Cancer
+Genome Atlas Research Network, 2008) and normalized segmented CN
+log2-ratios for 23,299 genes across 1,098 cell lines using circular
+binary segmentation (Olshen, Venkatraman, Lucito, \& Wigler, 2004)
+(dataset: public\_18Q4\_gene\_cn.csv, accessed 15 November 2018).
 
 \subsubsection{Gene expression data}\label{gene-expression-data}
 
@@ -737,13 +742,13 @@ executed on Python (v2.7.15) (Python Software Foundation,
 \url{https://www.python.org/}) in an IPython (v5.5.0) (Pérez \& Granger,
 2007) kernel within a localhost Jupyter (v5.2.2) notebook (Kluyver et
 al., 2016). All other analyses were conducted in R (v3.5.0) (R
-Foundation for Statistical Computing, \url{https://www.R-project.org/})
-in an RStudio environment (v1.1.447) (RStudio, 2012). All other plots
-were drawn using the ggplot2 (v3.0.0) R package (Wickham, 2016).
+Development Core Team, 2010, \url{https://www.R-project.org/}) in an
+RStudio environment (v1.1.447) (RStudio, 2012). All other plots were
+drawn using the ggplot2 (v3.0.0) R package (Wickham, 2016).
 
 \subsubsection{Statistics}\label{statistics}
 
-Wilcoxon tests were computed using the ggpubr (v.) R package
+Wilcoxon tests were computed using the ggpubr (v0.1.7.999) R package
 (Kassambara, 2018).
 
 For computing Pearson correlation coefficients, if there were three or
@@ -770,7 +775,7 @@ Tetrazolium Assay. \emph{Cancer Research}, \emph{48}, 589--601.
 
 \hypertarget{ref-bairoch2018}{}
 Bairoch, A. (2018). The Cellosaurus, a Cell-Line Knowledge Resource.
-\emph{Journal of Biomolecular Techniques : JBT}, \emph{29}(2), 25--38.
+\emph{J Biomol Tech}, \emph{29}(2), 25--38.
 doi:\href{https://doi.org/10.7171/jbt.18-2902-002}{10.7171/jbt.18-2902-002}
 
 \hypertarget{ref-bamford2004}{}
@@ -791,8 +796,7 @@ doi:\href{https://doi.org/10.1038/nature11003}{10.1038/nature11003}
 Basu, A., Bodycombe, N. E., Cheah, J. H., Price, E. V., Liu, K.,
 Schaefer, G. I., \ldots{} Schreiber, S. L. (2013). An interactive
 resource to identify cancer genetic and lineage dependencies targeted by
-small molecules. \emph{Cell, Cell}, \emph{154, 154}(5, 5), 1151,
-1151--1161.
+small molecules. \emph{Cell}, \emph{154, 154}(5, 5), 1151, 1151--1161.
 doi:\href{https://doi.org/10.1016/j.cell.2013.08.003,\%2010.1016/j.cell.2013.08.003}{10.1016/j.cell.2013.08.003, 10.1016/j.cell.2013.08.003}
 
 \hypertarget{ref-ben-david2018}{}
@@ -801,6 +805,11 @@ Ben-David, U., Siranosian, B., Ha, G., Tang, H., Oren, Y., Hinohara, K.,
 alters cancer cell line drug response. \emph{Nature}, \emph{560}(7718),
 325--330.
 doi:\href{https://doi.org/10.1038/s41586-018-0409-3}{10.1038/s41586-018-0409-3}
+
+\hypertarget{ref-broaddepmap2018a}{}
+Broad DepMap. (2018, January 11). DepMap Achilles 18Q4 public. Figshare.
+Retrieved from
+\url{https://figshare.com/articles/DepMap_Achilles_18Q4_public/7270880}
 
 \hypertarget{ref-broaddepmap2018}{}
 Broad DepMap. (2018, January 8). DepMap Achilles 18Q3 public. Figshare.
@@ -826,11 +835,6 @@ Pharmacogenomic agreement between two cancer cell line data sets.
 \emph{Nature}, \emph{528}(7580), 84--87.
 doi:\href{https://doi.org/10.1038/nature15736}{10.1038/nature15736}
 
-\hypertarget{ref-broaddepmap2018a}{}
-DepMap, B. (2018, January 11). DepMap Achilles 18Q4 public. Figshare.
-Retrieved from
-\url{https://figshare.com/articles/DepMap_Achilles_18Q4_public/7270880}
-
 \hypertarget{ref-doench2016a}{}
 Doench, J. G., Fusi, N., Sullender, M., Hegde, M., Vaimberg, E. W.,
 Donovan, K. F., \ldots{} Root, D. E. (2016). Optimized sgRNA design to
@@ -841,14 +845,14 @@ doi:\href{https://doi.org/10.1038/nbt.3437}{10.1038/nbt.3437}
 \hypertarget{ref-domcke2013}{}
 Domcke, S., Sinha, R., Levine, D. A., Sander, C., \& Schultz, N. (2013).
 Evaluating cell lines as tumour models by comparison of genomic
-profiles. \emph{Nature Communications}, \emph{4}.
+profiles. \emph{Nat Commun}, \emph{4}.
 doi:\href{https://doi.org/10.1038/ncomms3126}{10.1038/ncomms3126}
 
 \hypertarget{ref-forbes2017}{}
 Forbes, S. A., Beare, D., Boutselakis, H., Bamford, S., Bindal, N.,
 Tate, J., \ldots{} Campbell, P. J. (2017). COSMIC: Somatic cancer
-genetics at high-resolution. \emph{Nucleic Acids Research},
-\emph{45}(D1), D777--D783.
+genetics at high-resolution. \emph{Nucleic Acids Res}, \emph{45}(D1),
+D777--D783.
 doi:\href{https://doi.org/10.1093/nar/gkw1121}{10.1093/nar/gkw1121}
 
 \hypertarget{ref-garnett2012}{}
@@ -870,12 +874,6 @@ Geeleher, P., Gamazon, E. R., Seoighe, C., Cox, N. J., \& Huang, R. S.
 (2016). Consistency in large pharmacogenomic studies. \emph{Nature},
 \emph{540}(7631), E1--E2.
 doi:\href{https://doi.org/10.1038/nature19838}{10.1038/nature19838}
-
-\hypertarget{ref-theglobalallianceforgenomicsandhealth2016}{}
-Genomics, T. G. A. for, \& Health. (2016). A federated ecosystem for
-sharing genomic, clinical data. \emph{Science}, \emph{352}(6291),
-1278--1280.
-doi:\href{https://doi.org/10.1126/science.aaf6162}{10.1126/science.aaf6162}
 
 \hypertarget{ref-greshock2010}{}
 Greshock, J., Bachman, K. E., Degenhardt, Y. Y., Jing, J., Wen, Y. H.,
@@ -901,7 +899,7 @@ doi:\href{https://doi.org/10.1038/nature12831}{10.1038/nature12831}
 Hatzis, C., Bedard, P. L., Juul Birkbak, N., Beck, A. H., Aerts, H. J.
 W. L., Stern, D. F., \ldots{} Haibe-Kains, B. (2014). Enhancing
 Reproducibility in Cancer Drug Screening: How Do We Move Forward?
-\emph{Cancer Research}, \emph{74}(15), 4016--4023.
+\emph{Cancer Res}, \emph{74}(15), 4016--4023.
 doi:\href{https://doi.org/10.1158/0008-5472.CAN-14-0725}{10.1158/0008-5472.CAN-14-0725}
 
 \hypertarget{ref-haverty2016}{}
@@ -913,22 +911,21 @@ doi:\href{https://doi.org/10.1038/nature17987}{10.1038/nature17987}
 \hypertarget{ref-heiser2009}{}
 Heiser, L. M., Wang, N. J., Talcott, C. L., Laderoute, K. R., Knapp, M.,
 Guan, Y., \ldots{} Spellman, P. T. (2009). Integrated analysis of breast
-cancer cell lines reveals unique signaling pathways. \emph{Genome
-Biology}, \emph{10}(3), R31.
+cancer cell lines reveals unique signaling pathways. \emph{Genome Biol},
+\emph{10}(3), R31.
 doi:\href{https://doi.org/10.1186/gb-2009-10-3-r31}{10.1186/gb-2009-10-3-r31}
 
 \hypertarget{ref-holbeck2010}{}
 Holbeck, S. L., Collins, J. M., \& Doroshow, J. H. (2010). Analysis of
 FDA-Approved Anti-Cancer Agents in the NCI60 Panel of Human Tumor Cell
-Lines. \emph{Molecular Cancer Therapeutics}, \emph{9}(5), 1451--1460.
+Lines. \emph{Mol Cancer Ther}, \emph{9}(5), 1451--1460.
 doi:\href{https://doi.org/10.1158/1535-7163.MCT-10-0106}{10.1158/1535-7163.MCT-10-0106}
 
 \hypertarget{ref-huang2016}{}
 Huang, L., Fernandes, H., Zia, H., Tavassoli, P., Rennert, H., Pisapia,
 D., \ldots{} Elemento, O. (2016). The cancer precision medicine
 knowledge base for structured clinical-grade mutations and
-interpretations. \emph{Journal of the American Medical Informatics
-Association : JAMIA}, \emph{24}(3), 513--519.
+interpretations. \emph{J Am Med Inform Assoc}, \emph{24}(3), 513--519.
 doi:\href{https://doi.org/10.1093/jamia/ocw148}{10.1093/jamia/ocw148}
 
 \hypertarget{ref-hunter2007}{}
@@ -939,8 +936,8 @@ doi:\href{https://doi.org/10.5281/zenodo.1202077}{10.5281/zenodo.1202077}
 \hypertarget{ref-jang2014}{}
 Jang, I. S., Neto, E. C., Guinney, J., Friend, S. H., \& Margolin, A. A.
 (2014). Systematic assessment of analytical methods for drug sensitivity
-prediction from cancer cell line data. \emph{Pacific Symposium on
-Biocomputing. Pacific Symposium on Biocomputing}, 63--74. Retrieved from
+prediction from cancer cell line data. \emph{Pac Symp Biocomput},
+63--74. Retrieved from
 \url{https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3995541/}
 
 \hypertarget{ref-kassambara2018}{}
@@ -959,13 +956,13 @@ Publishing: Players, Agents and Agendas} (pp. 87--90). IOS Press.
 Lappalainen, I., Almeida-King, J., Kumanduri, V., Senf, A., Spalding, J.
 D., ur-Rehman, S., \ldots{} Flicek, P. (2015). The European
 Genome-phenome Archive of human data consented for biomedical research.
-\emph{Nature Genetics}, \emph{47}(7), 692--695.
+\emph{Nat Genet}, \emph{47}(7), 692--695.
 doi:\href{https://doi.org/10.1038/ng.3312}{10.1038/ng.3312}
 
 \hypertarget{ref-marcotte2012}{}
 Marcotte, R., Brown, K. R., Suarez, F., Sayad, A., Karamboulas, K.,
 Krzyzanowski, P. M., \ldots{} Moffat, J. (2012). Essential gene profiles
-in breast, pancreas and ovarian cancer cells. \emph{Cancer Discovery},
+in breast, pancreas and ovarian cancer cells. \emph{Cancer Discov},
 \emph{2}(2), 172--189.
 doi:\href{https://doi.org/10.1158/2159-8290.CD-11-0224}{10.1158/2159-8290.CD-11-0224}
 
@@ -992,8 +989,8 @@ Analysis and Statistics. Retrieved from \url{http://pandas.pydata.org/}
 Meyers, R. M., Bryan, J. G., McFarland, J. M., Weir, B. A., Sizemore, A.
 E., Xu, H., \ldots{} Tsherniak, A. (2017). Computational correction of
 copy-number effect improves specificity of CRISPR-Cas9 essentiality
-screens in cancer cells. \emph{Nature Genetics}, \emph{49}(12),
-1779--1784. doi:\href{https://doi.org/10.1038/ng.3984}{10.1038/ng.3984}
+screens in cancer cells. \emph{Nat Genet}, \emph{49}(12), 1779--1784.
+doi:\href{https://doi.org/10.1038/ng.3984}{10.1038/ng.3984}
 
 \hypertarget{ref-mouradov2014}{}
 Mouradov, D., Sloggett, C., Jorissen, R. N., Love, C. G., Li, S.,
@@ -1001,12 +998,6 @@ Burgess, A. W., \ldots{} Sieber, O. M. (2014). Colorectal Cancer Cell
 Lines Are Representative Models of the Main Molecular Subtypes of
 Primary Cancer. \emph{Cancer Research}, \emph{74}(12), 3238--3247.
 doi:\href{https://doi.org/10.1158/0008-5472.CAN-14-0013}{10.1158/0008-5472.CAN-14-0013}
-
-\hypertarget{ref-thecancergenomeatlasresearchnetwork2008}{}
-Network, T. C. G. A. R. (2008). Comprehensive genomic characterization
-defines human glioblastoma genes and core pathways, \emph{455},
-1061--1068.
-doi:\href{https://doi.org/10.1038/nature07385}{10.1038/nature07385}
 
 \hypertarget{ref-neve2006}{}
 Neve, R. M., Chin, K., Fridlyand, J., Yeh, J., Baehner, F. L., Fevr, T.,
@@ -1045,6 +1036,11 @@ Pérez, F., \& Granger, B. (2007). IPython: A System for Interactive
 Scientific Computing, \emph{9}(3), 21--29.
 doi:\href{https://doi.org/10.1109/MCSE.2007.53}{10.1109/MCSE.2007.53}
 
+\hypertarget{ref-rdevelopmentcoreteam2010}{}
+R Development Core Team. (2010). \emph{R: A Language and Environment for
+Statistical Computing}. Vienna, Austria: R Foundation for Statistical
+Computing. Retrieved from \url{https://www.R-project.org/}
+
 \hypertarget{ref-ramos2015a}{}
 Ramos, A. H., Lichtenstein, L., Gupta, M., Lawrence, M. S., Pugh, T. J.,
 Saksena, G., \ldots{} Getz, G. (2015). Oncotator: Cancer Variant
@@ -1055,7 +1051,7 @@ doi:\href{https://doi.org/10.1002/humu.22771}{10.1002/humu.22771}
 Rees, M. G., Seashore-Ludlow, B., Cheah, J. H., Adams, D. J., Price, E.
 V., Gill, S., \ldots{} Schreiber, S. L. (2016). Correlating chemical
 sensitivity and basal gene expression reveals mechanism of action.
-\emph{Nature Chemical Biology}, \emph{12}(2), 109--116.
+\emph{Nat Chem Biol}, \emph{12}(2), 109--116.
 doi:\href{https://doi.org/10.1038/nchembio.1986}{10.1038/nchembio.1986}
 
 \hypertarget{ref-rstudio2012}{}
@@ -1071,7 +1067,7 @@ doi:\href{https://doi.org/10.1038/nature19839}{10.1038/nature19839}
 \hypertarget{ref-safikhani2017}{}
 Safikhani, Z., Smirnov, P., Freeman, M., El-Hachem, N., She, A., Rene,
 Q., \ldots{} Haibe-Kains, B. (2017). Revisiting inconsistency in large
-pharmacogenomic studies. \emph{F1000Research}, \emph{5}.
+pharmacogenomic studies. \emph{F1000Res}, \emph{5}.
 doi:\href{https://doi.org/10.12688/f1000research.9611.3}{10.12688/f1000research.9611.3}
 
 \hypertarget{ref-schriml2019}{}
@@ -1084,8 +1080,7 @@ doi:\href{https://doi.org/10.1093/nar/gky1032}{10.1093/nar/gky1032}
 Seashore-Ludlow, B., Rees, M. G., Cheah, J. H., Cokol, M., Price, E. V.,
 Coletti, M. E., \ldots{} Schreiber, S. L. (2015). Harnessing
 Connectivity in a Large-Scale Small-Molecule Sensitivity Dataset.
-\emph{Cancer Discovery, Cancer Discovery}, \emph{5, 5}(11, 11), 1210,
-1210--1223.
+\emph{Cancer Discov}, \emph{5, 5}(11, 11), 1210, 1210--1223.
 doi:\href{https://doi.org/10.1158/2159-8290.CD-15-0235,\%2010.1158/2159-8290.CD-15-0235}{10.1158/2159-8290.CD-15-0235, 10.1158/2159-8290.CD-15-0235}
 
 \hypertarget{ref-shoemaker2006}{}
@@ -1097,8 +1092,7 @@ doi:\href{https://doi.org/10.1038/nrc1951}{10.1038/nrc1951}
 Sirota, M., Dudley, J. T., Kim, J., Chiang, A. P., Morgan, A. A.,
 Sweet-Cordero, A., \ldots{} Butte, A. J. (2011). Discovery and
 preclinical validation of drug indications using compendia of public
-gene expression data. \emph{Science Translational Medicine},
-\emph{3}(96), 96ra77.
+gene expression data. \emph{Sci Transl Med}, \emph{3}(96), 96ra77.
 doi:\href{https://doi.org/10.1126/scitranslmed.3001318}{10.1126/scitranslmed.3001318}
 
 \hypertarget{ref-stinson1992}{}
@@ -1111,13 +1105,25 @@ anticancer drug screen, \emph{12}(4), 1035--1053.
 Tamborero, D., Rubio-Perez, C., Deu-Pons, J., Schroeder, M. P.,
 Vivancos, A., Rovira, A., \ldots{} Lopez-Bigas, N. (2018). Cancer Genome
 Interpreter annotates the biological and clinical relevance of tumor
-alterations. \emph{Genome Medicine}, \emph{10}.
+alterations. \emph{Genome Med}, \emph{10}.
 doi:\href{https://doi.org/10.1186/s13073-018-0531-8}{10.1186/s13073-018-0531-8}
+
+\hypertarget{ref-thecancergenomeatlasresearchnetwork2008}{}
+The Cancer Genome Atlas Research Network. (2008). Comprehensive genomic
+characterization defines human glioblastoma genes and core pathways,
+\emph{455}, 1061--1068.
+doi:\href{https://doi.org/10.1038/nature07385}{10.1038/nature07385}
+
+\hypertarget{ref-theglobalallianceforgenomicsandhealth2016}{}
+The Global Alliance for Genomics and Health. (2016). A federated
+ecosystem for sharing genomic, clinical data. \emph{Science},
+\emph{352}(6291), 1278--1280.
+doi:\href{https://doi.org/10.1126/science.aaf6162}{10.1126/science.aaf6162}
 
 \hypertarget{ref-varley2013}{}
 Varley, K. E., Gertz, J., Bowling, K. M., Parker, S. L., Reddy, T. E.,
 Pauli-Behn, F., \ldots{} Myers, R. M. (2013). Dynamic DNA methylation
-across diverse human cell lines and tissues. \emph{Genome Research},
+across diverse human cell lines and tissues. \emph{Genome Res},
 \emph{23}(3), 555--567.
 doi:\href{https://doi.org/10.1101/gr.147942.112}{10.1101/gr.147942.112}
 
@@ -1130,7 +1136,7 @@ variants. doi:\href{https://doi.org/10.1101/366856}{10.1101/366856}
 \hypertarget{ref-wang2015a}{}
 Wang, T., Birsoy, K., Hughes, N. W., Krupczak, K. M., Post, Y., Wei, J.
 J., \ldots{} Sabatini, D. M. (2015). Identification and characterization
-of essential genes in the human genome. \emph{Science (New York, N.Y.)},
+of essential genes in the human genome. \emph{Science},
 \emph{350}(6264), 1096--1101.
 doi:\href{https://doi.org/10.1126/science.aac7041}{10.1126/science.aac7041}
 
@@ -1151,7 +1157,7 @@ Wickham, H. (2016). Ggplot2: Elegant Graphics for Data Analysis (Version
 Yang, W., Soares, J., Greninger, P., Edelman, E. J., Lightfoot, H.,
 Forbes, S., \ldots{} Garnett, M. J. (2012). Genomics of Drug Sensitivity
 in Cancer (GDSC): A resource for therapeutic biomarker discovery in
-cancer cells. \emph{Nucleic Acids Research}, \emph{41}(D1), D955--D961.
+cancer cells. \emph{Nucleic Acids Res}, \emph{41}(D1), D955--D961.
 doi:\href{https://doi.org/10.1093/nar/gks1111}{10.1093/nar/gks1111}
 
 \hypertarget{ref-yu2015}{}
