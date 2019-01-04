@@ -1,5 +1,5 @@
 ---
-title             : "Manuscript"
+title             : "Manuscript Draft"
 shorttitle        : "Subtitle"
 
 author: 
@@ -77,7 +77,7 @@ We derived our clinical associations from a new project conducted by the Variant
 
 ## Comparison of G2P drug-gene associations and CCLE, CTRP, and GDSC
 
-```{r g2p-data, include=FALSE}
+```{r g2p-data, echo=FALSE, include=FALSE}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
 colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
@@ -130,7 +130,64 @@ g2p_dgl_tally <- g2p_filt %>% group_by(Drug, Gene, Drug_Gene, group_general_line
 nrow(g2p_dgl_tally)
 length(unique(g2p_dgl_tally$Drug))
 length(unique(g2p_dgl_tally$Gene))
-unique(g2p_filt$Phenotype.Description)
+g2p_lins <- as.character(unique(g2p_dgl_tally$group_general_lineage_name))
+```
+
+```{r drug-data, echo=FALSE, include=FALSE}
+ccle_data <- readRDS("./data_munging/rds/ccle_data_18Q4_g2pgenes.rds")
+ccle_data_ptmuts <- filter(ccle_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele_Length == 1 | is.na(ccle_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ccle_data_ptmuts$Dataset <- "CCLE"
+ccle_data_ptmuts$Hugo_Symbol <- ordered(ccle_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
+
+ctrp_data <- readRDS("./data_munging/rds/ctrp_data_18Q4_g2pgenes.rds")
+ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele_Length == 1 | is.na(ctrp_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ctrp_data_ptmuts$Dataset <- "CTRP"
+ctrp_data_ptmuts$Hugo_Symbol <- ordered(ctrp_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
+
+gdsc_data <- readRDS("./data_munging/rds/gdsc_data_18Q4_g2pgenes.rds")
+gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
+gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele_Length == 1 | is.na(gdsc_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
+gdsc_data_ptmuts$Dataset <- "GDSC"
+gdsc_data_ptmuts$Hugo_Symbol <- ordered(gdsc_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
+
+# Filter drug screen datasets for G2P drug-gene associations
+ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_druggenes)
+ccle_data_g2p$Mutation_Status_Nonsilent <- factor(ccle_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+ctrp_data_g2p <- filter(ctrp_data_ptmuts, Drug_Gene %in% g2p_druggenes)
+ctrp_data_g2p$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_druggenes)
+gdsc_data_g2p$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+
+# Filter drug screen datasets for G2P drug-gene-lineage associations
+ccle_data_g2p_dgl <- filter(ccle_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
+ccle_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ccle_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+ctrp_data_g2p_dgl <- filter(ctrp_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
+ctrp_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+gdsc_data_g2p_dgl <- filter(gdsc_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
+gdsc_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+
+# Filter drug screen datasets for G2P drugs and genes
+ccle_data_g2p_grid <- filter(ccle_data_ptmuts, Drug %in% g2p_drugs)
+ccle_data_g2p_grid$Mutation_Status_Nonsilent <- factor(ccle_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+ctrp_data_g2p_grid <- filter(ctrp_data_ptmuts, Drug %in% g2p_drugs)
+ctrp_data_g2p_grid$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+gdsc_data_g2p_grid <- filter(gdsc_data_ptmuts, Drug %in% g2p_drugs)
+gdsc_data_g2p_grid$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
+
+# Dataset counts
+drug_summ <- data.frame(Drug = character(), Dataset_Count = integer(), stringsAsFactors = FALSE)
+for(drug in g2p_drugs) {
+  counter = 0
+  if(drug %in% as.character(unique(ccle_data_g2p$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(ctrp_data_g2p$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(gdsc_data_g2p$Drug))) { counter <- counter + 1 }
+  drug_summ <- rbind(drug_summ, data.frame(Drug = drug, Dataset_Count = counter))
+}
 ```
 
 ```{r table-g2p-nonCID, echo=FALSE, results='asis'}
@@ -143,11 +200,15 @@ apa_table(summ, caption = "Distribution of level-A G2P drugs excluded from analy
           note = "mAb = monoclonal antibody; NA indicates G2P interpretation does not have an associated compound")
 ```
 
+```{r ccldb, echo=FALSE, include=FALSE}
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+```
+
 G2P designed a set of standards for stratifying their database’s cancer variant interpretations, ranging from preclinical data at the low-evidence end (level D) to clinically actionable interpretations at the high-evidence end (level A). To test only these clinically actionable associations, we filtered the G2P dataset for only level-A G2P interpretations, of which there were `r formatC(nrow(g2p), big.mark = ",", big.interval = 3L)` (see Methods). All compounds screened within the GDSC, CTRP, and CCLE datasets are considered “small molecules” and are respectively linked to Compound (CID) numbers used for indexing in the PubChem database (https://pubchem.ncbi.nlm.nih.gov/). As a result, non-small molecules, which include proteins and biologics (i.e. monoclonal antibodies), that had level-A G2P evidence could not be included in our comparisons. Thus, G2P interpretations for which the compound did not have a matching CID code were excluded from further analysis as were interpretations that did not have an associated compound, resulting in removal of `r nrow(g2p_nonCID)` interpretations (Table\ \@ref(tab:table-g2p-nonCID)). It should be noted that cisplatin, a small molecule, was excluded due to its being indexed with a ChEMBLdb identifier (https://www.ebi.ac.uk/chembl/), which we did not manually re-index to a CID to avoid accidental mischaracterization.
 
-After filtering, `r nrow(g2p_filt)` level-A G2P interpretations were carried forward in subsequent analyses, constituting `r length(g2p_drugs)` unique drugs and `r length(g2p_genes)` unique genes in `r length(g2p_druggenes)` distinct level-A combinations (*Figure 1A*). The number of level-A interpretations per drug ranged from `r range(g2p_drug_tally$n)[1]` to `r range(g2p_drug_tally$n)[2]` ($M =$ `r printnum(mean(g2p_drug_tally$n))`, $SD =$ `r printnum(sd(g2p_drug_tally$n))`), `r range(g2p_gene_tally$n)[1]` to `r range(g2p_gene_tally$n)[2]` ($M =$ `r printnum(mean(g2p_gene_tally$n))`, $SD =$ `r printnum(sd(g2p_gene_tally$n))`) per gene, and for each level-A drug-gene combination, the range was `r range(g2p_druggene_tally$n)[1]` to `r range(g2p_druggene_tally$n)[2]` ($M =$ `r printnum(mean(g2p_druggene_tally$n))`, $SD =$ `r printnum(sd(g2p_druggene_tally$n))`). These unique drugs, genes, and combinations are hereafter referred to as G2P drugs, G2P genes, and G2P associations. Of the `r length(g2p_drugs)` unique G2P drugs, 37 of them were screened in at least one of the drug screen datasets, 14 were screened in two of the three datasets, and only three drugs were screened in all three datasets. The remaining 20 un-screened G2P drugs suggests an incompleteness of these drug screens, though these projects frequently release new screening data that may include these drugs in future releases.
+After filtering, `r nrow(g2p_filt)` level-A G2P interpretations were carried forward in subsequent analyses, constituting `r length(g2p_drugs)` unique drugs and `r length(g2p_genes)` unique genes in `r length(g2p_druggenes)` distinct level-A combinations (*Figure 1A*). The number of level-A interpretations per drug ranged from `r range(g2p_drug_tally$n)[1]` to `r range(g2p_drug_tally$n)[2]` ($M =$ `r printnum(mean(g2p_drug_tally$n))`, $SD =$ `r printnum(sd(g2p_drug_tally$n))`), `r range(g2p_gene_tally$n)[1]` to `r range(g2p_gene_tally$n)[2]` ($M =$ `r printnum(mean(g2p_gene_tally$n))`, $SD =$ `r printnum(sd(g2p_gene_tally$n))`) per gene, and for each level-A drug-gene combination, the range was `r range(g2p_druggene_tally$n)[1]` to `r range(g2p_druggene_tally$n)[2]` ($M =$ `r printnum(mean(g2p_druggene_tally$n))`, $SD =$ `r printnum(sd(g2p_druggene_tally$n))`). These unique drugs, genes, and combinations are hereafter referred to as G2P drugs, G2P genes, and G2P associations. Filtering our screening datasets by these clinical criteria yields panels of potentially clinically relevant omic features. Of the `r length(g2p_drugs)` unique G2P drugs, `r nrow(drug_summ[drug_summ$Dataset_Count >= 1,])` of them were screened in at least one of the drug screen datasets, `r nrow(drug_summ[drug_summ$Dataset_Count >= 2,])` drugs were screened in at least two of the three datasets, and only `r nrow(drug_summ[drug_summ$Dataset_Count >= 3,])` were screened in all three datasets. The remaining `r nrow(drug_summ[drug_summ$Dataset_Count == 0,])` un-screened G2P drugs suggests an incompleteness of these drug screens, though these projects frequently release new screening data that may include these drugs in future releases.
 
-```{r}
+```{r grid-wilcox-res, echo = FALSE}
 ccle_signif_g2p_grid <- readRDS("./data_munging/rds/ccle_signif_g2p_grid.rds")
 ctrp_signif_g2p_grid <- readRDS("./data_munging/rds/ctrp_signif_g2p_grid.rds")
 gdsc_signif_g2p_grid <- readRDS("./data_munging/rds/gdsc_signif_g2p_grid.rds")
@@ -170,9 +231,9 @@ In all three datasets for both level-A G2P associations and null distribution as
 - Are the lineage-specific results approximately the same as the pancancer results?
 - Looking at a histogram of p-values, if the histogram is flat, then nothing is significant (note from meeting on 11/16)
 
-In the `r nrow(g2p_filt)` level-A G2P interpretations, there was a wide variation in the specificity of cancer description, ranging from “Waldenström macroglobulinemia” and “hyper eosinophilic advanced syndrome” on the more detailed end to “cancer” on the broad end. Similarly, the drug screen datasets had a wide range in lineage specificity, e.g. CCLE, GTRP, and GDSC all had lineages labeled “leukemia” and “T-cell childhood acute lymphocytic leukemia” and the CRISPR dataset had cell lines labeled “Epstein-Barr virus-related Burkitt lymphoma” and “lymphoma.” To more easily conduct comparative analyses in a cancer-specific manner, we developed a more general lineage grouping method derived from the Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml2019] assigned to each cell line, yielding 27 unique lineage groupings. This custom lineage grouping was included in our harmonized cancer cell line database (see METHODS).
+In the `r nrow(g2p_filt)` level-A G2P interpretations, there was a wide variation in the specificity of cancer description, ranging from “Waldenström macroglobulinemia” and “hyper eosinophilic advanced syndrome” on the more detailed end to “cancer” on the broad end. Similarly, the drug screen datasets had a wide range in lineage specificity, e.g. CCLE, GTRP, and GDSC all had lineages labeled “leukemia” and “T-cell childhood acute lymphocytic leukemia” and the CRISPR dataset had cell lines labeled “Epstein-Barr virus-related Burkitt lymphoma” and “lymphoma.” To more easily conduct comparative analyses in a cancer-specific manner, we developed a more general lineage grouping method derived from the Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml2019] assigned to each cell line, yielding `r length(unique(ccl_converter$group_general_lineage_name))` unique lineage groupings. This custom lineage grouping was included in our harmonized cancer cell line database (see METHODS).
 
-In the level-A G2P interpretations, there were `r nrow(g2p_dgl_tally)` unique drug-gene-lineage combinations (DGLs), representing seven of our curated cancer lineages: cancer, breast cancer, leukemia, lung cancer, ovarian cancer, skin cancer, and thyroid cancer. CCLE had data for nine DGLs, CTRP had data for 61, and GDSC had data for 53, yielding a total of 73 unique DGLs across all three datasets.
+In the level-A G2P interpretations, there were `r nrow(g2p_dgl_tally)` unique drug-gene-lineage combinations (DGLs), representing seven of our curated cancer lineages: `r paste(g2p_lins[1:length(g2p_lins) -1], collapse = ", ")`, and `r g2p_lins[length(g2p_lins)]`. CCLE had data for `r length(unique(ccle_data_g2p_dgl$Drug_Gene_Lin))` DGLs, CTRP had data for `r length(unique(ctrp_data_g2p_dgl$Drug_Gene_Lin))`, and GDSC had data for `r length(unique(gdsc_data_g2p_dgl$Drug_Gene_Lin))`, yielding a total of `r length(union(union(unique(ccle_data_g2p_dgl$Drug_Gene_Lin), unique(ctrp_data_g2p_dgl$Drug_Gene_Lin)), unique(gdsc_data_g2p_dgl$Drug_Gene_Lin)))` unique DGLs across all three datasets. Only `r length(intersect(intersect(unique(ccle_data_g2p_dgl$Drug_Gene_Lin), unique(ctrp_data_g2p_dgl$Drug_Gene_Lin)), unique(gdsc_data_g2p_dgl$Drug_Gene_Lin)))` DGLs were screened in all three datasets,
 
 At an $\alpha =  0.05$, no DGLs were identified in the CCLE screen when using mutation status as a correlate (n = 7), but CTRP and GDSC identified six and five, respectively, in skin cancer, lung cancer, and cancer. These significant associations did not hold after Bonferroni correction in CTRP ($n = 48$, $\alpha_{adjusted} = 0.001$) or GDSC ($n = 39$, $\alpha_{adjusted} = 0.001$).
 
@@ -230,7 +291,7 @@ Gene effect scores for 17,634 genes in 517 cell lines were inferred from a CRISP
 
 ### Mutation calls
 
-To preclude variation in genomic feature calls across the datasets, we used identical annotations from CCLE for all cell lines screened in the three datasets. The CCLE provided mutation annotations in 19,280 genes across 1,596 cell lines (dataset: depmap_18Q4_mutation_calls.csv, accessed 14 November 2018). CCLE called substitutions using MuTect [@cibulskis2013] and annotated variants using Oncotator [@ramos2015a] and indels using Indelocator (https://software.broadinstitute.org/cancer/cga/indelocator). We filtered mutation calls for point mutations, defined as single-nucleotide insertions, deletions, and substitutions, regardless of result, i.e. frameshift or missense mutation. For this analysis, cell lines harboring non-silent point mutations were considered “mutant” for the gene in question. All other mutations and genes without annotation in the Mutation Annotation Format (MAF) file were considered “wildtype.” “Mutant” and “wildtype” calls were binarily encoded per-gene/per-cell line, regardless of quantity of harbored mutations per gene in a given cell line.
+To preclude variation in genomic feature calls across the datasets, we used identical annotations from CCLE for all cell lines screened in the three datasets. The CCLE provided mutation annotations in 19,280 genes across 1,596 cell lines (dataset: depmap_18Q4_mutation_calls.csv, accessed 14 November 2018). CCLE called substitutions using MuTect [@cibulskis2013] and annotated variants using Oncotator [@ramos2015a] and indels using Indelocator (https://software.broadinstitute.org/cancer/cga/indelocator). We filtered mutation calls for point mutations, defined as single-nucleotide insertions, deletions, and substitutions, regardless of result, i.e. frameshift, missense, or nonsense mutation. For this analysis, cell lines harboring non-silent point mutations were considered “mutant” for the gene in question. All other mutations and genes without annotation in the Mutation Annotation Format (MAF) file were considered “wildtype.” “Mutant” and “wildtype” calls were binarily encoded per-gene/per-cell line, regardless of quantity of harbored mutations per gene in a given cell line.
 
 ### Copy number data
 
@@ -262,11 +323,18 @@ where AUC is the mean AUC across all drug-cell line combinations in the dataset 
 
 ## Computational
 
-For *Figure 1*, all data were imported and manipulated using pandas (v0.23.0) [@mckinney2011] and plotted using seaborn (v0.90) [@waskom2012], which sat on top of matplotlib (v2.2.2) [@hunter2007] and was executed on Python (v2.7.15) (Python Software Foundation, https://www.python.org/) in an IPython (v5.5.0) [@perez2007] kernel within a localhost Jupyter (v5.2.2) notebook [@kluyver2016]. All other analyses were conducted in R (v3.5.0) (R Foundation for Statistical Computing, https://www.R-project.org/) in an RStudio environment (v1.1.447) [@rstudio2012]. All other plots were drawn using the ggplot2 (v3.0.0) R package [@wickham2016].
+```{r}
+r_v <- paste0("v", getRversion())
+# rstudio_v <- paste0("v", RStudio.Version()$version)
+ggplot_v <- paste0("v", packageVersion("ggplot2"))
+ggpubr_v <- paste0("v", packageVersion("ggpubr"))
+```
+
+For *Figure 1*, all data were imported and manipulated using pandas (v0.23.0) [@mckinney2011] and plotted using seaborn (v0.90) [@waskom2012], which sat on top of matplotlib (v2.2.2) [@hunter2007] and was executed on Python (v2.7.15) (Python Software Foundation, https://www.python.org/) in an IPython (v5.5.0) [@perez2007] kernel within a localhost Jupyter (v5.2.2) notebook [@kluyver2016]. All other analyses were conducted in R (`r r_v`) [@rdevelopmentcoreteam2010, https://www.R-project.org/] in an RStudio environment (v1.1.447) [@rstudio2012]. All other plots were drawn using the ggplot2 (`r ggplot_v`) R package [@wickham2016].
 
 ### Statistics
 
-Wilcoxon tests were computed using the ggpubr (v.`r print(packageVersion("ggpubr"))`) R package [@kassambara2018]. 
+Wilcoxon tests were computed using the ggpubr (`r ggpubr_v`) R package [@kassambara2018].
 
 For computing Pearson correlation coefficients, if there were three or fewer data points, then the correlation was not done and a value of NA was supplied. 
 
