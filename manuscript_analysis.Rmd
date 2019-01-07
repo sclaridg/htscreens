@@ -921,7 +921,7 @@ saveRDS(crispr_signif_g2p_gene, "./data_munging/rds/crispr_signif_g2p_gene.rds")
 ```{r}
 crispr_signif_g2p_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_g2p_gene <- rbind(crispr_signif_g2p_gene, c("G6PD", rep(NA, 11)))
-knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+crispr_signif_g2p_gene_kable <- knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Plot results of `crispr_signif_g2p_gene` tests:
@@ -961,7 +961,7 @@ saveRDS(crispr_signif_g2p_lineage, "./data_munging/rds/crispr_signif_g2p_lineage
 
 ```{r}
 crispr_signif_g2p_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_lineage.rds")
-knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs wildtype cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+crispr_signif_g2p_lineage_kable <- knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs wildtype cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Plot results of `crispr_signif_g2p_lineage` tests:
@@ -1319,6 +1319,7 @@ g2p_cor_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"),
                                Spearman_Test_Results_CN = c(ccle_spearman_ttest_res_CN, ctrp_spearman_ttest_res_CN, gdsc_spearman_ttest_res_CN))
 ```
 
+
 # SUMMARIES
 
 --------------------------------------------------------------------------------
@@ -1577,7 +1578,7 @@ G2P genes with a significant effect on CERES score by mutation status, gene expr
 crispr_res_mut <- select(crispr_signif_g2p_gene, Hugo_Symbol, p)
 crispr_res_mut$corr <- 0
 crispr_res_mut$Metric <- "Mutation Status"
-crispr_res_mut$p_log10 <- -log10(crispr_res_mut$p)
+crispr_res_mut$p_log10 <- -log10(as.numeric(crispr_res_mut$p))
 subset(crispr_res_mut, p < 0.05)
 
 subset(crispr_pearson_res_GE, p < 0.05)
@@ -1995,6 +1996,27 @@ all_spearman_summ_plot
 
 ## P-values
 
+Mutation summaries for G2P gri comparisons:
+```{r}
+ccle_mut_summ <- merge(g2p_druggene_tally, ccle_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+ccle_mut_summ$n <- ifelse(is.na(ccle_mut_summ$n), 0, ccle_mut_summ$n)
+ccle_mut_summ$InG2P <- ifelse(ccle_mut_summ$n != 0, "Yes", "No")
+ccle_mut_summ$Dataset <- "CCLE"
+
+ctrp_mut_summ <- merge(g2p_druggene_tally, ctrp_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+ctrp_mut_summ$n <- ifelse(is.na(ctrp_mut_summ$n), 0, ctrp_mut_summ$n)
+ctrp_mut_summ$InG2P <- ifelse(ctrp_mut_summ$n != 0, "Yes", "No")
+ctrp_mut_summ$Dataset <- "CTRP"
+
+gdsc_mut_summ <- merge(g2p_druggene_tally, gdsc_signif_g2p_grid[, c("Drug_Gene", "p")], by = "Drug_Gene", all = TRUE)
+gdsc_mut_summ$n <- ifelse(is.na(gdsc_mut_summ$n), 0, gdsc_mut_summ$n)
+gdsc_mut_summ$InG2P <- ifelse(gdsc_mut_summ$n != 0, "Yes", "No")
+gdsc_mut_summ$Dataset <- "GDSC"
+
+g2p_mut_all_summ <- rbind(ccle_mut_summ, ctrp_mut_summ, gdsc_mut_summ)
+g2p_mut_all_summ$p_log10 <- -log10(g2p_mut_all_summ$p)
+```
+
 ```{r fig.height=6, fig.width=12}
 pval_summ_mut <- g2p_mut_all_summ
 pval_summ_mut$Measure <- "Mutation Status"
@@ -2041,6 +2063,28 @@ pval_summ_plot2
 
 # ggsave("./plots/manuscript/all_pval_summ_plot2.png", pval_summ_plot2, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
+
+## Pearson/Spearman comparison
+
+Compare significant Pearson and Spearman correlations:
+```{r}
+corr_summ_ge <- select(g2p_cor, Drug_Gene, n, Pearson_Pval_GE, Spearman_Pval_GE, InG2P, Dataset)
+corr_summ_ge$Pearson_Pval_GE_log10 <- -log10(corr_summ_ge$Pearson_Pval_GE)
+corr_summ_ge$Spearman_Pval_GE_log10 <- -log10(corr_summ_ge$Spearman_Pval_GE)
+corr_summ_ge$Overlap_Status <- ifelse(corr_summ_ge$Pearson_Pval_GE < 0.05 & corr_summ_ge$Spearman_Pval_GE < 0.05, "Both", ifelse(corr_summ_ge$Pearson_Pval_GE < 0.05, "Pearson", ifelse(corr_summ_ge$Spearman_Pval_GE < 0.05, "Spearman", NA)))
+corr_summ_ge$Overlap_Status_Bonf <- ifelse(corr_summ_ge$Pearson_Pval_GE < 0.05 / nrow(corr_summ_ge) & corr_summ_ge$Spearman_Pval_GE < 0.05 / nrow(corr_summ_ge), "Both", ifelse(corr_summ_ge$Pearson_Pval_GE < 0.05 / nrow(corr_summ_ge), "Pearson", ifelse(corr_summ_ge$Spearman_Pval_GE < 0.05 / nrow(corr_summ_ge), "Spearman", NA)))
+corr_summ_ge %>% count(Overlap_Status)
+corr_summ_ge %>% count(Overlap_Status_Bonf)
+
+corr_summ_cn <- select(g2p_cor, Drug_Gene, n, Pearson_Pval_CN, Spearman_Pval_CN, InG2P, Dataset)
+corr_summ_cn$Pearson_Pval_CN_log10 <- -log10(corr_summ_cn$Pearson_Pval_CN)
+corr_summ_cn$Spearman_Pval_CN_log10 <- -log10(corr_summ_cn$Spearman_Pval_CN)
+corr_summ_cn$Overlap_Status <- ifelse(corr_summ_cn$Pearson_Pval_CN < 0.05 & corr_summ_cn$Spearman_Pval_CN < 0.05, "Both", ifelse(corr_summ_cn$Pearson_Pval_CN < 0.05, "Pearson", ifelse(corr_summ_cn$Spearman_Pval_CN < 0.05, "Spearman", NA)))
+corr_summ_cn$Overlap_Status_Bonf <- ifelse(corr_summ_cn$Pearson_Pval_CN < 0.05 / nrow(corr_summ_cn) & corr_summ_cn$Spearman_Pval_CN < 0.05 / nrow(corr_summ_cn), "Both", ifelse(corr_summ_cn$Pearson_Pval_CN < 0.05 / nrow(corr_summ_cn), "Pearson", ifelse(corr_summ_cn$Spearman_Pval_CN < 0.05 / nrow(corr_summ_cn), "Spearman", NA)))
+corr_summ_cn %>% count(Overlap_Status)
+corr_summ_cn %>% count(Overlap_Status_Bonf)
+```
+
 
 ## Summary stats
 
