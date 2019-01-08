@@ -71,39 +71,39 @@ library(VennDiagram)
 ## Significance thresholding
 
 ```{r}
-adj_signif <- function(df) {
-  # Takes df from compare_means and creates a signif code column for adjusted p-vals
+adj_signif <- function(df, alpha) {
+  # Takes df from compare_means and creates a signif code column for FDR-adjusted p-vals for provided alpha
+  a <- alpha
+  i <- seq(along.with = df$p)
+  m <- nrow(df)
+  x <- sort(df$p) < i / m * a
+  if(length(unique(x)) == 2) {
+    k <- max(which(sort(df$p) < i/ m * a))
+    cutoff <- sort(df$p)[k]
+  }
+  else {
+    k <- NA
+    cutoff <- NA
+  }
+  df$p.signif.adj <- ifelse(df$p.adj <= cutoff, "*", NA)
   df$p.signif <- ifelse(df$p.signif == "ns", NA, df$p.signif)
-  df$p.signif.adj <- ifelse(df$p.adj <= 0.0001, "****",
-                     ifelse(df$p.adj <= 0.001, "***",
-                     ifelse(df$p.adj <= 0.01, "**",
-                     ifelse(df$p.adj <= 0.05, "*", NA))))
   df$p.short <- formatC(df$p, format = "g", digits =  2)
   df$p.adj.short <- formatC(df$p.adj, format = "g", digits =  2)
-  
+  df$k <- k
+  df$FDR_cutoff <- cutoff
   return(df)
 }
 ```
 
+```{r}
+test <- adj_signif(ccle_signif_grid_lineage, alpha = 0.05)
+length(unique(test))
+```
+
+
 ## Wilcoxon tests by drug
 
 ```{r}
-WilcoxonByDrug <- function(drug, dataset, data_name, grouping_var) {
-  if(grouping_var == "lineage") {
-    grouper <- c("Hugo_Symbol", "group_general_lineage_name")
-  }
-  else if(grouping_var == "gene") {
-    grouper <- "Hugo_Symbol"
-  }
-  use_data <- filter(dataset, Drug == drug)
-  sig <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = grouper, data = use_data, method = "wilcox.test", p.adjust.method = "BH")
-  sig <- adj_signif(sig)
-  sig <- sig[order(sig$p),]
-  sig$Drug <- drug
-  sig$Dataset <- toupper(data_name)
-  return(sig)
-}
-
 # WilcoxonByDrugAllGenes <- function(melt_file, grid_file, data_name) {
 #   druglist <- as.character(unique(melt_file$Drug))
 #   sig_df <- NULL
@@ -913,7 +913,7 @@ Wilcoxon tests for assessing effect of mutation status on gene essentiality scor
 Test G2P genes in lineage-agnostic context:
 ```{r, eval=FALSE}
 crispr_signif_g2p_gene <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol"), data = crispr_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
-crispr_signif_g2p_gene <- adj_signif(crispr_signif_g2p_gene)
+crispr_signif_g2p_gene <- adj_signif(crispr_signif_g2p_gene, alpha = 0.05)
 crispr_signif_g2p_gene <- crispr_signif_g2p_gene[order(crispr_signif_g2p_gene$p),]
 saveRDS(crispr_signif_g2p_gene, "./data_munging/rds/crispr_signif_g2p_gene.rds")
 ```
@@ -921,7 +921,7 @@ saveRDS(crispr_signif_g2p_gene, "./data_munging/rds/crispr_signif_g2p_gene.rds")
 ```{r}
 crispr_signif_g2p_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_g2p_gene <- rbind(crispr_signif_g2p_gene, c("G6PD", rep(NA, 11)))
-crispr_signif_g2p_gene_kable <- knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+crispr_signif_g2p_gene_kable <- knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Plot results of `crispr_signif_g2p_gene` tests:
@@ -953,7 +953,7 @@ crispr_data_signif_g2p_gene_plot
 Test G2P genes in lineage-grouped context:
 ```{r, eval=FALSE}
 crispr_signif_g2p_lineage <- compare_means(Score ~ Mutation_Status_Nonsilent, group.by = c("Hugo_Symbol", "group_general_lineage_name"), data = crispr_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
-crispr_signif_g2p_lineage <- adj_signif(crispr_signif_g2p_lineage)
+crispr_signif_g2p_lineage <- adj_signif(crispr_signif_g2p_lineage, alpha = 0.05)
 crispr_signif_g2p_lineage <- crispr_signif_g2p_lineage[order(crispr_signif_g2p_lineage$p),]
 saveRDS(crispr_signif_g2p_lineage, "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 # write.table(crispr_signif_g2p_lineage, file = "~/Desktop/crispr_signif_g2p_lineage.csv", quote = FALSE, sep = ",", row.names = FALSE)
@@ -961,7 +961,7 @@ saveRDS(crispr_signif_g2p_lineage, "./data_munging/rds/crispr_signif_g2p_lineage
 
 ```{r}
 crispr_signif_g2p_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_lineage.rds")
-crispr_signif_g2p_lineage_kable <- knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "Wilcoxon test results comparing non-silent mutant vs wildtype cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+crispr_signif_g2p_lineage_kable <- knitr::kable(filter(crispr_signif_g2p_lineage, p < 0.1)[, c("Hugo_Symbol", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "Wilcoxon test results comparing non-silent mutant vs wildtype cell lines by lineage, p < 0.1 (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Plot results of `crispr_signif_g2p_lineage` tests:
@@ -1032,35 +1032,34 @@ Test G2P genes in lineage-agnostic context:
 ```{r, eval=FALSE}
 # G2P drug-gene associations only
 ccle_signif_g2p <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ccle_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
-ccle_signif_g2p <- adj_signif(ccle_signif_g2p)
+ccle_signif_g2p <- adj_signif(ccle_signif_g2p, alpha = 0.05)
 ccle_signif_g2p <- ccle_signif_g2p[order(ccle_signif_g2p$p),]
 saveRDS(ccle_signif_g2p, "./data_munging/rds/ccle_signif_g2p_gene.rds")
 
 # Grid comparisons of G2P drugs and genes
 ccle_signif_g2p_grid <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = c("Drug_Gene"), data = ccle_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
-ccle_signif_g2p_grid <- adj_signif(ccle_signif_g2p_grid)
+ccle_signif_g2p_grid <- adj_signif(ccle_signif_g2p_grid, alpha = 0.05)
 ccle_signif_g2p_grid <- ccle_signif_g2p_grid[order(ccle_signif_g2p_grid$p),]
 saveRDS(ccle_signif_g2p_grid, "./data_munging/rds/ccle_signif_g2p_grid.rds")
 ```
 
 ```{r}
 ccle_signif_g2p <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
-ccle_signif_g2p_kable <- knitr::kable(ccle_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ccle_signif_g2p_kable <- knitr::kable(ccle_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
 ccle_signif_g2p_grid <- readRDS("./data_munging/rds/ccle_signif_g2p_grid.rds")
-ccle_signif_g2p_grid_kable <- knitr::kable(ccle_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ccle_signif_g2p_grid_kable <- knitr::kable(ccle_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CCLE: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Test G2P genes in lineage-grouped context:
 ```{r, eval=FALSE}
-ccle_signif_grid_lineage <- lapply(unique(ccle_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ccle_data_g2p_grid, data_name = "ccle", grouping_var = "lineage")
-names(ccle_signif_grid_lineage) <- unique(ccle_signif_grid_lineage$Drug)
-ccle_signif_grid_lineage <- rbindlist(ccle_signif_grid_lineage, use.names = TRUE)
+ccle_signif_grid_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = ccle_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
+ccle_signif_grid_lineage <- adj_signif(ccle_signif_grid_lineage, alpha = 0.05)
 ccle_signif_grid_lineage <- ccle_signif_grid_lineage[order(ccle_signif_grid_lineage$p),]
 saveRDS(ccle_signif_grid_lineage, "./data_munging/rds/ccle_signif_grid_lineage.rds")
 
 ccle_signif_g2p_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = ccle_data_g2p_dgl, method = "wilcox.test", p.adjust.method = "BH")
-ccle_signif_g2p_lineage <- adj_signif(ccle_signif_g2p_lineage)
+ccle_signif_g2p_lineage <- adj_signif(ccle_signif_g2p_lineage, alpha = 0.05)
 ccle_signif_g2p_lineage <- ccle_signif_g2p_lineage[order(ccle_signif_g2p_lineage$p),]
 saveRDS(ccle_signif_g2p_lineage, "./data_munging/rds/ccle_signif_g2p_lineage.rds")
 ```
@@ -1069,9 +1068,9 @@ saveRDS(ccle_signif_g2p_lineage, "./data_munging/rds/ccle_signif_g2p_lineage.rds
 ccle_signif_g2p_lineage <- readRDS("./data_munging/rds/ccle_signif_g2p_lineage.rds")
 ccle_signif_grid_lineage <- readRDS("./data_munging/rds/ccle_signif_grid_lineage.rds")
 
-ccle_signif_g2p_lineage_kable <- knitr::kable(ccle_signif_g2p_lineage[, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ccle_signif_g2p_lineage_kable <- knitr::kable(ccle_signif_g2p_lineage[, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
-ccle_signif_grid_lineage_kable <- knitr::kable(ccle_signif_grid_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ccle_signif_grid_lineage_kable <- knitr::kable(ccle_signif_grid_lineage[1:500, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CCLE: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## CTRP
@@ -1095,35 +1094,34 @@ ctrp_data_allgenes_kable <- knitr::kable(ctrp_data_allgenes[1:1000, c("Hugo_Symb
 Test G2P genes in lineage-agnostic context:
 ```{r, eval=FALSE}
 ctrp_signif_g2p <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ctrp_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
-ctrp_signif_g2p <- adj_signif(ctrp_signif_g2p)
+ctrp_signif_g2p <- adj_signif(ctrp_signif_g2p, alpha = 0.05)
 ctrp_signif_g2p <- ctrp_signif_g2p[order(ctrp_signif_g2p$p),]
 saveRDS(ctrp_signif_g2p, "./data_munging/rds/ctrp_signif_g2p_gene.rds")
 
 # Grid comparisons of G2P drugs and genes
 ctrp_signif_g2p_grid <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = ctrp_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
-ctrp_signif_g2p_grid <- adj_signif(ctrp_signif_g2p_grid)
+ctrp_signif_g2p_grid <- adj_signif(ctrp_signif_g2p_grid, alpha = 0.05)
 ctrp_signif_g2p_grid <- ctrp_signif_g2p_grid[order(ctrp_signif_g2p_grid$p),]
 saveRDS(ctrp_signif_g2p_grid, "./data_munging/rds/ctrp_signif_g2p_grid.rds")
 ```
 
 ```{r}
 ctrp_signif_g2p <- readRDS("./data_munging/rds/ctrp_signif_g2p_gene.rds")
-ctrp_signif_g2p_kable <- knitr::kable(ctrp_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ctrp_signif_g2p_kable <- knitr::kable(ctrp_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
 ctrp_signif_g2p_grid <- readRDS("./data_munging/rds/ctrp_signif_g2p_grid.rds")
-ctrp_signif_g2p_grid_kable <- knitr::kable(ctrp_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ctrp_signif_g2p_grid_kable <- knitr::kable(ctrp_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CTRP: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Test G2P genes in lineage-grouped context:
 ```{r, eval=FALSE}
-ctrp_signif_grid_lineage <- lapply(unique(ctrp_data_g2p_grid$Drug), WilcoxonByDrug, dataset = ctrp_data_g2p_grid, data_name = "ctrp", grouping_var = "lineage")
-names(ctrp_signif_grid_lineage) <- unique(ctrp_signif_grid_lineage$Drug)
-ctrp_signif_grid_lineage <- rbindlist(ctrp_signif_grid_lineage, use.names = TRUE)
+ctrp_signif_grid_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = ctrp_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
+ctrp_signif_grid_lineage <- adj_signif(ctrp_signif_grid_lineage, alpha = 0.05)
 ctrp_signif_grid_lineage <- ctrp_signif_grid_lineage[order(ctrp_signif_grid_lineage$p),]
 saveRDS(ctrp_signif_grid_lineage, "./data_munging/rds/ctrp_signif_grid_lineage.rds")
 
 ctrp_signif_g2p_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = ctrp_data_g2p_dgl, method = "wilcox.test", p.adjust.method = "BH")
-ctrp_signif_g2p_lineage <- adj_signif(ctrp_signif_g2p_lineage)
+ctrp_signif_g2p_lineage <- adj_signif(ctrp_signif_g2p_lineage, alpha = 0.05)
 ctrp_signif_g2p_lineage <- ctrp_signif_g2p_lineage[order(ctrp_signif_g2p_lineage$p),]
 saveRDS(ctrp_signif_g2p_lineage, "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 ```
@@ -1132,9 +1130,9 @@ saveRDS(ctrp_signif_g2p_lineage, "./data_munging/rds/ctrp_signif_g2p_lineage.rds
 ctrp_signif_g2p_lineage <- readRDS("./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 ctrp_signif_grid_lineage <- readRDS("./data_munging/rds/ctrp_signif_grid_lineage.rds")
 
-ctrp_signif_g2p_lineage_kable <- knitr::kable(ctrp_signif_g2p_lineage[, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ctrp_signif_g2p_lineage_kable <- knitr::kable(ctrp_signif_g2p_lineage[, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
-ctrp_signif_grid_lineage_kable <- knitr::kable(ctrp_signif_grid_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+ctrp_signif_grid_lineage_kable <- knitr::kable(ctrp_signif_grid_lineage[1:500, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CTRP: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 ## GDSC
@@ -1158,13 +1156,13 @@ gdsc_data_allgenes_kable <- knitr::kable(gdsc_data_allgenes[1:1000, c("Hugo_Symb
 Test G2P genes in lineage-agnostic context:
 ```{r, eval=FALSE}
 gdsc_signif_g2p <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = gdsc_data_g2p, method = "wilcox.test", p.adjust.method = "BH")
-gdsc_signif_g2p <- adj_signif(gdsc_signif_g2p)
+gdsc_signif_g2p <- adj_signif(gdsc_signif_g2p, alpha = 0.05)
 gdsc_signif_g2p <- gdsc_signif_g2p[order(gdsc_signif_g2p$p),]
 saveRDS(gdsc_signif_g2p, "./data_munging/rds/gdsc_signif_g2p_gene.rds")
 
 # Grid comparisons of G2P drugs and genes
 gdsc_signif_g2p_grid <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene", data = gdsc_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
-gdsc_signif_g2p_grid <- adj_signif(gdsc_signif_g2p_grid)
+gdsc_signif_g2p_grid <- adj_signif(gdsc_signif_g2p_grid, alpha = 0.05)
 gdsc_signif_g2p_grid <- gdsc_signif_g2p_grid[order(gdsc_signif_g2p_grid$p),]
 saveRDS(gdsc_signif_g2p_grid, "./data_munging/rds/gdsc_signif_g2p_grid.rds")
 ```
@@ -1174,19 +1172,18 @@ gdsc_signif_g2p <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
 gdsc_signif_g2p_kabl <- knitr::kable(gdsc_signif_g2p[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
 gdsc_signif_g2p_grid <- readRDS("./data_munging/rds/gdsc_signif_g2p_grid.rds")
-gdsc_signif_g2p_grid_kable <- knitr::kable(gdsc_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+gdsc_signif_g2p_grid_kable <- knitr::kable(gdsc_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "GDSC: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Test G2P genes in lineage-grouped context:
 ```{r, eval=FALSE}
-gdsc_signif_grid_lineage <- lapply(unique(gdsc_data_g2p_grid$Drug), WilcoxonByDrug, dataset = gdsc_data_g2p_grid, data_name = "gdsc", grouping_var = "lineage")
-names(gdsc_signif_grid_lineage) <- unique(gdsc_signif_grid_lineage$Drug)
-gdsc_signif_grid_lineage <- rbindlist(gdsc_signif_grid_lineage, use.names = TRUE)
+gdsc_signif_grid_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = gdsc_data_g2p_grid, method = "wilcox.test", p.adjust.method = "BH")
+gdsc_signif_grid_lineage <- adj_signif(gdsc_signif_grid_lineage, alpha = 0.05)
 gdsc_signif_grid_lineage <- gdsc_signif_grid_lineage[order(gdsc_signif_grid_lineage$p),]
 saveRDS(gdsc_signif_grid_lineage, "./data_munging/rds/gdsc_signif_grid_lineage.rds")
 
 gdsc_signif_g2p_lineage <- compare_means(AUC_zscore ~ Mutation_Status_Nonsilent, group.by = "Drug_Gene_Lin", data = gdsc_data_g2p_dgl, method = "wilcox.test", p.adjust.method = "BH")
-gdsc_signif_g2p_lineage <- adj_signif(gdsc_signif_g2p_lineage)
+gdsc_signif_g2p_lineage <- adj_signif(gdsc_signif_g2p_lineage, alpha = 0.05)
 gdsc_signif_g2p_lineage <- gdsc_signif_g2p_lineage[order(gdsc_signif_g2p_lineage$p),]
 saveRDS(gdsc_signif_g2p_lineage, "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
@@ -1195,9 +1192,9 @@ saveRDS(gdsc_signif_g2p_lineage, "./data_munging/rds/gdsc_signif_g2p_lineage.rds
 gdsc_signif_g2p_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 gdsc_signif_grid_lineage <- readRDS("./data_munging/rds/gdsc_signif_grid_lineage.rds")
 
-gdsc_signif_g2p_lineage_kable <- knitr::kable(gdsc_signif_g2p_lineage[, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+gdsc_signif_g2p_lineage_kable <- knitr::kable(gdsc_signif_g2p_lineage[, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 
-gdsc_signif_grid_lineage_kable <- knitr::kable(gdsc_signif_grid_lineage[1:500, c("Hugo_Symbol", "Drug", "group_general_lineage_name", "p", "p.adj", "p.format", "p.signif", "p.signif.adj")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+gdsc_signif_grid_lineage_kable <- knitr::kable(gdsc_signif_grid_lineage[1:500, c("Drug_Gene_Lin", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "GDSC: Wilcoxon test results for level A G2P drug-gene associations across lineages (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 
