@@ -319,6 +319,9 @@ cancer and drug response.
 clinical drug-gene
 associations?}\label{do-small-molecule-screens-in-cancer-cell-lines-recapitulate-clinical-drug-gene-associations}
 
+\textbf{Cut this analysis since we are comparing distributions of
+p-values?}
+
 We compared the distribution of level-A G2P associations (\emph{Figure
 1A}) and the associated p-values from the mutation status comparisons
 (\emph{Figure 1B}) with a null distribution of p-values derived from all
@@ -409,7 +412,7 @@ general lineage grouping method derived from the Human Disease Ontology
 identity codes (DOIDs, \url{http://disease-ontology.org/}) (Schriml et
 al., 2019) assigned to each cell line, yielding 27 unique lineage
 groupings. This custom lineage grouping was included in our harmonized
-cancer cell line database (see METHODS).
+cancer cell line database (see Methods).
 
 In the level-A G2P interpretations, there were 102 unique
 drug-gene-lineage combinations (DGLs), representing seven of our curated
@@ -419,33 +422,30 @@ had data for 61, and GDSC had data for 53, yielding a total of 73 unique
 DGLs across all three datasets. Only 7 DGLs were screened in all three
 datasets,
 
-At an \(\alpha = 0.05\), no DGLs were identified in the CCLE screen when
-using mutation status as a correlate (n = 7), but CTRP and GDSC
-identified six and five, respectively, in skin cancer, lung cancer, and
-cancer. These significant associations did not hold after Bonferroni
-correction in CTRP (\(n = 48\), \(\alpha_{adjusted} = 0.001\)) or GDSC
-(\(n = 39\), \(\alpha_{adjusted} = 0.001\)).
+Prior to correction for an FDR of 5\%, no DGLs were identified in the
+CCLE screen when using mutation status as a correlate (\(n =\) 7, 2 DGLs
+were not analyzed due to lack of mutation annotations in \emph{UGT1A1}
+in \enquote{cancer} lineages), but CTRP (\(n =\) 48) and GDSC (\(n =\)
+39) identified 6 and 5, respectively, in skin cancer, lung cancer, and
+cancer.
 
-When using gene expression as the genomic feature, three CCLE DGLs had
-significant correlations at an adjusted \(\alpha = 0.006\) (\(n = 9\)).
-Two of these three DGLs were also significantly correlated with copy
-number (\(n = 9\), \(\alpha_{adjusted} = 0.006\)).
-
-In CTRP, AUC of 19 DGLs significantly correlated with gene expression,
-12 of which were significant after correction (\(n = 61\),
-\(\alpha_{adjusted} = 0.0008\)). Copy number correlations were
-significant for 12 DGLs, with three DGLs significant post-correction
-(\(n = 61\), \(\alpha_{adjusted} = 0.0008\)).
-
-AUC of 16 DGLs in GDSC significantly correlated with gene expression. At
-an adjusted \(\alpha\) of 0.0009 (\(n = 53\)) eight of them were
+\textbf{BAD ANALYSIS, keep for reference:} These significant
+associations did not hold after Bonferroni correction in CTRP
+(\(n = 48\), \(\alpha_{adjusted} = 0.001\)) or GDSC (\(n = 39\),
+\(\alpha_{adjusted} = 0.001\)). When using gene expression as the
+genomic feature, three CCLE DGLs had significant correlations at an
+adjusted \(\alpha = 0.006\) (\(n = 9\)). Two of these three DGLs were
+also significantly correlated with copy number (\(n = 9\),
+\(\alpha_{adjusted} = 0.006\)). In CTRP, AUC of 19 DGLs significantly
+correlated with gene expression, 12 of which were significant after
+correction (\(n = 61\), \(\alpha_{adjusted} = 0.0008\)). Copy number
+correlations were significant for 12 DGLs, with three DGLs significant
+post-correction (\(n = 61\), \(\alpha_{adjusted} = 0.0008\)). AUC of 16
+DGLs in GDSC significantly correlated with gene expression. At an
+adjusted \(\alpha\) of 0.0009 (\(n = 53\)) eight of them were
 significant. Fewer DGLs were significant when correlating AUC with copy
 number with 6 significant at an \(\alpha\) of 0.05 and 1 significant at
 an adjusted \(\alpha\) of 0.0009 (\(n = 53\)).
-
-Interestingly, when we test the effect of mutation status on drug
-response for the DGLs derived from all pairwise combinations of G2P
-drugs and genes\ldots{} (\emph{Figure \#\#1}).
 
 \subsection{Are CRISPR/Cas9 gene essentiality results comparable to
 those of functional drug
