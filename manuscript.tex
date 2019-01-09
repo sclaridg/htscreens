@@ -302,11 +302,18 @@ Using cell-line-specific point mutation annotations from the CCLE, we
 compared z-score-transformed area under the dose-response curve (AUC)
 distributions between mutant and wildtype cell lines for all G2P genes
 for each G2P drug tested in the CCLE, CTRP, and GDSC drug screens
-(\emph{Figures 1B and 2A}). At uncorrected \(\alpha = 0.05\), Wilcoxon
+(\emph{Figures 1B and 2A}). At an unadjusted \(\alpha = 0.05\), Wilcoxon
 rank-sum tests revealed that in CCLE, the AUC distributions of mutant
 and wildtype groups for 18 out of 170 (10.59\%) tested drug-gene
 combinations were significantly different, 135 out of 918 (14.71\%) were
 significantly different for CTRP, and 89 out of 850 (10.47\%) for GDSC.
+
+Controlling for a false discovery rate (FDR) \textless{} 5\%,
+selumetinib-\emph{BRAF} (\(p\) \textless{} .001) was the only
+significant drug-gene combination tested in CCLE (\(p_k < 8^{-4}\)).
+CTRP (\(p_k < 7^{-4}\)) yielded 918 significant combinations, one of
+which was selumetinib-\emph{BRAF}.
+
 We observe little concordance between the number of interpretations for
 each G2P association and the significance of mutation status on AUC for
 said G2P association, suggesting that mutation status alone is not a
@@ -314,6 +321,10 @@ robust predictor of clinically actionable genetic targets. This led us
 to examine the correlations between AUC and gene expression and AUC and
 copy number, two other genomic features that are known to associate with
 cancer and drug response.
+
+We computed Spearman correlation coefficients (\(r_s\)) between AUC of
+each drug-gene association and gene expression (RPKM) and copy number
+(log\(_2\) ratio) of the gene in the association
 
 \subsection{Do small-molecule screens in cancer cell lines recapitulate
 clinical drug-gene
@@ -373,11 +384,11 @@ its possible level-A G2P associations than GDSC, and similarly, GDSC
 identified a higher percentage than CCLE. In the CCLE-GDSC debate,
 inconsistency between the datasets was attributed to the groups using
 two very different assays for generating AUC measurements though it was
-undecided which was more accurate(Haibe-Kains et al., 2013; Jang et al.,
-2014; Weinstein \& Lorenzi, 2013). Our results provide very preliminary
-evidence that GDSC is more accurate than CCLE in regards to reproducing
-clinical associations. However, CTRP may be even more accurate than both
-GDSC and CCLE.
+undecided which was more accurate (Haibe-Kains et al., 2013; Jang et
+al., 2014; Weinstein \& Lorenzi, 2013). Our results provide very
+preliminary evidence that GDSC is more accurate than CCLE in regards to
+reproducing clinical associations. However, CTRP may be even more
+accurate than both GDSC and CCLE.
 
 \subsection{Do these pancancer drug-gene associations penetrate to the
 lineage-specific
@@ -427,25 +438,8 @@ CCLE screen when using mutation status as a correlate (\(n =\) 7, 2 DGLs
 were not analyzed due to lack of mutation annotations in \emph{UGT1A1}
 in \enquote{cancer} lineages), but CTRP (\(n =\) 48) and GDSC (\(n =\)
 39) identified 6 and 5, respectively, in skin cancer, lung cancer, and
-cancer.
-
-\textbf{BAD ANALYSIS, keep for reference:} These significant
-associations did not hold after Bonferroni correction in CTRP
-(\(n = 48\), \(\alpha_{adjusted} = 0.001\)) or GDSC (\(n = 39\),
-\(\alpha_{adjusted} = 0.001\)). When using gene expression as the
-genomic feature, three CCLE DGLs had significant correlations at an
-adjusted \(\alpha = 0.006\) (\(n = 9\)). Two of these three DGLs were
-also significantly correlated with copy number (\(n = 9\),
-\(\alpha_{adjusted} = 0.006\)). In CTRP, AUC of 19 DGLs significantly
-correlated with gene expression, 12 of which were significant after
-correction (\(n = 61\), \(\alpha_{adjusted} = 0.0008\)). Copy number
-correlations were significant for 12 DGLs, with three DGLs significant
-post-correction (\(n = 61\), \(\alpha_{adjusted} = 0.0008\)). AUC of 16
-DGLs in GDSC significantly correlated with gene expression. At an
-adjusted \(\alpha\) of 0.0009 (\(n = 53\)) eight of them were
-significant. Fewer DGLs were significant when correlating AUC with copy
-number with 6 significant at an \(\alpha\) of 0.05 and 1 significant at
-an adjusted \(\alpha\) of 0.0009 (\(n = 53\)).
+cancer. After Benjamini-Hochberg FDR correction, none of the datasets
+yielded significant DGL interactions.
 
 \subsection{Are CRISPR/Cas9 gene essentiality results comparable to
 those of functional drug
@@ -458,20 +452,21 @@ number variation on Cas9 DNA cleavage. The lower the CERES score, the
 higher the likelihood that the gene is essential in the associated cell
 line. Scores are scaled per cell line such that a score of 0 is the
 median effect of nonessential genes and -1 is the median effect of
-common core essential genes. Of the 34 G2P genes, only G6PD was not
-targeted by an sgRNA in the CRISPR dataset.
+common core essential genes. Of the 34 G2P genes, only \emph{G6PD} was
+not targeted by an sgRNA in the CRISPR dataset.
 
-When we don't account for lineage, Wilcoxon rank-sum tests revealed that
-mutations in eight of the 33 (24.2\%) G2P genes significantly correlated
-with CERES score (\(\alpha = 0.05\)): KRAS (\(p < 0.001\)), BRAF
-(\(p < 0.001\)), BRCA2 (\(p < 0.001\)), CYP19A1 (\(p = 0.004\)), TSC2
-(\(p = 0.005\)), JAK2 (\(p = 0.031\)), DPYD (\(p = 0.042\)), and UGT1A1
-(\(p = 0.048\)). Gene expression (RPKM) of 17 (51.5\%) G2P genes
-significantly correlated with CERES score, as did copy number
-(log2-ratio) for 14 (42.4\%) G2P genes (Figure \#\#2). For the purpose
-of comparison to the drug screen data, if we treat CRISPR knockdown like
-a small-molecule drug, then these results are similar to the results
-from CCLE, CTRP, and GDSC (Table 2).
+When we don't account for lineage, Wilcoxon rank-sum tests
+(\(p_k < 5^{-3}\), FDR \textless{} 5\%) revealed that mutations in 2
+genes significantly correlated with CERES score: \emph{KRAS} (\(p\)
+\textless{} .001) and \emph{BRAF} (\(p\) \textless{} .001).
+
+Gene expression (RPKM) of 12 out of 33 (36.36\%) G2P genes significantly
+correlated with CERES score, as did copy number (log2-ratio) for 12 out
+of 33 (36.36\%) G2P genes.
+
+For the purpose of comparison to the drug screen data, if we treat
+CRISPR knockdown like a small-molecule drug, then these results are
+similar to the results from CCLE, CTRP, and GDSC (Table 2).
 
 \begin{itemize}
 \tightlist
@@ -748,10 +743,12 @@ drawn using the ggplot2 (v3.0.0) R package (Wickham, 2016).
 
 \subsubsection{Statistics}\label{statistics}
 
-Wilcoxon tests were computed using the ggpubr (v0.1.7.999) R package
-(Kassambara, 2018).
+Wilcoxon tests were conducted using the \texttt{compare\_means} function
+in the ggpubr (v0.1.7.999) R package (Kassambara, 2018).
+\texttt{compare\_means} does Benjamini-Hochberg p-value adjustment using
+the \texttt{p,adjust} function from the \texttt{stats} base R package.
 
-For computing Pearson correlation coefficients, if there were three or
+For computing Spearman correlation coefficients. If there were 3 or
 fewer data points, then the correlation was not done and a value of NA
 was supplied.
 
