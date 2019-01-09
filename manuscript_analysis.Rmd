@@ -921,7 +921,7 @@ saveRDS(crispr_signif_g2p_gene, "./data_munging/rds/crispr_signif_g2p_gene.rds")
 ```{r}
 crispr_signif_g2p_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_g2p_gene <- rbind(crispr_signif_g2p_gene, c("G6PD", rep(NA, 11)))
-crispr_signif_g2p_gene_kable <- knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
+crispr_signif_g2p_gene_kable <- knitr::kable(crispr_signif_g2p_gene[, c("Hugo_Symbol", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "k", "FDR_cutoff")], caption = "Wilcoxon test results for Level A point mutations (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
 
 Plot results of `crispr_signif_g2p_gene` tests:
@@ -1050,6 +1050,11 @@ ccle_signif_g2p_kable <- knitr::kable(ccle_signif_g2p[, c("Drug_Gene", "p", "p.a
 ccle_signif_g2p_grid <- readRDS("./data_munging/rds/ccle_signif_g2p_grid.rds")
 ccle_signif_g2p_grid_kable <- knitr::kable(ccle_signif_g2p_grid[, c("Drug_Gene", "p", "p.adj", "p.format", "p.signif", "p.signif.adj", "FDR_cutoff")], caption = "CCLE: Wilcoxon test results for point mutations in level A G2P genes and drugs (* p <= 0.05, ** p <= 0.01, *** p <= 0.001, **** p <= 0.0001)") %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>% scroll_box(width = "900px", height = "450px")
 ```
+
+```{r}
+test <- p.adjust(ccle_signif_g2p$p, method = "BH")
+```
+
 
 Test G2P genes in lineage-grouped context:
 ```{r, eval=FALSE}
@@ -1244,14 +1249,14 @@ ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y 
 ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
 ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
 ccle_cor_res$Dataset <- "CCLE"
-ccle_pearson_ttest_GE <- t.test(ccle_cor_res$Pearson_Corr_GE ~ ccle_cor_res$InG2P)
-ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 0), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 2))
-ccle_pearson_ttest_CN <- t.test(ccle_cor_res$Pearson_Corr_CN ~ ccle_cor_res$InG2P)
-ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 0), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 2))
-ccle_spearman_ttest_GE <- t.test(ccle_cor_res$Spearman_Corr_GE ~ ccle_cor_res$InG2P)
-ccle_spearman_ttest_res_GE <- paste0("t(", round(ccle_spearman_ttest_GE$parameter, 0), ") = ", round(ccle_spearman_ttest_GE$statistic, 2), ", p = ", round(ccle_spearman_ttest_GE$p.value, 2))
-ccle_spearman_ttest_CN <- t.test(ccle_cor_res$Spearman_Corr_CN ~ ccle_cor_res$InG2P)
-ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$parameter, 0), ") = ", round(ccle_spearman_ttest_CN$statistic, 2), ", p = ", formatC(ccle_spearman_ttest_CN$p.value, 2, format = "f"))
+# ccle_pearson_ttest_GE <- t.test(ccle_cor_res$Pearson_Corr_GE ~ ccle_cor_res$InG2P)
+# ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 0), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 2))
+# ccle_pearson_ttest_CN <- t.test(ccle_cor_res$Pearson_Corr_CN ~ ccle_cor_res$InG2P)
+# ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 0), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 2))
+# ccle_spearman_ttest_GE <- t.test(ccle_cor_res$Spearman_Corr_GE ~ ccle_cor_res$InG2P)
+# ccle_spearman_ttest_res_GE <- paste0("t(", round(ccle_spearman_ttest_GE$parameter, 0), ") = ", round(ccle_spearman_ttest_GE$statistic, 2), ", p = ", round(ccle_spearman_ttest_GE$p.value, 2))
+# ccle_spearman_ttest_CN <- t.test(ccle_cor_res$Spearman_Corr_CN ~ ccle_cor_res$InG2P)
+# ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$parameter, 0), ") = ", round(ccle_spearman_ttest_CN$statistic, 2), ", p = ", formatC(ccle_spearman_ttest_CN$p.value, 2, format = "f"))
 
 # CTRP
 ctrp_cor_res <- ctrp_data_g2p_grid %>% group_by(Drug_Gene) %>%
@@ -1267,14 +1272,14 @@ ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y 
 ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
 ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
 ctrp_cor_res$Dataset <- "CTRP"
-ctrp_pearson_ttest_GE <- t.test(ctrp_cor_res$Pearson_Corr_GE ~ ctrp_cor_res$InG2P)
-ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 0), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p ", ifelse(round(ctrp_pearson_ttest_GE$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_pearson_ttest_GE$p.value, 3))))
-ctrp_pearson_ttest_CN <- t.test(ctrp_cor_res$Pearson_Corr_CN ~ ctrp_cor_res$InG2P)
-ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 0), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
-ctrp_spearman_ttest_GE <- t.test(ctrp_cor_res$Spearman_Corr_GE ~ ctrp_cor_res$InG2P)
-ctrp_spearman_ttest_res_GE <- paste0("t(", round(ctrp_spearman_ttest_GE$parameter, 0), ") = ", round(ctrp_spearman_ttest_GE$statistic, 2), ", p = ", round(ctrp_spearman_ttest_GE$p.value, 2))
-ctrp_spearman_ttest_CN <- t.test(ctrp_cor_res$Spearman_Corr_CN ~ ctrp_cor_res$InG2P)
-ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$parameter, 0), ") = ", round(ctrp_spearman_ttest_CN$statistic, 2), ", p = ", round(ctrp_spearman_ttest_CN$p.value, 2))
+# ctrp_pearson_ttest_GE <- t.test(ctrp_cor_res$Pearson_Corr_GE ~ ctrp_cor_res$InG2P)
+# ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 0), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p ", ifelse(round(ctrp_pearson_ttest_GE$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_pearson_ttest_GE$p.value, 3))))
+# ctrp_pearson_ttest_CN <- t.test(ctrp_cor_res$Pearson_Corr_CN ~ ctrp_cor_res$InG2P)
+# ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 0), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
+# ctrp_spearman_ttest_GE <- t.test(ctrp_cor_res$Spearman_Corr_GE ~ ctrp_cor_res$InG2P)
+# ctrp_spearman_ttest_res_GE <- paste0("t(", round(ctrp_spearman_ttest_GE$parameter, 0), ") = ", round(ctrp_spearman_ttest_GE$statistic, 2), ", p = ", round(ctrp_spearman_ttest_GE$p.value, 2))
+# ctrp_spearman_ttest_CN <- t.test(ctrp_cor_res$Spearman_Corr_CN ~ ctrp_cor_res$InG2P)
+# ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$parameter, 0), ") = ", round(ctrp_spearman_ttest_CN$statistic, 2), ", p = ", round(ctrp_spearman_ttest_CN$p.value, 2))
 
 # GDSC
 gdsc_cor_res <- gdsc_data_g2p_grid %>% group_by(Drug_Gene) %>%
@@ -1290,14 +1295,14 @@ gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y 
 gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
 gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
 gdsc_cor_res$Dataset <- "GDSC"
-gdsc_pearson_ttest_GE <- t.test(gdsc_cor_res$Pearson_Corr_GE ~ gdsc_cor_res$InG2P)
-gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 0), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
-gdsc_pearson_ttest_CN <- t.test(gdsc_cor_res$Pearson_Corr_CN ~ gdsc_cor_res$InG2P)
-gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 0), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
-gdsc_spearman_ttest_GE <- t.test(gdsc_cor_res$Spearman_Corr_GE ~ gdsc_cor_res$InG2P)
-gdsc_spearman_ttest_res_GE <- paste0("t(", round(gdsc_spearman_ttest_GE$parameter, 0), ") = ", round(gdsc_spearman_ttest_GE$statistic, 2), ", p = ", round(gdsc_spearman_ttest_GE$p.value, 2))
-gdsc_spearman_ttest_CN <- t.test(gdsc_cor_res$Spearman_Corr_CN ~ gdsc_cor_res$InG2P)
-gdsc_spearman_ttest_res_CN <- paste0("t(", round(gdsc_spearman_ttest_CN$parameter, 0), ") = ", round(gdsc_spearman_ttest_CN$statistic, 2), ", p = ", round(gdsc_spearman_ttest_CN$p.value, 2))
+# gdsc_pearson_ttest_GE <- t.test(gdsc_cor_res$Pearson_Corr_GE ~ gdsc_cor_res$InG2P)
+# gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 0), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
+# gdsc_pearson_ttest_CN <- t.test(gdsc_cor_res$Pearson_Corr_CN ~ gdsc_cor_res$InG2P)
+# gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 0), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
+# gdsc_spearman_ttest_GE <- t.test(gdsc_cor_res$Spearman_Corr_GE ~ gdsc_cor_res$InG2P)
+# gdsc_spearman_ttest_res_GE <- paste0("t(", round(gdsc_spearman_ttest_GE$parameter, 0), ") = ", round(gdsc_spearman_ttest_GE$statistic, 2), ", p = ", round(gdsc_spearman_ttest_GE$p.value, 2))
+# gdsc_spearman_ttest_CN <- t.test(gdsc_cor_res$Spearman_Corr_CN ~ gdsc_cor_res$InG2P)
+# gdsc_spearman_ttest_res_CN <- paste0("t(", round(gdsc_spearman_ttest_CN$parameter, 0), ") = ", round(gdsc_spearman_ttest_CN$statistic, 2), ", p = ", round(gdsc_spearman_ttest_CN$p.value, 2))
 
 # All
 g2p_cor <- rbind(ccle_cor_res, ctrp_cor_res, gdsc_cor_res)
@@ -1309,11 +1314,11 @@ g2p_cor$Spearman_GE_Abs <- abs(g2p_cor$Spearman_Corr_GE)
 g2p_cor$Spearman_GE_Sign <- ifelse(sign(g2p_cor$Spearman_Corr_GE) == 1, "+", ifelse(sign(g2p_cor$Spearman_Corr_GE) == -1, "-", "0"))
 g2p_cor$Spearman_CN_Abs <- abs(g2p_cor$Spearman_Corr_CN)
 g2p_cor$Spearman_CN_Sign <- ifelse(sign(g2p_cor$Spearman_Corr_CN) == 1, "+", ifelse(sign(g2p_cor$Spearman_Corr_CN) == -1, "-", "0"))
-g2p_cor_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"),
-                               Pearson_Test_Results_GE = c(ccle_pearson_ttest_res_GE, ctrp_pearson_ttest_res_GE, gdsc_pearson_ttest_res_GE),
-                               Pearson_Test_Results_CN = c(ccle_pearson_ttest_res_CN, ctrp_pearson_ttest_res_CN, gdsc_pearson_ttest_res_CN),
-                               Spearman_Test_Results_GE = c(ccle_spearman_ttest_res_GE, ctrp_spearman_ttest_res_GE, gdsc_spearman_ttest_res_GE),
-                               Spearman_Test_Results_CN = c(ccle_spearman_ttest_res_CN, ctrp_spearman_ttest_res_CN, gdsc_spearman_ttest_res_CN))
+# g2p_cor_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"),
+#                                Pearson_Test_Results_GE = c(ccle_pearson_ttest_res_GE, ctrp_pearson_ttest_res_GE, gdsc_pearson_ttest_res_GE),
+#                                Pearson_Test_Results_CN = c(ccle_pearson_ttest_res_CN, ctrp_pearson_ttest_res_CN, gdsc_pearson_ttest_res_CN),
+#                                Spearman_Test_Results_GE = c(ccle_spearman_ttest_res_GE, ctrp_spearman_ttest_res_GE, gdsc_spearman_ttest_res_GE),
+#                                Spearman_Test_Results_CN = c(ccle_spearman_ttest_res_CN, ctrp_spearman_ttest_res_CN, gdsc_spearman_ttest_res_CN))
 ```
 
 
@@ -1383,7 +1388,7 @@ Summarize the Wilcoxon test p-values of the grid tests by mutation status. Grid 
 ```{r}
 g2p_dgl_mut_tally <- g2p %>% group_by(Drug_Gene, group_general_lineage_name) %>% tally()
 
-ccle_dgl_summ <- ccle_signif_grid_lineage
+ccle_dgl_summ <- ccle_signif_grid_lineage %>% separate(Drug_Gene_Lin, c("Drug", "Hugo_Symbol", "group_general_lineage_name"), "_")
 ccle_dgl_summ$Drug_Gene <- paste0(ccle_dgl_summ$Drug, "_", ccle_dgl_summ$Hugo_Symbol)
 ccle_dgl_summ <- merge(g2p_dgl_mut_tally, ccle_dgl_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
 ccle_dgl_summ$Drug_Gene_Lin <- paste0(ccle_dgl_summ$Drug_Gene, "_", ccle_dgl_summ$group_general_lineage_name)
@@ -1391,7 +1396,7 @@ ccle_dgl_summ$n <- ifelse(is.na(ccle_dgl_summ$n), 0, ccle_dgl_summ$n)
 ccle_dgl_summ$InG2P <- ifelse(ccle_dgl_summ$n != 0, "Yes", "No")
 ccle_dgl_summ$Dataset <- "CCLE"
 
-ctrp_dgl_summ <- ctrp_signif_grid_lineage
+ctrp_dgl_summ <- ctrp_signif_grid_lineage %>% separate(Drug_Gene_Lin, c("Drug", "Hugo_Symbol", "group_general_lineage_name"), "_")
 ctrp_dgl_summ$Drug_Gene <- paste0(ctrp_dgl_summ$Drug, "_", ctrp_dgl_summ$Hugo_Symbol)
 ctrp_dgl_summ <- merge(g2p_dgl_mut_tally, ctrp_dgl_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
 ctrp_dgl_summ$Drug_Gene_Lin <- paste0(ctrp_dgl_summ$Drug_Gene, "_", ctrp_dgl_summ$group_general_lineage_name)
@@ -1399,7 +1404,7 @@ ctrp_dgl_summ$n <- ifelse(is.na(ctrp_dgl_summ$n), 0, ctrp_dgl_summ$n)
 ctrp_dgl_summ$InG2P <- ifelse(ctrp_dgl_summ$n != 0, "Yes", "No")
 ctrp_dgl_summ$Dataset <- "CTRP"
 
-gdsc_dgl_summ <- gdsc_signif_grid_lineage
+gdsc_dgl_summ <- gdsc_signif_grid_lineage %>% separate(Drug_Gene_Lin, c("Drug", "Hugo_Symbol", "group_general_lineage_name"), "_")
 gdsc_dgl_summ$Drug_Gene <- paste0(gdsc_dgl_summ$Drug, "_", gdsc_dgl_summ$Hugo_Symbol)
 gdsc_dgl_summ <- merge(g2p_dgl_mut_tally, gdsc_dgl_summ[, c("Drug_Gene", "group_general_lineage_name", "p")], by = c("Drug_Gene", "group_general_lineage_name"), all.y = TRUE)
 gdsc_dgl_summ$Drug_Gene_Lin <- paste0(gdsc_dgl_summ$Drug_Gene, "_", gdsc_dgl_summ$group_general_lineage_name)
