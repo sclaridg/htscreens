@@ -1,4 +1,4 @@
-\documentclass[man]{apa6}
+\documentclass[man,floatsintext]{apa6}
 \usepackage{lmodern}
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
@@ -94,12 +94,6 @@ Margolin\textsuperscript{1, 2}}
 \newcommand{\getlongtablewidth}{\begingroup \ifcsname LT@\roman{LT@tables}\endcsname \global\longtablewidth=0pt \renewcommand{\LT@entry}[2]{\global\advance\longtablewidth by ##2\relax\gdef\LastLTentrywidth{##2}}\@nameuse{LT@\roman{LT@tables}} \fi \endgroup}
 
 
-\DeclareDelayedFloatFlavor{ThreePartTable}{table}
-\DeclareDelayedFloatFlavor{lltable}{table}
-\DeclareDelayedFloatFlavor*{longtable}{table}
-\makeatletter
-\renewcommand{\efloat@iwrite}[1]{\immediate\expandafter\protected@write\csname efloat@post#1\endcsname{}}
-\makeatother
 \usepackage{lineno}
 
 \linenumbers
@@ -228,33 +222,36 @@ CRISPR yield results comparable to functional drug screens.
 
 \section{Results}\label{results}
 
-\subsection{Comparison of G2P drug-gene associations and CCLE, CTRP, and
-GDSC}\label{comparison-of-g2p-drug-gene-associations-and-ccle-ctrp-and-gdsc}
+\subsection{Do small-molecule screens in cancer cell lines recapitulate
+clinical drug-gene
+associations?}\label{do-small-molecule-screens-in-cancer-cell-lines-recapitulate-clinical-drug-gene-associations}
 
 \begin{table}[tbp]
 \begin{center}
 \begin{threeparttable}
-\caption{\label{tab:table-g2p-nonCID}Distribution of level-A G2P drugs excluded from analyses}
-\begin{tabular}{llll}
+\caption{\label{tab:table-g2p-nonCID}Level-A G2P interpretations excluded from analyses}
+\small{
+\begin{tabular}{cccc}
 \toprule
-Compound & \multicolumn{1}{c}{Compound identifier} & \multicolumn{1}{c}{Number of G2P interpretations} & \multicolumn{1}{c}{Proportion of excluded interpretations (\%)}\\
+Compound & \multicolumn{1}{c}{CID} & \multicolumn{1}{c}{N\_G2P} & \multicolumn{1}{c}{\%}\\
 \midrule
-cetuximab & CHEMBL1201577 & 74 & 18.41\\
-cisplatin & CHEMBL2068237 & 3 & 0.75\\
 EGFR & SID160769799 & 1 & 0.25\\
-ipilimumab & CHEMBL1789844 & 2 & 0.50\\
-mAb & CHEMBL2109423 & 16 & 3.98\\
-nivolumab & CHEMBL2108738 & 4 & 1.00\\
-panitumumab & CHEMBL1201827 & 75 & 18.66\\
-pembrolizumab & CHEMBL3137343 & 3 & 0.75\\
 pertuzumab & CHEMBL2007641 & 1 & 0.25\\
+ipilimumab & CHEMBL1789844 & 2 & 0.50\\
+cisplatin & CHEMBL2068237 & 3 & 0.75\\
+pembrolizumab & CHEMBL3137343 & 3 & 0.75\\
+nivolumab & CHEMBL2108738 & 4 & 1.00\\
 trastuzumab & CHEMBL1201585 & 9 & 2.24\\
+mAb & CHEMBL2109423 & 16 & 3.98\\
+cetuximab & CHEMBL1201577 & 74 & 18.41\\
+panitumumab & CHEMBL1201827 & 75 & 18.66\\
 NA & NA & 214 & 53.23\\
 \bottomrule
 \addlinespace
 \end{tabular}
+}
 \begin{tablenotes}[para]
-\normalsize{\textit{Note.} mAb = monoclonal antibody; NA indicates G2P interpretation does not have an associated compound}
+\normalsize{\textit{Note.} N\_G2P (\%) = number of associated G2P interpretations, \% is out of column total; mAb = monoclonal antibody; NA indicates G2P interpretation does not have an associated compound.}
 \end{tablenotes}
 \end{threeparttable}
 \end{center}
@@ -298,21 +295,39 @@ datasets, and only 3 were screened in all three datasets. The remaining
 screens, though these projects frequently release new screening data
 that may include these drugs in future releases.
 
+\textbf{Describe why we compare all pairwise combos rather than
+filtering for just the drug-gene combos in G2P}
+
 Using cell-line-specific point mutation annotations from the CCLE, we
 compared z-score-transformed area under the dose-response curve (AUC)
-distributions between mutant and wildtype cell lines for all G2P genes
-for each G2P drug tested in the CCLE, CTRP, and GDSC drug screens
-(\emph{Figures 1B and 2A}). At an unadjusted \(\alpha = 0.05\), Wilcoxon
-rank-sum tests revealed that in CCLE, the AUC distributions of mutant
-and wildtype groups for 18 out of 170 (10.59\%) tested drug-gene
-combinations were significantly different, 135 out of 918 (14.71\%) were
-significantly different for CTRP, and 89 out of 850 (10.47\%) for GDSC.
+distributions between mutant and wildtype cell lines for all pairwise
+combinations of G2P genes and drugs tested in the CCLE, CTRP, and GDSC
+drug screens (\emph{Figures 1B and 2A}). At an unadjusted
+\(\alpha = 0.05\), Wilcoxon rank-sum tests revealed that in CCLE, AUC
+significantly correlated with mutation status for 18 out of 170
+(10.59\%) tested drug-gene combinations were significantly different,
+135 out of 918 (14.71\%) were significantly different for CTRP, and 89
+out of 850 (10.47\%) for GDSC.
 
 Controlling for a false discovery rate (FDR) \textless{} 5\%,
-selumetinib-\emph{BRAF} (\(p\) \textless{} .001) was the only
-significant drug-gene combination tested in CCLE (\(p_k < 8^{-4}\)).
-CTRP (\(p_k < 7^{-4}\)) yielded 918 significant combinations, one of
-which was selumetinib-\emph{BRAF}.
+selumetinib-\emph{BRAF} (\(p_{adj} = 1.4^{-10}\)) was the only
+significant drug-gene combination tested in CCLE (\(p_k = 7.9^{-4}\)).
+CTRP (\(p_k = 6.5^{-4}\)) yielded 5 significant combinations, one of
+which was selumetinib-\emph{BRAF}. There were 3 significant G2P
+associations in the GDSC dataset (\(p_k = 9.5^{-5}\)), Of all the
+significant correlations between mutation status and AUC across
+datasets, the only genes represented were \emph{KRAS} and \emph{BRAF}
+(Figure~\ref{fig:drug-venn}).
+
+\begin{verbatim}
+## NULL
+\end{verbatim}
+
+\begin{figure}
+\centering
+\includegraphics{manuscript_files/figure-latex/drug-venn-1.pdf}
+\caption{}
+\end{figure}
 
 We observe little concordance between the number of interpretations for
 each G2P association and the significance of mutation status on AUC for
@@ -324,11 +339,7 @@ cancer and drug response.
 
 We computed Spearman correlation coefficients (\(r_s\)) between AUC of
 each drug-gene association and gene expression (RPKM) and copy number
-(log\(_2\) ratio) of the gene in the association
-
-\subsection{Do small-molecule screens in cancer cell lines recapitulate
-clinical drug-gene
-associations?}\label{do-small-molecule-screens-in-cancer-cell-lines-recapitulate-clinical-drug-gene-associations}
+(log\(_2\) ratio) of the gene in the association\ldots{}
 
 \textbf{Cut this analysis since we are comparing distributions of
 p-values?}
@@ -407,6 +418,8 @@ level?}\label{do-these-pancancer-drug-gene-associations-penetrate-to-the-lineage
 \item
   Looking at a histogram of p-values, if the histogram is flat, then
   nothing is significant (note from meeting on 11/16)
+\item
+  KS test results
 \end{itemize}
 
 In the 894 level-A G2P interpretations, there was a wide variation in
@@ -445,6 +458,12 @@ yielded significant DGL interactions.
 those of functional drug
 screens?}\label{are-crisprcas9-gene-essentiality-results-comparable-to-those-of-functional-drug-screens}
 
+\begin{figure}
+\centering
+\includegraphics{manuscript_files/figure-latex/crispr-venn-1.pdf}
+\caption{}
+\end{figure}
+
 The CRISPR screen from the Broad Institute reports gene dependency using
 CERES scores (Meyers et al., 2017), which are generated from sgRNA
 depletion scores and eliminate bias arising from the effect of copy
@@ -456,13 +475,12 @@ common core essential genes. Of the 34 G2P genes, only \emph{G6PD} was
 not targeted by an sgRNA in the CRISPR dataset.
 
 When we don't account for lineage, Wilcoxon rank-sum tests
-(\(p_k < 5^{-3}\), FDR \textless{} 5\%) revealed that mutations in 2
-genes significantly correlated with CERES score: \emph{KRAS} (\(p\)
-\textless{} .001) and \emph{BRAF} (\(p\) \textless{} .001).
-
+(\(p_k = 5.1^{-3}\), FDR \textless{} 5\%) revealed that mutations in 2
+genes significantly correlated with CERES score: \emph{KRAS}
+(\(p_{adj} = 2.6^{-37}\)) and \emph{BRAF} (\(p_{adj} = 8.2^{-18}\)).
 Gene expression (RPKM) of 12 out of 33 (36.36\%) G2P genes significantly
 correlated with CERES score, as did copy number (log2-ratio) for 12 out
-of 33 (36.36\%) G2P genes.
+of 33 (36.36\%) G2P genes (Figure~\ref{fig:crispr-venn}).
 
 For the purpose of comparison to the drug screen data, if we treat
 CRISPR knockdown like a small-molecule drug, then these results are
