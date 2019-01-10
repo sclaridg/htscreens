@@ -2397,6 +2397,39 @@ test <- filter(compare_mut, Drug_Gene == "nilotinib_ABL1" & Dataset == "CCLE" & 
 
 --------------------------------------------------------------------------------
 
+## Tests
+
+```{r}
+ccle_pearson_ttest_GE <- t.test(ccle_cor_res$Pearson_Corr_GE ~ ccle_cor_res$InG2P)
+ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 0), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 2))
+ccle_pearson_ttest_CN <- t.test(ccle_cor_res$Pearson_Corr_CN ~ ccle_cor_res$InG2P)
+ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 0), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 2))
+ccle_spearman_ttest_GE <- t.test(ccle_cor_res$Spearman_Corr_GE ~ ccle_cor_res$InG2P)
+ccle_spearman_ttest_res_GE <- paste0("t(", round(ccle_spearman_ttest_GE$parameter, 0), ") = ", round(ccle_spearman_ttest_GE$statistic, 2), ", p = ", round(ccle_spearman_ttest_GE$p.value, 2))
+ccle_spearman_ttest_CN <- t.test(ccle_cor_res$Spearman_Corr_CN ~ ccle_cor_res$InG2P)
+ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$parameter, 0), ") = ", round(ccle_spearman_ttest_CN$statistic, 2), ", p = ", formatC(ccle_spearman_ttest_CN$p.value, 2, format = "f"))
+
+ctrp_pearson_ttest_GE <- t.test(ctrp_cor_res$Pearson_Corr_GE ~ ctrp_cor_res$InG2P)
+ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 0), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p ", ifelse(round(ctrp_pearson_ttest_GE$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_pearson_ttest_GE$p.value, 3))))
+ctrp_pearson_ttest_CN <- t.test(ctrp_cor_res$Pearson_Corr_CN ~ ctrp_cor_res$InG2P)
+ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 0), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
+ctrp_spearman_ttest_GE <- t.test(ctrp_cor_res$Spearman_Corr_GE ~ ctrp_cor_res$InG2P)
+ctrp_spearman_ttest_res_GE <- paste0("t(", round(ctrp_spearman_ttest_GE$parameter, 0), ") = ", round(ctrp_spearman_ttest_GE$statistic, 2), ", p = ", round(ctrp_spearman_ttest_GE$p.value, 2))
+ctrp_spearman_ttest_CN <- t.test(ctrp_cor_res$Spearman_Corr_CN ~ ctrp_cor_res$InG2P)
+ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$parameter, 0), ") = ", round(ctrp_spearman_ttest_CN$statistic, 2), ", p = ", round(ctrp_spearman_ttest_CN$p.value, 2))
+
+gdsc_pearson_ttest_GE <- t.test(gdsc_cor_res$Pearson_Corr_GE ~ gdsc_cor_res$InG2P)
+gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 0), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
+gdsc_pearson_ttest_CN <- t.test(gdsc_cor_res$Pearson_Corr_CN ~ gdsc_cor_res$InG2P)
+gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 0), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
+gdsc_spearman_ttest_GE <- t.test(gdsc_cor_res$Spearman_Corr_GE ~ gdsc_cor_res$InG2P)
+gdsc_spearman_ttest_res_GE <- paste0("t(", round(gdsc_spearman_ttest_GE$parameter, 0), ") = ", round(gdsc_spearman_ttest_GE$statistic, 2), ", p = ", round(gdsc_spearman_ttest_GE$p.value, 2))
+gdsc_spearman_ttest_CN <- t.test(gdsc_cor_res$Spearman_Corr_CN ~ gdsc_cor_res$InG2P)
+gdsc_spearman_ttest_res_CN <- paste0("t(", round(gdsc_spearman_ttest_CN$parameter, 0), ") = ", round(gdsc_spearman_ttest_CN$statistic, 2), ", p = ", round(gdsc_spearman_ttest_CN$p.value, 2))
+
+g2p_cor_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"), Pearson_Test_Results_GE = c(ccle_pearson_ttest_res_GE, ctrp_pearson_ttest_res_GE, gdsc_pearson_ttest_res_GE), Pearson_Test_Results_CN = c(ccle_pearson_ttest_res_CN, ctrp_pearson_ttest_res_CN, gdsc_pearson_ttest_res_CN), Spearman_Test_Results_GE = c(ccle_spearman_ttest_res_GE, ctrp_spearman_ttest_res_GE, gdsc_spearman_ttest_res_GE), Spearman_Test_Results_CN = c(ccle_spearman_ttest_res_CN, ctrp_spearman_ttest_res_CN, gdsc_spearman_ttest_res_CN))
+```
+
 ## Mut
 
 CRISPR mutation status plots of p-values:
@@ -2508,6 +2541,7 @@ saveWidgetFix(widget = plot, file = "./plots/manuscript/g2p_mut_plot.html")
 ## GE
 
 ### Pearson
+
 
 ```{r fig.height=5, fig.width=12}
 plot_ge_pearson_point <- ggplot(data = g2p_cor, aes(x = Pearson_GE_Abs, y = n, label = Drug_Gene)) +
