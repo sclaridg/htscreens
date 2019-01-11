@@ -1575,6 +1575,24 @@ This section contains summary plots for the Wilcoxon tests and Pearson/Spearman 
 
 ## CRISPR
 
+Venn diagram between GE and CN:
+```{r}
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+crispr_venn <- venn.diagram(list("Gene Expression" = as.character(crispr_spearman_res_GE_sig$Hugo_Symbol), "Copy Number" = as.character(crispr_spearman_res_CN_sig$Hugo_Symbol)), fill = c("darkorchid4", "mediumorchid1"), lty = rep("blank", 2), alpha = c(0.5, 0.5), cat.pos = c(-2, 5), cat.cex = 1.5, cex = 1, filename = NULL)
+
+# in GE only
+crispr_venn[[5]]$label  <- paste(sort(setdiff(as.character(crispr_spearman_res_GE_sig$Hugo_Symbol), as.character(crispr_spearman_res_CN_sig$Hugo_Symbol))), collapse = "\n")
+# in CN only
+crispr_venn[[6]]$label <- paste(sort(setdiff(as.character(crispr_spearman_res_CN_sig$Hugo_Symbol), as.character(crispr_spearman_res_GE_sig$Hugo_Symbol))), collapse = "\n")
+# intesection
+crispr_venn[[7]]$label <- paste(sort(intersect(as.character(crispr_spearman_res_CN_sig$Hugo_Symbol), as.character(crispr_spearman_res_GE_sig$Hugo_Symbol))), collapse = "\n")
+
+png("./plots/manuscript/crispr_venn.png")
+grid.newpage()
+grid.draw(crispr_venn)
+dev.off()
+```
+
 G2P genes with a significant effect on CERES score by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
 ```{r fig.height=5, fig.width=12}
 crispr_res_mut <- select(crispr_signif_g2p_gene, Hugo_Symbol, p)
@@ -1946,6 +1964,30 @@ gdsc_genomic_features_spearman_summ_plot
 
 ### Mut
 
+Venn diagram of drug-gene associations:
+```{r}
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ccle_dgs <- as.character(ccle_signif_g2p_grid[!is.na(ccle_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
+ctrp_dgs <- as.character(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
+gdsc_dgs <- as.character(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
+
+drug_venn <- venn.diagram(list("CCLE" = ccle_dgs, "CTRP" = ctrp_dgs, "GDSC" = gdsc_dgs), lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 50, 120), cat.dist = c(0.001, 0.02, 0.0001), cat.cex = 1.5, cex = 1, filename = NULL)
+# in GDSC only
+drug_venn[[7]]$label  <- paste(sort(setdiff(setdiff(gdsc_dgs, ctrp_dgs), ccle_dgs)), collapse = "\n")
+# in GDSC and CTRP only
+drug_venn[[8]]$label <- paste(intersect(gdsc_dgs, ctrp_dgs), collapse = "\n")
+# in CTRP only
+drug_venn[[9]]$label <- paste(sort(setdiff(setdiff(ctrp_dgs, gdsc_dgs), ccle_dgs)), collapse = "\n")
+# in CTRP and CCLE only
+drug_venn[[10]]$label <- intersect(ccle_dgs, ctrp_dgs)
+
+png("./plots/manuscript/drugscreen_venn.png")
+grid.newpage()
+grid.draw(drug_venn)
+dev.off()
+```
+
 G2P drug-gene associations with a significant effect on AUC by mutation status:
 ```{r fig.height=4, fig.width=8}
 all_mut_res <- rbind(ccle_res_mut, ctrp_res_mut, gdsc_res_mut)
@@ -2269,6 +2311,7 @@ ctrp_corr_stats <- G2PCorr_KStest(ctrp_corr_all, "CTRP")
 gdsc_corr_stats <- G2PCorr_KStest(gdsc_corr_all, "GDSC")
 g2p_corr_stats <- rbind(ccle_corr_stats, ctrp_corr_stats, gdsc_corr_stats)
 g2p_corr_stats <- g2p_corr_stats %>% separate(col = Metric, into = c("Correlation_Method", "corr", "Metric"), sep = "_")
+g2p_corr_stats$Metric <- ifelse(g2p_corr_stats$Metric == "GE", "Gene Expression", "Copy Number")
 g2p_corr_stats
 
 g2p_mut_stats <- g2p_corr_all %>% group_by(Dataset, G2P_DGL) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif),
@@ -2284,6 +2327,7 @@ g2p_corr_4plot$p <- NULL
 g2p_corr_4plot$Mut_Signif <- NULL
 g2p_corr_4plot <- melt(g2p_corr_4plot, id.vars = colnames(g2p_corr_4plot)[1:5], measure.vars = colnames(g2p_corr_4plot)[6:9], value.name = "Correlation")
 g2p_corr_4plot <- g2p_corr_4plot %>% separate(col = variable, into = c("Correlation_Method", "corr", "Metric"), sep = "_", remove = FALSE)
+g2p_corr_4plot$Metric <- ifelse(g2p_corr_4plot$Metric == "GE", "Gene Expression", "Copy Number")
 
 g2p_ks_res_plot <- ggplot(data = g2p_corr_4plot) +
   facet_grid(Correlation_Method ~ Metric * Dataset) +
@@ -2297,6 +2341,24 @@ g2p_ks_res_plot <- ggplot(data = g2p_corr_4plot) +
 g2p_ks_res_plot
 
 # ggsave("./plots/manuscript/g2p_ks_res_plot.png", g2p_ks_res_plot, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+```
+
+```{r fig.height=6, fig.width=12}
+g2p_ks_res_plot_spearman <- ggplot(data = filter(g2p_corr_4plot, Correlation_Method == "Spearman")) +
+  facet_grid(Metric ~ Dataset, labeller = labeller(yfacet = c('CN' = "Copy Number", 'GE' = "Gene Expression"))) +
+  geom_violin(aes(y = Correlation, x = G2P_DGL, fill = Dataset, color = Dataset, alpha = G2P_DGL)) +
+  geom_boxplot(width = 0.075, aes(y = Correlation, x = G2P_DGL, color = Dataset)) +
+  geom_jitter(width = 0.3, alpha = 0.8, aes(y = Correlation, x = G2P_DGL, color = Dataset)) +
+  theme(legend.position = "none") +
+  scale_alpha_manual(values = c("Yes" = 0.6, "No" = 0.2)) +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  scale_color_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4", "CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  coord_cartesian(ylim = c(-1, 1)) +
+  geom_text(data = filter(g2p_corr_stats, Correlation_Method == "Spearman"), aes(x = 1.5, y = 0.8, label = paste0("D = ", formatC(D_stat, digits = 2, format = "f"), ", p = ", ifelse(pval > 0.1, round(pval, 2), round(pval, 3)), "\n", ifelse(is.na(signif), "", signif)))) +
+  labs(x = "Is the lineage in a G2P DGL?", y = "Spearman Correlation Coefficient")
+g2p_ks_res_plot_spearman
+
+# ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
 # Pancancer vs. Lineage

@@ -33,7 +33,7 @@ wordcount         : "X"
 bibliography      : ["manuscript.bib"]
 
 floatsintext      : yes
-figsintext        : yes
+figsintext        : no
 figurelist        : no
 tablelist         : no
 footnotelist      : no
@@ -53,6 +53,7 @@ library(ggpubr)
 library(papaja)
 library(bookdown)
 library(VennDiagram)
+library(lettercase)
 # install.packages("tinytex")
 # tinytex::install_tinytex()
 # install.packages("citr")
@@ -82,6 +83,7 @@ We derived our clinical associations from a new project conducted by the Variant
 
 ```{r functions, echo=FALSE, include=FALSE}
 e2exp_converter <- function(string, p_type) {
+  # Convert p-vals in scientific format to latex-equation style p-vals with exponent
   e <- formatC(as.numeric(string), format = "e", digits = 1)
   if(p_type == "pk") {
     if(grepl("(\\d+)e-([1-9]+)", e)) {
@@ -108,6 +110,13 @@ e2exp_converter <- function(string, p_type) {
     }
   }
   return(exp)
+}
+
+dg2intext_converter <- function(drug_gene) {
+  # Convert drug-gene strings to have italic gene name
+  d_g <- strsplit(drug_gene, split = "_")
+  dg <- paste0(d_g[[1]][1], "-*", d_g[[1]][2], "*")
+  return(dg)
 }
 ```
 
@@ -241,8 +250,19 @@ gdsc_signif_g2p_lineage_exp <- e2exp_converter(gdsc_signif_g2p_lineage$FDR_cutof
 gdsc_signif_grid_lineage <- readRDS("./data_munging/rds/gdsc_signif_grid_lineage.rds")
 gdsc_signif_grid_lineage_exp <- e2exp_converter(gdsc_signif_grid_lineage$FDR_cutoff[1], p_type = "pk")
 
+# Mut summaries
+drug_grid_shared_dg <- union(ccle_signif_g2p_grid[!is.na(ccle_signif_g2p_grid$p.signif.adj),]$Drug_Gene, union(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),]$Drug_Gene, gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),]$Drug_Gene))
+
 # CCLE: GE/CN correlations
-ccle_cor_res <- ccle_data_g2p_grid %>% group_by(Drug_Gene) %>% summarize(Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs", exact = FALSE)$estimate, Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs", exact = FALSE)$p.value, Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$estimate, Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$p.value, Spearman_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs", exact = FALSE)$estimate, Spearman_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs", exact = FALSE)$p.value, Spearman_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$estimate, Spearman_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$p.value)
+ccle_cor_res <- ccle_data_g2p_grid %>% group_by(Drug_Gene) %>% summarize(
+  Pearson_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs", exact = FALSE)$estimate,
+  Pearson_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "pearson", use = "complete.obs", exact = FALSE)$p.value,
+  Pearson_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$estimate,
+  Pearson_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$p.value,
+  Spearman_Corr_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs", exact = FALSE)$estimate,
+  Spearman_Pval_GE = cor.test(y = AUC_zscore, x = RPKM, method = "spearman", use = "complete.obs", exact = FALSE)$p.value,
+  Spearman_Corr_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$estimate,
+  Spearman_Pval_CN = cor.test(y = AUC_zscore, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$p.value)
 ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
 ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
 ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
@@ -289,39 +309,23 @@ G2P designed a set of standards for stratifying their database’s cancer varian
 
 After filtering, `r nrow(g2p_filt)` level-A G2P interpretations were carried forward in subsequent analyses, constituting `r length(g2p_drugs)` unique drugs and `r length(g2p_genes)` unique genes in `r length(g2p_druggenes)` distinct level-A combinations (*Figure 1A*). The number of level-A interpretations per drug ranged from `r range(g2p_drug_tally$n)[1]` to `r range(g2p_drug_tally$n)[2]` ($M =$ `r printnum(mean(g2p_drug_tally$n))`, $SD =$ `r printnum(sd(g2p_drug_tally$n))`), `r range(g2p_gene_tally$n)[1]` to `r range(g2p_gene_tally$n)[2]` ($M =$ `r printnum(mean(g2p_gene_tally$n))`, $SD =$ `r printnum(sd(g2p_gene_tally$n))`) per gene, and for each level-A drug-gene combination, the range was `r range(g2p_druggene_tally$n)[1]` to `r range(g2p_druggene_tally$n)[2]` ($M =$ `r printnum(mean(g2p_druggene_tally$n))`, $SD =$ `r printnum(sd(g2p_druggene_tally$n))`). These unique drugs, genes, and combinations are hereafter referred to as G2P drugs, G2P genes, and G2P associations. Filtering our screening datasets by these clinical criteria yields panels of potentially clinically relevant omic features. Of the `r length(g2p_drugs)` unique G2P drugs, `r nrow(drug_summ[drug_summ$Dataset_Count >= 1,])` of them were screened in at least one of the drug screen datasets, `r nrow(drug_summ[drug_summ$Dataset_Count >= 2,])` drugs were screened in at least two of the three datasets, and only `r nrow(drug_summ[drug_summ$Dataset_Count >= 3,])` were screened in all three datasets. The remaining `r nrow(drug_summ[drug_summ$Dataset_Count == 0,])` un-screened G2P drugs suggests an incompleteness of these drug screens, though these projects frequently release new screening data that may include these drugs in future releases.
 
-**Describe why we compare all pairwise combos rather than filtering for just the drug-gene combos in G2P**
+Using cell-line-specific point mutation annotations from the CCLE, we compared z-score-transformed area under the dose-response curve (AUC) distributions between mutant and wildtype cell lines for all G2P associations tested in the CCLE, CTRP, and GDSC drug screens. Of the `r length(g2p_druggenes)` G2P associations, data was available for `r length(ccle_signif_g2p$Drug_Gene)` associations in CCLE, `r length(ctrp_signif_g2p$Drug_Gene)` in CTRP, and `r length(gdsc_signif_g2p$Drug_Gene)` in GDSC. Controlling for a false discovery rate (FDR) < 5%, CCLE yielded no significant correlations (Wilcoxon rank-sum tests, `r ccle_signif_g2p_exp`), though the most significant G2P association was `r dg2intext_converter(ccle_signif_g2p$Drug_Gene[1])` (`r e2exp_converter(ccle_signif_g2p$p.adj[1], p_type = "padj")`). In CTRP, AUC from `r nrow(filter(ctrp_signif_g2p[!is.na(ctrp_signif_g2p$p.signif.adj),]))` drug-gene associations correlated with the gene's mutation status (`r ctrp_signif_g2p_exp`): `r dg2intext_converter(ctrp_signif_g2p$Drug_Gene[1])` (`r e2exp_converter(ctrp_signif_g2p$p.adj[1], p_type = "padj")`), `r dg2intext_converter(ctrp_signif_g2p$Drug_Gene[2])` (`r e2exp_converter(ctrp_signif_g2p$p.adj[2], p_type = "padj")`), and `r dg2intext_converter(ctrp_signif_g2p$Drug_Gene[3])` (`r e2exp_converter(ctrp_signif_g2p$p.adj[3], p_type = "padj")`). `r str_ucfirst(dg2intext_converter(gdsc_signif_g2p$Drug_Gene[1]))` (`r e2exp_converter(gdsc_signif_g2p$p.adj[1], p_type = "padj")`) and `r dg2intext_converter(gdsc_signif_g2p$Drug_Gene[2])` (`r e2exp_converter(gdsc_signif_g2p$p.adj[2], p_type = "padj")`) were significant in GDSC (`r gdsc_signif_g2p_exp`).
 
-Using cell-line-specific point mutation annotations from the CCLE, we compared z-score-transformed area under the dose-response curve (AUC) distributions between mutant and wildtype cell lines for all pairwise combinations of G2P genes and drugs tested in the CCLE, CTRP, and GDSC drug screens (*Figures 1B and 2A*). At an unadjusted $\alpha = 0.05$, Wilcoxon rank-sum tests revealed that in CCLE, AUC significantly correlated with mutation status for `r nrow(filter(ccle_signif_g2p_grid, p < 0.05))` out of `r nrow(ccle_signif_g2p_grid)` (`r printnum(nrow(filter(ccle_signif_g2p_grid, p < 0.05)) / nrow(ccle_signif_g2p_grid) * 100)`%) tested drug-gene combinations were significantly different, `r nrow(filter(ctrp_signif_g2p_grid, p < 0.05))` out of `r nrow(ctrp_signif_g2p_grid)` (`r printnum(nrow(filter(ctrp_signif_g2p_grid, p < 0.05)) / nrow(ctrp_signif_g2p_grid) * 100)`%) were significantly different for CTRP, and `r nrow(filter(gdsc_signif_g2p_grid, p < 0.05))` out of `r nrow(gdsc_signif_g2p_grid)` (`r printnum(nrow(filter(gdsc_signif_g2p_grid, p < 0.05)) / nrow(gdsc_signif_g2p_grid) * 100)`%) for GDSC.
+> **(???) Describe why we compare all pairwise combos rather than filtering for just the drug-gene combos in G2P?**
 
-Controlling for a false discovery rate (FDR) < 5%, selumetinib-*BRAF* (`r e2exp_converter(ccle_signif_g2p_grid[ccle_signif_g2p_grid$Drug_Gene == "selumetinib_BRAF",]$p.adj, p_type = "padj")`) was the only significant drug-gene combination tested in CCLE (`r ccle_signif_g2p_grid_exp`). CTRP (`r ctrp_signif_g2p_grid_exp`) yielded `r nrow(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),])` significant combinations, one of which was selumetinib-*BRAF*. There were `r nrow(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),])` significant G2P associations in the GDSC dataset (`r gdsc_signif_g2p_grid_exp`), Of all the significant correlations between mutation status and AUC across datasets, the only genes represented were *KRAS* and *BRAF* (Figure\ \@ref(fig:drug-venn)).
+To test for potentially novel drug-gene associations, we conducted similar Wilcoxon rank-sum tests for all pairwise combinations of G2P genes and drugs tested in the three drug screens (*Figures 1B and 2A*). At an unadjusted $\alpha = 0.05$, the tests revealed that in CCLE, AUC significantly correlated with mutation status for `r nrow(filter(ccle_signif_g2p_grid, p < 0.05))` out of `r nrow(ccle_signif_g2p_grid)` (`r printnum(nrow(filter(ccle_signif_g2p_grid, p < 0.05)) / nrow(ccle_signif_g2p_grid) * 100)`%) tested drug-gene combinations were significantly different, `r nrow(filter(ctrp_signif_g2p_grid, p < 0.05))` out of `r nrow(ctrp_signif_g2p_grid)` (`r printnum(nrow(filter(ctrp_signif_g2p_grid, p < 0.05)) / nrow(ctrp_signif_g2p_grid) * 100)`%) were significantly different for CTRP, and `r nrow(filter(gdsc_signif_g2p_grid, p < 0.05))` out of `r nrow(gdsc_signif_g2p_grid)` (`r printnum(nrow(filter(gdsc_signif_g2p_grid, p < 0.05)) / nrow(gdsc_signif_g2p_grid) * 100)`%) for GDSC.
+
+Controlling for a FDR < 5%, `r dg2intext_converter(ccle_signif_g2p_grid$Drug_Gene[1])` (`r e2exp_converter(ccle_signif_g2p_grid$p.adj[1], p_type = "padj")`) was the only significant drug-gene combination tested in CCLE (`r ccle_signif_g2p_grid_exp`). CTRP (`r ctrp_signif_g2p_grid_exp`) yielded `r nrow(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),])` significant combinations, one of which was selumetinib-*BRAF*. There were `r nrow(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),])` significant G2P associations in the GDSC dataset (`r gdsc_signif_g2p_grid_exp`). Of all the significant correlations between mutation status and AUC across datasets, the only genes represented were *KRAS* and *BRAF* (Figure\ \@ref(fig:drug-venn)). Of the `r length(drug_grid_shared_dg)` significant drug-gene associations across datasets, `r length(intersect(drug_grid_shared_dg, g2p_druggenes))` were G2P associations. The remaining `r length(drug_grid_shared_dg) - length(intersect(drug_grid_shared_dg, g2p_druggenes))` associations were `r dg2intext_converter(setdiff(drug_grid_shared_dg, g2p_druggenes)[1])`, `r dg2intext_converter(setdiff(drug_grid_shared_dg, g2p_druggenes)[2])`, and `r dg2intext_converter(setdiff(drug_grid_shared_dg, g2p_druggenes)[3])`.
+
+> **(???) Trametinib and selumetinib are both *MEK* inhibitors, and pazopanib is a *VEGFR* inhibitor. VEGF signaling can influence the MAPK/ERK signaling pathway, which promotes cell proliferation and survival. This pathway includes *RAS*, *BRAF*, and *MEK* proteins. These results underscore the importance of the MAPK/ERK signaling pathway in cancer.**
+
+However, taking these results as a whole, we observe little concordance between G2P associations and the correlation of mutation status and AUC for said G2P association, suggesting that mutation status alone is not a robust predictor of clinically actionable genetic targets. This led us to examine the correlations between AUC and gene expression and AUC and copy number, two other genomic features that are known to associate with cancer and drug response. We computed Spearman correlation coefficients ($r_s$) between AUC of each drug-gene association and gene expression (RPKM) and copy number (log$_2$ ratio) of the gene in the association...
 
 ```{r drug-venn, echo = FALSE, message=FALSE, warning=FALSE}
-futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-
-ccle_dgs <- as.character(ccle_signif_g2p_grid[!is.na(ccle_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
-ctrp_dgs <- as.character(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
-gdsc_dgs <- as.character(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
-
-drug_venn <- venn.diagram(list("CCLE" = ccle_dgs, "CTRP" = ctrp_dgs, "GDSC" = gdsc_dgs), lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 50, 120), cat.dist = c(0.001, 0.02, 0.0001), cat.cex = 1.5, cex = 1, filename = NULL)
-# in GDSC only
-drug_venn[[7]]$label  <- paste(sort(setdiff(setdiff(gdsc_dgs, ctrp_dgs), ccle_dgs)), collapse = "\n")
-# in GDSC and CTRP only
-drug_venn[[8]]$label <- paste(intersect(gdsc_dgs, ctrp_dgs), collapse = "\n")
-# in CTRP only
-drug_venn[[9]]$label <- paste(sort(setdiff(setdiff(ctrp_dgs, gdsc_dgs), ccle_dgs)), collapse = "\n")
-# in CTRP and CCLE only
-drug_venn[[10]]$label <- intersect(ccle_dgs, ctrp_dgs)
-
-grid.newpage()
-grid.draw(drug_venn)
+knitr::include_graphics("./plots/manuscript/drugscreen_venn.png")
 ```
 
-We observe little concordance between the number of interpretations for each G2P association and the significance of mutation status on AUC for said G2P association, suggesting that mutation status alone is not a robust predictor of clinically actionable genetic targets. This led us to examine the correlations between AUC and gene expression and AUC and copy number, two other genomic features that are known to associate with cancer and drug response.
-
-We computed Spearman correlation coefficients ($r_s$) between AUC of each drug-gene association and gene expression (RPKM) and copy number (log$_2$ ratio) of the gene in the association...
-
-
-**Cut this analysis since we are comparing distributions of p-values?**
+> **(???) Cut this analysis since we are comparing distributions of p-values?**
 
 We compared the distribution of level-A G2P associations (*Figure 1A*) and the associated p-values from the mutation status comparisons (*Figure 1B*) with a null distribution of p-values derived from all pairwise combinations of G2P genes and the G2P drugs tested in each dataset, less any of the 88 distinct combinations with G2P interpretations, i.e. the non-gray squares in the right heatmap of *Figure 1A (Figure 3A*). To formally test concordance between clinically actionable variants and drug screen results, we conducted an independent, two-group t-test to compare the distributions of p-values of drug-gene combinations that either were or were not represented with level-A evidence in G2P, which indicated that the distributions of p-values did not significantly differ for CCLE [t(9) = 0.25, p = 0.81], CTRP [t(51) = 0.85, p = 0.40], nor GDSC [t(47) = -0.56, p = 0.58]  (Table 2). This further supports that mutation status is not a robust genomic feature for predicting therapeutic responses.
 
@@ -339,9 +343,18 @@ In all three datasets for both level-A G2P associations and null distribution as
 
 In the `r nrow(g2p_filt)` level-A G2P interpretations, there was a wide variation in the specificity of cancer description, ranging from “Waldenström macroglobulinemia” and “hyper eosinophilic advanced syndrome” on the more detailed end to “cancer” on the broad end. Similarly, the drug screen datasets had a wide range in lineage specificity, e.g. CCLE, GTRP, and GDSC all had lineages labeled “leukemia” and “T-cell childhood acute lymphocytic leukemia” and the CRISPR dataset had cell lines labeled “Epstein-Barr virus-related Burkitt lymphoma” and “lymphoma.” To more easily conduct comparative analyses in a cancer-specific manner, we developed a more general lineage grouping method derived from the Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml2019] assigned to each cell line, yielding `r length(unique(ccl_converter$group_general_lineage_name))` unique lineage groupings. This custom lineage grouping was included in our harmonized cancer cell line database (see Methods).
 
-In the level-A G2P interpretations, there were `r nrow(g2p_dgl_tally)` unique drug-gene-lineage combinations (DGLs), representing seven of our curated cancer lineages: `r paste(g2p_lins[1:length(g2p_lins) -1], collapse = ", ")`, and `r g2p_lins[length(g2p_lins)]`. CCLE had data for `r length(unique(ccle_data_g2p_dgl$Drug_Gene_Lin))` DGLs, CTRP had data for `r length(unique(ctrp_data_g2p_dgl$Drug_Gene_Lin))`, and GDSC had data for `r length(unique(gdsc_data_g2p_dgl$Drug_Gene_Lin))`, yielding a total of `r length(union(union(unique(ccle_data_g2p_dgl$Drug_Gene_Lin), unique(ctrp_data_g2p_dgl$Drug_Gene_Lin)), unique(gdsc_data_g2p_dgl$Drug_Gene_Lin)))` unique DGLs across all three datasets. Only `r length(intersect(intersect(unique(ccle_data_g2p_dgl$Drug_Gene_Lin), unique(ctrp_data_g2p_dgl$Drug_Gene_Lin)), unique(gdsc_data_g2p_dgl$Drug_Gene_Lin)))` DGLs were screened in all three datasets,
+In the level-A G2P interpretations, there were `r nrow(g2p_dgl_tally)` unique drug-gene-lineage combinations (DGLs), representing seven of our curated cancer lineages: `r paste(g2p_lins[1:length(g2p_lins) -1], collapse = ", ")`, and `r g2p_lins[length(g2p_lins)]`. CCLE had data for `r length(unique(ccle_data_g2p_dgl$Drug_Gene_Lin))` DGLs, CTRP had data for `r length(unique(ctrp_data_g2p_dgl$Drug_Gene_Lin))`, and GDSC had data for `r length(unique(gdsc_data_g2p_dgl$Drug_Gene_Lin))`, yielding a total of `r length(union(union(unique(ccle_data_g2p_dgl$Drug_Gene_Lin), unique(ctrp_data_g2p_dgl$Drug_Gene_Lin)), unique(gdsc_data_g2p_dgl$Drug_Gene_Lin)))` unique DGLs across all three datasets. Only `r length(intersect(intersect(unique(ccle_data_g2p_dgl$Drug_Gene_Lin), unique(ctrp_data_g2p_dgl$Drug_Gene_Lin)), unique(gdsc_data_g2p_dgl$Drug_Gene_Lin)))` DGLs were screened in all three datasets.
 
 Prior to correction for an FDR of 5%, no DGLs were identified in the CCLE screen when using mutation status as a correlate ($n =$ `r nrow(ccle_signif_g2p_lineage)`, `r length(unique(ccle_data_g2p_dgl$Drug_Gene_Lin)) - nrow(ccle_signif_g2p_lineage)` DGLs were not analyzed due to lack of mutation annotations in *UGT1A1* in "cancer" lineages), but CTRP ($n =$ `r nrow(ctrp_signif_g2p_lineage)`) and GDSC ($n =$ `r nrow(gdsc_signif_g2p_lineage)`) identified `r nrow(filter(ctrp_signif_g2p_lineage, !is.na(p.signif)))` and `r nrow(filter(gdsc_signif_g2p_lineage, !is.na(p.signif)))`, respectively, in skin cancer, lung cancer, and cancer. After Benjamini-Hochberg FDR correction, none of the datasets yielded significant DGL interactions.
+
+> **(???) KS test results**
+
+(Figure\ \@ref(fig:ksplot))
+
+```{r ksplot, echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of Spearman correlation coefficients derived from copy number (log$_2$ ratio), gene expression (RPKM), and AUC z-scores from G2P drug-gene associations. Coefficients were grouped by whether or not the associated lineage for each comparison was in a G2P drug-gene-lineage association or not. Distributions of these grouped coefficients were compared using Kolmogorov-Smirnov tests."}
+knitr::include_graphics("./plots/manuscript/g2p_spearman_ks_res_plot.png")
+```
+
 
 ## Are CRISPR/Cas9 gene essentiality results comparable to those of functional drug screens?
 
@@ -369,19 +382,10 @@ crispr_spearman_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>% summariz
 crispr_spearman_res_CN_sig <- filter(crispr_spearman_res_CN, p < 0.05)
 ```
 
-```{r crispr-venn, echo = FALSE}
-crispr_venn <- venn.diagram(list("Gene Expression" = as.character(crispr_spearman_res_GE_sig$Hugo_Symbol), "Copy Number" = as.character(crispr_spearman_res_CN_sig$Hugo_Symbol)), fill = c("darkorchid4", "mediumorchid1"), lty = rep("blank", 2), alpha = c(0.5, 0.5), cat.pos = c(-2, 5), cat.cex = 1.5, cex = 1, filename = NULL)
-
-# in GE only
-crispr_venn[[5]]$label  <- paste(sort(setdiff(as.character(crispr_spearman_res_GE_sig$Hugo_Symbol), as.character(crispr_spearman_res_CN_sig$Hugo_Symbol))), collapse = "\n")
-# in CN only
-crispr_venn[[6]]$label <- paste(sort(setdiff(as.character(crispr_spearman_res_CN_sig$Hugo_Symbol), as.character(crispr_spearman_res_GE_sig$Hugo_Symbol))), collapse = "\n")
-# intesection
-crispr_venn[[7]]$label <- paste(sort(intersect(as.character(crispr_spearman_res_CN_sig$Hugo_Symbol), as.character(crispr_spearman_res_GE_sig$Hugo_Symbol))), collapse = "\n")
-
-grid.newpage()
-grid.draw(crispr_venn)
+```{r crispr-venn, echo = FALSE, message=FALSE, warning=FALSE}
+knitr::include_graphics("./plots/manuscript/crispr_venn.png")
 ```
+
 
 The CRISPR screen from the Broad Institute reports gene dependency using CERES scores [@meyers2017], which are generated from sgRNA depletion scores and eliminate bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes. Of the `r length(g2p_genes)` G2P genes, only *`r setdiff(g2p_genes, as.character(crispr_signif_g2p_gene$Hugo_Symbol))`* was not targeted by an sgRNA in the CRISPR dataset.
 
@@ -472,9 +476,9 @@ For *Figure 1*, all data were imported and manipulated using pandas (v0.23.0) [@
 
 ### Statistics
 
-Wilcoxon tests were conducted using the `compare_means` function in the ggpubr (`r ggpubr_v`) R package [@kassambara2018]. `compare_means` does Benjamini-Hochberg p-value adjustment using the `p,adjust` function from the `stats` base R package.
+Wilcoxon tests were conducted using the `compare_means` function in the ggpubr (`r ggpubr_v`) R package [@kassambara2018]. `compare_means` does Benjamini-Hochberg p-value adjustment using the `p.adjust` function from the `stats` base R package.
 
-For computing Spearman correlation coefficients. If there were 3 or fewer data points, then the correlation was not done and a value of NA was supplied. 
+For computing Spearman correlation coefficients, we used the `cor.test` base R package. If there were 3 or fewer data points, then the correlation was not done and a value of `NA` was supplied. 
 
 \newpage
 
