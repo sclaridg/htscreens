@@ -94,6 +94,12 @@ Margolin\textsuperscript{1, 2}}
 \newcommand{\getlongtablewidth}{\begingroup \ifcsname LT@\roman{LT@tables}\endcsname \global\longtablewidth=0pt \renewcommand{\LT@entry}[2]{\global\advance\longtablewidth by ##2\relax\gdef\LastLTentrywidth{##2}}\@nameuse{LT@\roman{LT@tables}} \fi \endgroup}
 
 
+\DeclareDelayedFloatFlavor{ThreePartTable}{table}
+\DeclareDelayedFloatFlavor{lltable}{table}
+\DeclareDelayedFloatFlavor*{longtable}{table}
+\makeatletter
+\renewcommand{\efloat@iwrite}[1]{\immediate\expandafter\protected@write\csname efloat@post#1\endcsname{}}
+\makeatother
 \usepackage{lineno}
 
 \linenumbers
@@ -295,54 +301,79 @@ datasets, and only 3 were screened in all three datasets. The remaining
 screens, though these projects frequently release new screening data
 that may include these drugs in future releases.
 
-\textbf{Describe why we compare all pairwise combos rather than
-filtering for just the drug-gene combos in G2P}
-
 Using cell-line-specific point mutation annotations from the CCLE, we
 compared z-score-transformed area under the dose-response curve (AUC)
-distributions between mutant and wildtype cell lines for all pairwise
-combinations of G2P genes and drugs tested in the CCLE, CTRP, and GDSC
-drug screens (\emph{Figures 1B and 2A}). At an unadjusted
-\(\alpha = 0.05\), Wilcoxon rank-sum tests revealed that in CCLE, AUC
-significantly correlated with mutation status for 18 out of 170
-(10.59\%) tested drug-gene combinations were significantly different,
-135 out of 918 (14.71\%) were significantly different for CTRP, and 89
-out of 850 (10.47\%) for GDSC.
+distributions between mutant and wildtype cell lines for all G2P
+associations tested in the CCLE, CTRP, and GDSC drug screens. Of the 88
+G2P associations, data was available for 9 associations in CCLE, 48 in
+CTRP, and 44 in GDSC. Controlling for a false discovery rate (FDR)
+\textless{} 5\%, CCLE yielded no significant correlations (Wilcoxon
+rank-sum tests, \(p_k = 2.1^{-4}\)), though the most significant G2P
+association was selumetinib-\emph{KRAS} (\(p_{adj} = 1.9^{-3}\)). In
+CTRP, AUC from 3 drug-gene associations correlated with the gene's
+mutation status (\(p_k = 4.5^{-3}\)): selumetinib-\emph{KRAS}
+(\(p_{adj} = 4.4^{-8}\)), vemurafenib-\emph{BRAF}
+(\(p_{adj} = 4.4^{-8}\)), and dabrafenib-\emph{BRAF}
+(\(p_{adj} = 7.7^{-5}\)). Dabrafenib-\emph{BRAF}
+(\(p_{adj} = 8.6^{-11}\)) and trametinib-\emph{BRAF}
+(\(p_{adj} = 4.2^{-6}\)) were significant in GDSC (\(p_k = 2.3^{-3}\)).
 
-Controlling for a false discovery rate (FDR) \textless{} 5\%,
-selumetinib-\emph{BRAF} (\(p_{adj} = 1.4^{-10}\)) was the only
-significant drug-gene combination tested in CCLE (\(p_k = 7.9^{-4}\)).
-CTRP (\(p_k = 6.5^{-4}\)) yielded 5 significant combinations, one of
-which was selumetinib-\emph{BRAF}. There were 3 significant G2P
-associations in the GDSC dataset (\(p_k = 9.5^{-5}\)), Of all the
-significant correlations between mutation status and AUC across
-datasets, the only genes represented were \emph{KRAS} and \emph{BRAF}
-(Figure~\ref{fig:drug-venn}).
+\begin{quote}
+\textbf{(???) Describe why we compare all pairwise combos rather than
+filtering for just the drug-gene combos in G2P?}
+\end{quote}
 
-\begin{verbatim}
-## NULL
-\end{verbatim}
+To test for potentially novel drug-gene associations, we conducted
+similar Wilcoxon rank-sum tests for all pairwise combinations of G2P
+genes and drugs tested in the three drug screens (\emph{Figures 1B and
+2A}). At an unadjusted \(\alpha = 0.05\), the tests revealed that in
+CCLE, AUC significantly correlated with mutation status for 18 out of
+170 (10.59\%) tested drug-gene combinations were significantly
+different, 135 out of 918 (14.71\%) were significantly different for
+CTRP, and 89 out of 850 (10.47\%) for GDSC.
 
-\begin{figure}
-\centering
-\includegraphics{manuscript_files/figure-latex/drug-venn-1.pdf}
-\caption{}
-\end{figure}
+Controlling for a FDR \textless{} 5\%, selumetinib-\emph{BRAF}
+(\(p_{adj} = 1.4^{-10}\)) was the only significant drug-gene combination
+tested in CCLE (\(p_k = 7.9^{-4}\)). CTRP (\(p_k = 6.5^{-4}\)) yielded 5
+significant combinations, one of which was selumetinib-\emph{BRAF}.
+There were 3 significant G2P associations in the GDSC dataset
+(\(p_k = 9.5^{-5}\)). Of all the significant correlations between
+mutation status and AUC across datasets, the only genes represented were
+\emph{KRAS} and \emph{BRAF} (Figure~\ref{fig:drug-venn}). Of the 7
+significant drug-gene associations across datasets, 4 were G2P
+associations. The remaining 3 associations were selumetinib-\emph{BRAF},
+trametinib-\emph{KRAS}, and pazopanib-\emph{BRAF}.
 
-We observe little concordance between the number of interpretations for
-each G2P association and the significance of mutation status on AUC for
-said G2P association, suggesting that mutation status alone is not a
+\begin{quote}
+\textbf{(???) Trametinib and selumetinib are both \emph{MEK} inhibitors,
+and pazopanib is a \emph{VEGFR} inhibitor. VEGF signaling can influence
+the MAPK/ERK signaling pathway, which promotes cell proliferation and
+survival. This pathway includes \emph{RAS}, \emph{BRAF}, and \emph{MEK}
+proteins. These results underscore the importance of the MAPK/ERK
+signaling pathway in cancer.}
+\end{quote}
+
+However, taking these results as a whole, we observe little concordance
+between G2P associations and the correlation of mutation status and AUC
+for said G2P association, suggesting that mutation status alone is not a
 robust predictor of clinically actionable genetic targets. This led us
 to examine the correlations between AUC and gene expression and AUC and
 copy number, two other genomic features that are known to associate with
-cancer and drug response.
+cancer and drug response. We computed Spearman correlation coefficients
+(\(r_s\)) between AUC of each drug-gene association and gene expression
+(RPKM) and copy number (log\(_2\) ratio) of the gene in the
+association\ldots{}
 
-We computed Spearman correlation coefficients (\(r_s\)) between AUC of
-each drug-gene association and gene expression (RPKM) and copy number
-(log\(_2\) ratio) of the gene in the association\ldots{}
+\begin{figure}
+\centering
+\includegraphics{./plots/manuscript/drugscreen_venn.png}
+\caption{}
+\end{figure}
 
-\textbf{Cut this analysis since we are comparing distributions of
+\begin{quote}
+\textbf{(???) Cut this analysis since we are comparing distributions of
 p-values?}
+\end{quote}
 
 We compared the distribution of level-A G2P associations (\emph{Figure
 1A}) and the associated p-values from the mutation status comparisons
@@ -444,7 +475,7 @@ cancer lineages: cancer, lung cancer, breast cancer, leukemia, thyroid
 cancer, skin cancer, and ovarian cancer. CCLE had data for 9 DGLs, CTRP
 had data for 61, and GDSC had data for 53, yielding a total of 73 unique
 DGLs across all three datasets. Only 7 DGLs were screened in all three
-datasets,
+datasets.
 
 Prior to correction for an FDR of 5\%, no DGLs were identified in the
 CCLE screen when using mutation status as a correlate (\(n =\) 7, 2 DGLs
@@ -454,13 +485,30 @@ in \enquote{cancer} lineages), but CTRP (\(n =\) 48) and GDSC (\(n =\)
 cancer. After Benjamini-Hochberg FDR correction, none of the datasets
 yielded significant DGL interactions.
 
+\begin{quote}
+\textbf{(???) KS test results}
+\end{quote}
+
+(Figure~\ref{fig:ksplot})
+
+\begin{figure}
+\centering
+\includegraphics{./plots/manuscript/g2p_spearman_ks_res_plot.png}
+\caption{\label{fig:ksplot}Comparison of Spearman correlation coefficients
+derived from copy number (log\(_2\) ratio), gene expression (RPKM), and
+AUC z-scores from G2P drug-gene associations. Coefficients were grouped
+by whether or not the associated lineage for each comparison was in a
+G2P drug-gene-lineage association or not. Distributions of these grouped
+coefficients were compared using Kolmogorov-Smirnov tests.}
+\end{figure}
+
 \subsection{Are CRISPR/Cas9 gene essentiality results comparable to
 those of functional drug
 screens?}\label{are-crisprcas9-gene-essentiality-results-comparable-to-those-of-functional-drug-screens}
 
 \begin{figure}
 \centering
-\includegraphics{manuscript_files/figure-latex/crispr-venn-1.pdf}
+\includegraphics{./plots/manuscript/crispr_venn.png}
 \caption{}
 \end{figure}
 
@@ -483,8 +531,8 @@ correlated with CERES score, as did copy number (log2-ratio) for 12 out
 of 33 (36.36\%) G2P genes (Figure~\ref{fig:crispr-venn}).
 
 For the purpose of comparison to the drug screen data, if we treat
-CRISPR knockdown like a small-molecule drug, then these results are
-similar to the results from CCLE, CTRP, and GDSC (Table 2).
+CRISPR knockdown like a small-molecule drug, then these results are more
+comprehensive than the results from CCLE, CTRP, and GDSC (Table 2).
 
 \begin{itemize}
 \tightlist
@@ -764,11 +812,12 @@ drawn using the ggplot2 (v3.0.0) R package (Wickham, 2016).
 Wilcoxon tests were conducted using the \texttt{compare\_means} function
 in the ggpubr (v0.1.7.999) R package (Kassambara, 2018).
 \texttt{compare\_means} does Benjamini-Hochberg p-value adjustment using
-the \texttt{p,adjust} function from the \texttt{stats} base R package.
+the \texttt{p.adjust} function from the \texttt{stats} base R package.
 
-For computing Spearman correlation coefficients. If there were 3 or
-fewer data points, then the correlation was not done and a value of NA
-was supplied.
+For computing Spearman correlation coefficients, we used the
+\texttt{cor.test} base R package. If there were 3 or fewer data points,
+then the correlation was not done and a value of \texttt{NA} was
+supplied.
 
 \newpage
 
