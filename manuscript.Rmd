@@ -317,15 +317,17 @@ To test for potentially novel drug-gene associations, we conducted similar Wilco
 
 Controlling for a FDR < 5%, `r dg2intext_converter(ccle_signif_g2p_grid$Drug_Gene[1])` (`r e2exp_converter(ccle_signif_g2p_grid$p.adj[1], p_type = "padj")`) was the only significant drug-gene combination tested in CCLE (`r ccle_signif_g2p_grid_exp`). CTRP (`r ctrp_signif_g2p_grid_exp`) yielded `r nrow(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),])` significant combinations, one of which was selumetinib-*BRAF*. There were `r nrow(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),])` significant G2P associations in the GDSC dataset (`r gdsc_signif_g2p_grid_exp`). Of all the significant correlations between mutation status and AUC across datasets, the only genes represented were *KRAS* and *BRAF* (Figure\ \@ref(fig:drug-venn)). Of the `r length(drug_grid_shared_dg)` significant drug-gene associations across datasets, `r length(intersect(drug_grid_shared_dg, g2p_druggenes))` were G2P associations. The remaining `r length(drug_grid_shared_dg) - length(intersect(drug_grid_shared_dg, g2p_druggenes))` associations were `r dg2intext_converter(setdiff(drug_grid_shared_dg, g2p_druggenes)[1])`, `r dg2intext_converter(setdiff(drug_grid_shared_dg, g2p_druggenes)[2])`, and `r dg2intext_converter(setdiff(drug_grid_shared_dg, g2p_druggenes)[3])`.
 
-> **(???) Trametinib and selumetinib are both *MEK* inhibitors, and pazopanib is a *VEGFR* inhibitor. VEGF signaling can influence the MAPK/ERK signaling pathway, which promotes cell proliferation and survival. This pathway includes *RAS*, *BRAF*, and *MEK* proteins. These results underscore the importance of the MAPK/ERK signaling pathway in cancer.**
+> **(???) Trametinib and selumetinib are both *MEK* inhibitors, and pazopanib is a *VEGFR* inhibitor. VEGF signaling can influence the MAPK/ERK signaling pathway, which promotes cell proliferation and survival. This pathway includes *RAS*, *BRAF*, and *MEK* proteins.**
 
-However, taking these results as a whole, we observe little concordance between G2P associations and the correlation of mutation status and AUC for said G2P association, suggesting that mutation status alone is not a robust predictor of clinically actionable genetic targets. This led us to examine the correlations between AUC and gene expression and AUC and copy number, two other genomic features that are known to associate with cancer and drug response. We computed Spearman correlation coefficients ($r_s$) between AUC of each drug-gene association and gene expression (RPKM) and copy number (log$_2$ ratio) of the gene in the association...
+However, taking these results as a whole, we observe little concordance between G2P associations and the correlation of mutation status and AUC for said G2P association, suggesting that mutation status alone is not a robust predictor of clinically actionable genetic targets. This led us to examine the correlations between AUC and gene expression and AUC and copy number, two other genomic features that are known to associate with cancer and drug response. We computed Spearman correlation coefficients ($r_s$) between AUC of each drug-gene association and gene expression (RPKM) and copy number (log$_2$ ratio) of the gene in the association...**(???) need to complete this thought/analysis**
 
-```{r drug-venn, echo = FALSE, message=FALSE, warning=FALSE}
-knitr::include_graphics("./plots/manuscript/drugscreen_venn.png")
+(ref:drug-venn) Overlap of drug-gene associations drawn from all pairwise combinations of G2P drugs and G2P genes whose drug effects significantly correlated with (**A**) mutation status, (**B**) gene expression, and (**C**) copy number across CCLE, CTRP, and GDSC.
+
+```{r drug-venn, echo = FALSE, message=FALSE, warning=FALSE, fig.cap='(ref:drug-venn)'}
+knitr::include_graphics("./plots/manuscript/drugscreen_venns.pdf")
 ```
 
-> **(???) Cut this analysis since we are comparing distributions of p-values?**
+> **(???) Cut these next three paragraphs since we cut the analysis, but keep for future reference**
 
 We compared the distribution of level-A G2P associations (*Figure 1A*) and the associated p-values from the mutation status comparisons (*Figure 1B*) with a null distribution of p-values derived from all pairwise combinations of G2P genes and the G2P drugs tested in each dataset, less any of the 88 distinct combinations with G2P interpretations, i.e. the non-gray squares in the right heatmap of *Figure 1A (Figure 3A*). To formally test concordance between clinically actionable variants and drug screen results, we conducted an independent, two-group t-test to compare the distributions of p-values of drug-gene combinations that either were or were not represented with level-A evidence in G2P, which indicated that the distributions of p-values did not significantly differ for CCLE [t(9) = 0.25, p = 0.81], CTRP [t(51) = 0.85, p = 0.40], nor GDSC [t(47) = -0.56, p = 0.58]  (Table 2). This further supports that mutation status is not a robust genomic feature for predicting therapeutic responses.
 
@@ -351,8 +353,10 @@ Prior to correction for an FDR of 5%, no DGLs were identified in the CCLE screen
 
 (Figure\ \@ref(fig:ksplot))
 
-```{r ksplot, echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Comparison of Spearman correlation coefficients derived from copy number (log$_2$ ratio), gene expression (RPKM), and AUC z-scores from G2P drug-gene associations. Coefficients were grouped by whether or not the associated lineage for each comparison was in a G2P drug-gene-lineage association or not. Distributions of these grouped coefficients were compared using Kolmogorov-Smirnov tests."}
-knitr::include_graphics("./plots/manuscript/g2p_spearman_ks_res_plot.png")
+(ref:ksplot) Comparison of Spearman correlation coefficients ($r_s$) derived from copy number (log$_2$ ratio), gene expression (RPKM), and AUC z-scores from G2P drug-gene associations. Coefficients were grouped by whether or not the associated lineage for each comparison was in a G2P drug-gene-lineage association or not. Distributions of these grouped coefficients were compared using Kolmogorov-Smirnov tests.
+
+```{r ksplot, echo = FALSE, warning = FALSE, message = FALSE, fig.cap='(ref:ksplot)'}
+knitr::include_graphics("./plots/manuscript/g2p_spearman_ks_res_plot.pdf")
 ```
 
 
@@ -382,8 +386,10 @@ crispr_spearman_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>% summariz
 crispr_spearman_res_CN_sig <- filter(crispr_spearman_res_CN, p < 0.05)
 ```
 
-```{r crispr-venn, echo = FALSE, message=FALSE, warning=FALSE}
-knitr::include_graphics("./plots/manuscript/crispr_venn.png")
+(ref:crispr-venn) Overlap of genes whose gene expression and/or copy number significantly correlated with CERES score.
+
+```{r crispr-venn, echo = FALSE, message=FALSE, warning=FALSE, fig.cap='(ref:crispr-venn)'}
+knitr::include_graphics("./plots/manuscript/crispr_venn.pdf")
 ```
 
 
