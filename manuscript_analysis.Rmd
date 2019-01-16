@@ -95,12 +95,6 @@ adj_signif <- function(df, alpha) {
 }
 ```
 
-```{r}
-test <- adj_signif(ccle_signif_grid_lineage, alpha = 0.05)
-length(unique(test))
-```
-
-
 ## Wilcoxon tests by drug
 
 ```{r}
@@ -1249,14 +1243,6 @@ ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y 
 ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
 ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
 ccle_cor_res$Dataset <- "CCLE"
-# ccle_pearson_ttest_GE <- t.test(ccle_cor_res$Pearson_Corr_GE ~ ccle_cor_res$InG2P)
-# ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 0), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 2))
-# ccle_pearson_ttest_CN <- t.test(ccle_cor_res$Pearson_Corr_CN ~ ccle_cor_res$InG2P)
-# ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 0), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 2))
-# ccle_spearman_ttest_GE <- t.test(ccle_cor_res$Spearman_Corr_GE ~ ccle_cor_res$InG2P)
-# ccle_spearman_ttest_res_GE <- paste0("t(", round(ccle_spearman_ttest_GE$parameter, 0), ") = ", round(ccle_spearman_ttest_GE$statistic, 2), ", p = ", round(ccle_spearman_ttest_GE$p.value, 2))
-# ccle_spearman_ttest_CN <- t.test(ccle_cor_res$Spearman_Corr_CN ~ ccle_cor_res$InG2P)
-# ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$parameter, 0), ") = ", round(ccle_spearman_ttest_CN$statistic, 2), ", p = ", formatC(ccle_spearman_ttest_CN$p.value, 2, format = "f"))
 
 # CTRP
 ctrp_cor_res <- ctrp_data_g2p_grid %>% group_by(Drug_Gene) %>%
@@ -1272,14 +1258,6 @@ ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y 
 ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
 ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
 ctrp_cor_res$Dataset <- "CTRP"
-# ctrp_pearson_ttest_GE <- t.test(ctrp_cor_res$Pearson_Corr_GE ~ ctrp_cor_res$InG2P)
-# ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 0), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p ", ifelse(round(ctrp_pearson_ttest_GE$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_pearson_ttest_GE$p.value, 3))))
-# ctrp_pearson_ttest_CN <- t.test(ctrp_cor_res$Pearson_Corr_CN ~ ctrp_cor_res$InG2P)
-# ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 0), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
-# ctrp_spearman_ttest_GE <- t.test(ctrp_cor_res$Spearman_Corr_GE ~ ctrp_cor_res$InG2P)
-# ctrp_spearman_ttest_res_GE <- paste0("t(", round(ctrp_spearman_ttest_GE$parameter, 0), ") = ", round(ctrp_spearman_ttest_GE$statistic, 2), ", p = ", round(ctrp_spearman_ttest_GE$p.value, 2))
-# ctrp_spearman_ttest_CN <- t.test(ctrp_cor_res$Spearman_Corr_CN ~ ctrp_cor_res$InG2P)
-# ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$parameter, 0), ") = ", round(ctrp_spearman_ttest_CN$statistic, 2), ", p = ", round(ctrp_spearman_ttest_CN$p.value, 2))
 
 # GDSC
 gdsc_cor_res <- gdsc_data_g2p_grid %>% group_by(Drug_Gene) %>%
@@ -1295,14 +1273,6 @@ gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y 
 gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
 gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
 gdsc_cor_res$Dataset <- "GDSC"
-# gdsc_pearson_ttest_GE <- t.test(gdsc_cor_res$Pearson_Corr_GE ~ gdsc_cor_res$InG2P)
-# gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 0), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
-# gdsc_pearson_ttest_CN <- t.test(gdsc_cor_res$Pearson_Corr_CN ~ gdsc_cor_res$InG2P)
-# gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 0), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
-# gdsc_spearman_ttest_GE <- t.test(gdsc_cor_res$Spearman_Corr_GE ~ gdsc_cor_res$InG2P)
-# gdsc_spearman_ttest_res_GE <- paste0("t(", round(gdsc_spearman_ttest_GE$parameter, 0), ") = ", round(gdsc_spearman_ttest_GE$statistic, 2), ", p = ", round(gdsc_spearman_ttest_GE$p.value, 2))
-# gdsc_spearman_ttest_CN <- t.test(gdsc_cor_res$Spearman_Corr_CN ~ gdsc_cor_res$InG2P)
-# gdsc_spearman_ttest_res_CN <- paste0("t(", round(gdsc_spearman_ttest_CN$parameter, 0), ") = ", round(gdsc_spearman_ttest_CN$statistic, 2), ", p = ", round(gdsc_spearman_ttest_CN$p.value, 2))
 
 # All
 g2p_cor <- rbind(ccle_cor_res, ctrp_cor_res, gdsc_cor_res)
@@ -1314,13 +1284,43 @@ g2p_cor$Spearman_GE_Abs <- abs(g2p_cor$Spearman_Corr_GE)
 g2p_cor$Spearman_GE_Sign <- ifelse(sign(g2p_cor$Spearman_Corr_GE) == 1, "+", ifelse(sign(g2p_cor$Spearman_Corr_GE) == -1, "-", "0"))
 g2p_cor$Spearman_CN_Abs <- abs(g2p_cor$Spearman_Corr_CN)
 g2p_cor$Spearman_CN_Sign <- ifelse(sign(g2p_cor$Spearman_Corr_CN) == 1, "+", ifelse(sign(g2p_cor$Spearman_Corr_CN) == -1, "-", "0"))
+```
+
+Deprecated: T-tests of G2P presence/absence distributions
+```{r}
+# ccle_pearson_ttest_GE <- t.test(ccle_cor_res$Pearson_Corr_GE ~ ccle_cor_res$InG2P)
+# ccle_pearson_ttest_res_GE <- paste0("t(", round(ccle_pearson_ttest_GE$parameter, 0), ") = ", round(ccle_pearson_ttest_GE$statistic, 2), ", p = ", round(ccle_pearson_ttest_GE$p.value, 2))
+# ccle_pearson_ttest_CN <- t.test(ccle_cor_res$Pearson_Corr_CN ~ ccle_cor_res$InG2P)
+# ccle_pearson_ttest_res_CN <- paste0("t(", round(ccle_pearson_ttest_CN$parameter, 0), ") = ", round(ccle_pearson_ttest_CN$statistic, 2), ", p = ", round(ccle_pearson_ttest_CN$p.value, 2))
+# ccle_spearman_ttest_GE <- t.test(ccle_cor_res$Spearman_Corr_GE ~ ccle_cor_res$InG2P)
+# ccle_spearman_ttest_res_GE <- paste0("t(", round(ccle_spearman_ttest_GE$parameter, 0), ") = ", round(ccle_spearman_ttest_GE$statistic, 2), ", p = ", round(ccle_spearman_ttest_GE$p.value, 2))
+# ccle_spearman_ttest_CN <- t.test(ccle_cor_res$Spearman_Corr_CN ~ ccle_cor_res$InG2P)
+# ccle_spearman_ttest_res_CN <- paste0("t(", round(ccle_spearman_ttest_CN$parameter, 0), ") = ", round(ccle_spearman_ttest_CN$statistic, 2), ", p = ", formatC(ccle_spearman_ttest_CN$p.value, 2, format = "f"))
+
+# ctrp_pearson_ttest_GE <- t.test(ctrp_cor_res$Pearson_Corr_GE ~ ctrp_cor_res$InG2P)
+# ctrp_pearson_ttest_res_GE <- paste0("t(", round(ctrp_pearson_ttest_GE$parameter, 0), ") = ", round(ctrp_pearson_ttest_GE$statistic, 2), ", p ", ifelse(round(ctrp_pearson_ttest_GE$p.value, 3) == 0, "< 0.001", paste0("= ", round(ctrp_pearson_ttest_GE$p.value, 3))))
+# ctrp_pearson_ttest_CN <- t.test(ctrp_cor_res$Pearson_Corr_CN ~ ctrp_cor_res$InG2P)
+# ctrp_pearson_ttest_res_CN <- paste0("t(", round(ctrp_pearson_ttest_CN$parameter, 0), ") = ", round(ctrp_pearson_ttest_CN$statistic, 2), ", p = ", round(ctrp_pearson_ttest_CN$p.value, 3))
+# ctrp_spearman_ttest_GE <- t.test(ctrp_cor_res$Spearman_Corr_GE ~ ctrp_cor_res$InG2P)
+# ctrp_spearman_ttest_res_GE <- paste0("t(", round(ctrp_spearman_ttest_GE$parameter, 0), ") = ", round(ctrp_spearman_ttest_GE$statistic, 2), ", p = ", round(ctrp_spearman_ttest_GE$p.value, 2))
+# ctrp_spearman_ttest_CN <- t.test(ctrp_cor_res$Spearman_Corr_CN ~ ctrp_cor_res$InG2P)
+# ctrp_spearman_ttest_res_CN <- paste0("t(", round(ctrp_spearman_ttest_CN$parameter, 0), ") = ", round(ctrp_spearman_ttest_CN$statistic, 2), ", p = ", round(ctrp_spearman_ttest_CN$p.value, 2))
+
+# gdsc_pearson_ttest_GE <- t.test(gdsc_cor_res$Pearson_Corr_GE ~ gdsc_cor_res$InG2P)
+# gdsc_pearson_ttest_res_GE <- paste0("t(", round(gdsc_pearson_ttest_GE$parameter, 0), ") = ", round(gdsc_pearson_ttest_GE$statistic, 2), ", p = ", round(gdsc_pearson_ttest_GE$p.value, 3))
+# gdsc_pearson_ttest_CN <- t.test(gdsc_cor_res$Pearson_Corr_CN ~ gdsc_cor_res$InG2P)
+# gdsc_pearson_ttest_res_CN <- paste0("t(", round(gdsc_pearson_ttest_CN$parameter, 0), ") = ", round(gdsc_pearson_ttest_CN$statistic, 2), ", p = ", round(gdsc_pearson_ttest_CN$p.value, 3))
+# gdsc_spearman_ttest_GE <- t.test(gdsc_cor_res$Spearman_Corr_GE ~ gdsc_cor_res$InG2P)
+# gdsc_spearman_ttest_res_GE <- paste0("t(", round(gdsc_spearman_ttest_GE$parameter, 0), ") = ", round(gdsc_spearman_ttest_GE$statistic, 2), ", p = ", round(gdsc_spearman_ttest_GE$p.value, 2))
+# gdsc_spearman_ttest_CN <- t.test(gdsc_cor_res$Spearman_Corr_CN ~ gdsc_cor_res$InG2P)
+# gdsc_spearman_ttest_res_CN <- paste0("t(", round(gdsc_spearman_ttest_CN$parameter, 0), ") = ", round(gdsc_spearman_ttest_CN$statistic, 2), ", p = ", round(gdsc_spearman_ttest_CN$p.value, 2))
+
 # g2p_cor_text <- data.frame(Dataset = c("CCLE", "CTRP", "GDSC"),
 #                                Pearson_Test_Results_GE = c(ccle_pearson_ttest_res_GE, ctrp_pearson_ttest_res_GE, gdsc_pearson_ttest_res_GE),
 #                                Pearson_Test_Results_CN = c(ccle_pearson_ttest_res_CN, ctrp_pearson_ttest_res_CN, gdsc_pearson_ttest_res_CN),
 #                                Spearman_Test_Results_GE = c(ccle_spearman_ttest_res_GE, ctrp_spearman_ttest_res_GE, gdsc_spearman_ttest_res_GE),
 #                                Spearman_Test_Results_CN = c(ccle_spearman_ttest_res_CN, ctrp_spearman_ttest_res_CN, gdsc_spearman_ttest_res_CN))
 ```
-
 
 # SUMMARIES
 
@@ -1578,6 +1578,8 @@ This section contains summary plots for the Wilcoxon tests and Pearson/Spearman 
 Venn diagram between GE and CN:
 ```{r}
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+crispr_spearman_res_GE_sig <- filter(crispr_spearman_res_GE, p < 0.05)
+crispr_spearman_res_CN_sig <- filter(crispr_spearman_res_CN, p < 0.05)
 crispr_venn <- venn.diagram(list("Gene Expression" = as.character(crispr_spearman_res_GE_sig$Hugo_Symbol), "Copy Number" = as.character(crispr_spearman_res_CN_sig$Hugo_Symbol)), fill = c("darkorchid4", "mediumorchid1"), lty = rep("blank", 2), alpha = c(0.5, 0.5), cat.pos = c(-2, 5), cat.cex = 1.5, cex = 1, filename = NULL)
 
 # in GE only
@@ -1587,10 +1589,7 @@ crispr_venn[[6]]$label <- paste(sort(setdiff(as.character(crispr_spearman_res_CN
 # intesection
 crispr_venn[[7]]$label <- paste(sort(intersect(as.character(crispr_spearman_res_CN_sig$Hugo_Symbol), as.character(crispr_spearman_res_GE_sig$Hugo_Symbol))), collapse = "\n")
 
-png("./plots/manuscript/crispr_venn.png")
-grid.newpage()
-grid.draw(crispr_venn)
-dev.off()
+ggsave("./plots/manuscript/crispr_venn.pdf", crispr_venn)
 ```
 
 G2P genes with a significant effect on CERES score by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
@@ -1964,30 +1963,6 @@ gdsc_genomic_features_spearman_summ_plot
 
 ### Mut
 
-Venn diagram of drug-gene associations:
-```{r}
-futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-
-ccle_dgs <- as.character(ccle_signif_g2p_grid[!is.na(ccle_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
-ctrp_dgs <- as.character(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
-gdsc_dgs <- as.character(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
-
-drug_venn <- venn.diagram(list("CCLE" = ccle_dgs, "CTRP" = ctrp_dgs, "GDSC" = gdsc_dgs), lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 50, 120), cat.dist = c(0.001, 0.02, 0.0001), cat.cex = 1.5, cex = 1, filename = NULL)
-# in GDSC only
-drug_venn[[7]]$label  <- paste(sort(setdiff(setdiff(gdsc_dgs, ctrp_dgs), ccle_dgs)), collapse = "\n")
-# in GDSC and CTRP only
-drug_venn[[8]]$label <- paste(intersect(gdsc_dgs, ctrp_dgs), collapse = "\n")
-# in CTRP only
-drug_venn[[9]]$label <- paste(sort(setdiff(setdiff(ctrp_dgs, gdsc_dgs), ccle_dgs)), collapse = "\n")
-# in CTRP and CCLE only
-drug_venn[[10]]$label <- intersect(ccle_dgs, ctrp_dgs)
-
-png("./plots/manuscript/drugscreen_venn.png")
-grid.newpage()
-grid.draw(drug_venn)
-dev.off()
-```
-
 G2P drug-gene associations with a significant effect on AUC by mutation status:
 ```{r fig.height=4, fig.width=8}
 all_mut_res <- rbind(ccle_res_mut, ctrp_res_mut, gdsc_res_mut)
@@ -2036,6 +2011,57 @@ all_spearman_summ_plot <- ggplot(data = subset(all_spearman_res, p < 0.05)) +
   labs(x = "Pearson correlation coefficient (r)", y = "-log10(p-value)")
 all_spearman_summ_plot
 # ggsave("./plots/manuscript/all_spearman_summ_plot.png", all_spearman_summ_plot, device = "png", dpi = 450, width = 12, height = 10, units = "in")
+```
+
+### Venn diagrams
+
+Venn diagram of drug-gene associations:
+```{r}
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+
+ccle_mut_dgs <- as.character(ccle_signif_g2p_grid[!is.na(ccle_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
+ctrp_mut_dgs <- as.character(ctrp_signif_g2p_grid[!is.na(ctrp_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
+gdsc_mut_dgs <- as.character(gdsc_signif_g2p_grid[!is.na(gdsc_signif_g2p_grid$p.signif.adj),]$Drug_Gene)
+
+ccle_ge_dgs <- as.character(ccle_cor_res[ccle_cor_res$Spearman_Pval_GE < 0.05,]$Drug_Gene)
+ctrp_ge_dgs <- as.character(ctrp_cor_res[ctrp_cor_res$Spearman_Pval_GE < 0.05,]$Drug_Gene)
+gdsc_ge_dgs <- as.character(gdsc_cor_res[gdsc_cor_res$Spearman_Pval_GE < 0.05,]$Drug_Gene)
+
+ccle_cn_dgs <- as.character(ccle_cor_res[ccle_cor_res$Spearman_Pval_CN < 0.05,]$Drug_Gene)
+ctrp_cn_dgs <- as.character(ctrp_cor_res[ctrp_cor_res$Spearman_Pval_CN < 0.05,]$Drug_Gene)
+gdsc_cn_dgs <- as.character(gdsc_cor_res[gdsc_cor_res$Spearman_Pval_CN < 0.05,]$Drug_Gene)
+
+drug_venn_mut <- venn.diagram(list("CCLE" = ccle_mut_dgs, "CTRP" = ctrp_mut_dgs, "GDSC" = gdsc_mut_dgs), resolution = 5000, main = "A", main.pos = c(0, 1), main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 50, 120), cat.dist = c(0.001, 0.02, 0.0001), cat.cex = 1.5, cex = 1, filename = NULL, height = 4000)
+# in GDSC only
+drug_venn_mut[[7]]$label  <- paste(sort(setdiff(setdiff(gdsc_dgs, ctrp_dgs), ccle_dgs)), collapse = "\n")
+# in GDSC and CTRP only
+drug_venn_mut[[8]]$label <- paste(intersect(gdsc_dgs, ctrp_dgs), collapse = "\n")
+# in CTRP only
+drug_venn_mut[[9]]$label <- paste(sort(setdiff(setdiff(ctrp_dgs, gdsc_dgs), ccle_dgs)), collapse = "\n")
+# in CTRP and CCLE only
+drug_venn_mut[[10]]$label <- intersect(ccle_dgs, ctrp_dgs)
+
+drug_venn_ge <- venn.diagram(list("CCLE" = ccle_ge_dgs, "CTRP" = ctrp_ge_dgs, "GDSC" = gdsc_ge_dgs), resolution = 5000, main = "B", main.pos = c(0, 1), main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+
+drug_venn_cn <- venn.diagram(list("CCLE" = ccle_cn_dgs, "CTRP" = ctrp_cn_dgs, "GDSC" = gdsc_cn_dgs), resolution = 5000, main = "C", main.pos = c(0, 1), main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(0, 0, 0), cat.dist = c(0.11, 0.11, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+
+grid.arrange(grobTree(drug_venn_mut),
+             grobTree(drug_venn_ge),
+             grobTree(drug_venn_cn),
+             ncol = 1, 
+             heights = c(2/5, 2/5, 1/5))
+
+drugscreen_venns <- arrangeGrob(grobTree(drug_venn_mut),
+             grobTree(drug_venn_ge),
+             grobTree(drug_venn_cn),
+             ncol = 1, 
+             heights = c(2/5, 2/5, 1/5))
+ # ggsave(file = "./plots/manuscript/drugscreen_venns.pdf", drugscreen_venns) #saves g
+ 
+# png("./plots/manuscript/drugscreen_venn_mut.png")
+# grid.newpage()
+# grid.draw(drug_venn_mut)
+# dev.off()
 ```
 
 ## P-values
@@ -2358,7 +2384,7 @@ g2p_ks_res_plot_spearman <- ggplot(data = filter(g2p_corr_4plot, Correlation_Met
   labs(x = "Is the lineage in a G2P DGL?", y = "Spearman Correlation Coefficient")
 g2p_ks_res_plot_spearman
 
-# ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+# ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.pdf", g2p_ks_res_plot_spearman, device = "pdf", dpi = 500, width = 12, height = 6, units = "in")
 ```
 
 # Pancancer vs. Lineage

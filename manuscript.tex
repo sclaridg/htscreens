@@ -349,8 +349,7 @@ trametinib-\emph{KRAS}, and pazopanib-\emph{BRAF}.
 and pazopanib is a \emph{VEGFR} inhibitor. VEGF signaling can influence
 the MAPK/ERK signaling pathway, which promotes cell proliferation and
 survival. This pathway includes \emph{RAS}, \emph{BRAF}, and \emph{MEK}
-proteins. These results underscore the importance of the MAPK/ERK
-signaling pathway in cancer.}
+proteins.}
 \end{quote}
 
 However, taking these results as a whole, we observe little concordance
@@ -362,17 +361,27 @@ copy number, two other genomic features that are known to associate with
 cancer and drug response. We computed Spearman correlation coefficients
 (\(r_s\)) between AUC of each drug-gene association and gene expression
 (RPKM) and copy number (log\(_2\) ratio) of the gene in the
-association\ldots{}
+association\ldots{}\textbf{(???) need to complete this thought/analysis}
+
+
+
+
+
+
 
 \begin{figure}
 \centering
-\includegraphics{./plots/manuscript/drugscreen_venn.png}
-\caption{}
+\includegraphics{./plots/manuscript/drugscreen_venns.pdf}
+\caption{\label{fig:drug-venn}Overlap of drug-gene associations drawn from all
+pairwise combinations of G2P drugs and G2P genes whose drug effects
+significantly correlated with (\textbf{A}) mutation status, (\textbf{B})
+gene expression, and (\textbf{C}) copy number across CCLE, CTRP, and
+GDSC.}
 \end{figure}
 
 \begin{quote}
-\textbf{(???) Cut this analysis since we are comparing distributions of
-p-values?}
+\textbf{(???) Cut these next three paragraphs since we cut the analysis,
+but keep for future reference}
 \end{quote}
 
 We compared the distribution of level-A G2P associations (\emph{Figure
@@ -491,10 +500,17 @@ yielded significant DGL interactions.
 
 (Figure~\ref{fig:ksplot})
 
+
+
+
+
+
+
+
 \begin{figure}
 \centering
-\includegraphics{./plots/manuscript/g2p_spearman_ks_res_plot.png}
-\caption{\label{fig:ksplot}Comparison of Spearman correlation coefficients
+\includegraphics{./plots/manuscript/g2p_spearman_ks_res_plot.pdf}
+\caption{\label{fig:ksplot}Comparison of Spearman correlation coefficients (\(r_s\))
 derived from copy number (log\(_2\) ratio), gene expression (RPKM), and
 AUC z-scores from G2P drug-gene associations. Coefficients were grouped
 by whether or not the associated lineage for each comparison was in a
@@ -506,10 +522,14 @@ coefficients were compared using Kolmogorov-Smirnov tests.}
 those of functional drug
 screens?}\label{are-crisprcas9-gene-essentiality-results-comparable-to-those-of-functional-drug-screens}
 
+
+
+
 \begin{figure}
 \centering
-\includegraphics{./plots/manuscript/crispr_venn.png}
-\caption{}
+\includegraphics{./plots/manuscript/crispr_venn.pdf}
+\caption{\label{fig:crispr-venn}Overlap of genes whose gene expression and/or copy
+number significantly correlated with CERES score.}
 \end{figure}
 
 The CRISPR screen from the Broad Institute reports gene dependency using
