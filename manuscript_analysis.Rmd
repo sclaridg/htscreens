@@ -560,7 +560,7 @@ colnames(crispr_meta)[7] <- "CCLE_Name"
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
-Merged mutation calls (coding region, germline filtered):
+Mutation calls (coding region, germline filtered):
 ```{r, eval=FALSE}
 maf_raw <- read.delim("./data_munging/18Q4/depmap_18Q4_mutation_calls_20181114.csv.gz", header = TRUE, sep = ",", row.names = 1)
 colnames(maf_raw)[colnames(maf_raw) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
@@ -573,7 +573,6 @@ maf_df$Mutation_Status_Nonsilent <- ifelse(maf_df$Variant_Classification == "Sil
 maf_df <- unique(maf_df)
 saveRDS(maf_df, "./data_munging/rds/maf_df_18Q4.rds", compress = "xz")
 ```
-
 
 ### Copy number (CN)
 
@@ -672,6 +671,12 @@ ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 ## Drug screens
 
 ### Merge drug data and annotations
+
+457/3462 gene-cell line combinations have more than one mutation in the MAF file. **FIX THIS**
+```{r}
+# test <- maf_df_g2p %>% count(Hugo_Symbol, CCLE_Name)
+# test <- test[order(test$n, decreasing = TRUE),]
+```
 
 ```{r, eval=FALSE}
 # Drug metadata
@@ -1201,7 +1206,9 @@ gdsc_signif_grid_lineage_kable <- knitr::kable(gdsc_signif_grid_lineage[1:500, c
 
 --------------------------------------------------------------------------------
 
-Pearson correlations for assessing effect of gene expression and copy number on gene essentiality score and AUC.
+Pearson and Spearman correlations for assessing effect of gene expression and copy number on gene essentiality score and AUC.
+
+Example of how to describe Spearman correaltion results: ""A Spearman's correlation was run to determine the relationship between 23 groundwater uranium and TDS values. There was a strong, positive monotonic correlation between Uranium and TDS ( = .71, n = 23, p < .001)."
 
 ## CRISPR
 
@@ -1589,7 +1596,7 @@ crispr_venn[[6]]$label <- paste(sort(setdiff(as.character(crispr_spearman_res_CN
 # intesection
 crispr_venn[[7]]$label <- paste(sort(intersect(as.character(crispr_spearman_res_CN_sig$Hugo_Symbol), as.character(crispr_spearman_res_GE_sig$Hugo_Symbol))), collapse = "\n")
 
-ggsave("./plots/manuscript/crispr_venn.pdf", crispr_venn)
+# ggsave("./plots/manuscript/crispr_venn.pdf", crispr_venn)
 ```
 
 G2P genes with a significant effect on CERES score by mutation status, gene expression, and copy number. Summary plot using Pearson correlation coefficient for GE and CN:
@@ -1693,19 +1700,33 @@ crispr_spearman_res_GE <- transform(crispr_spearman_res_GE, Hugo_Symbol = reorde
 crispr_spearman_res_GE$p_log10 <- -log10(crispr_spearman_res_GE$p)
 crispr_spearman_res_CN <- transform(crispr_spearman_res_CN, Hugo_Symbol = reorder(Hugo_Symbol, corr)) 
 crispr_spearman_res_CN$p_log10 <- -log10(crispr_spearman_res_CN$p)
+spearman_KRAS <- rbind(filter(crispr_data_g2p, Hugo_Symbol == "KRAS") %>% summarize(p = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), filter(crispr_data_g2p, Hugo_Symbol == "KRAS") %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"))
+
+crispr_ge_spearman_corr_inset <- ggplot(filter(crispr_data_g2p, Hugo_Symbol == "KRAS"), aes(x = RPKM, y = Score)) +
+  geom_point(pch = 21, fill = "cadetblue3", alpha = 0.6) +
+  labs(x = "KRAS Gene Expression (RPKM)", y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[1], 2), " (", printp(spearman_KRAS$p[1]), ")"))
+
+crispr_cn_spearman_corr_inset <- ggplot(filter(crispr_data_g2p, Hugo_Symbol == "KRAS"), aes(x = CN, y = Score)) +
+  geom_point(pch = 21, fill = "palegreen2", alpha = 0.6) +
+  labs(x = "KRAS Copy Number (log2 ratio)", y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[2], 2), " (", printp(spearman_KRAS$p[2]), ")"))
 
 crispr_ge_spearman_corr_plot <- ggplot(data = crispr_spearman_res_GE, aes(x = Hugo_Symbol, y = corr)) +
   geom_point(aes(fill = p_log10), pch = 21, size = 5) +
-  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  scale_fill_gradient2(low = "white", mid = "white", high = "deepskyblue4", midpoint = 1.3010299957) +
   coord_cartesian(ylim = c(-0.45, 0.2)) +
   theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
-  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)", subtitle = "CRISPR: Correlation between AUC z-score and gene expression")
+  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)") +
+  annotation_custom(ggplotGrob(crispr_ge_spearman_corr_inset), xmin = 12, xmax = 32, ymin = -0.15, ymax = -0.45) +
+  geom_curve(aes(x = 3.5, y = -0.285, xend = 13, yend = -0.16), color = "lightgray", curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))
+
 crispr_cn_spearman_corr_plot <- ggplot(data = crispr_spearman_res_CN, aes(x = Hugo_Symbol, y = corr)) +
   geom_point(aes(fill = p_log10), pch = 21, size = 5) +
-  scale_fill_gradient2(low = "white", mid = "white", high = "darkorchid4", midpoint = 1.3010299957) +
+  scale_fill_gradient2(low = "white", mid = "white", high = "green4", midpoint = 1.3010299957) +
   coord_cartesian(ylim = c(-0.45, 0.2)) +
   theme(legend.position = "bottom", axis.title.y = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
-  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)", subtitle = "CRISPR: Correlation between AUC z-score and copy number")
+  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)") +
+  annotation_custom(ggplotGrob(crispr_cn_spearman_corr_inset), xmin = 12, xmax = 32, ymin = -0.15, ymax = -0.45) +
+  geom_curve(aes(x = 2.5, y = -0.232, xend = 13, yend = -0.16), color = "lightgray", curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))
 
 crispr_spearman_corr_plot <- plot_grid(crispr_ge_spearman_corr_plot, crispr_cn_spearman_corr_plot, align = "h")
 crispr_spearman_corr_plot
@@ -2033,13 +2054,13 @@ gdsc_cn_dgs <- as.character(gdsc_cor_res[gdsc_cor_res$Spearman_Pval_CN < 0.05,]$
 
 drug_venn_mut <- venn.diagram(list("CCLE" = ccle_mut_dgs, "CTRP" = ctrp_mut_dgs, "GDSC" = gdsc_mut_dgs), resolution = 5000, main = "A", main.pos = c(0, 1), main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 50, 120), cat.dist = c(0.001, 0.02, 0.0001), cat.cex = 1.5, cex = 1, filename = NULL, height = 4000)
 # in GDSC only
-drug_venn_mut[[7]]$label  <- paste(sort(setdiff(setdiff(gdsc_dgs, ctrp_dgs), ccle_dgs)), collapse = "\n")
+drug_venn_mut[[7]]$label  <- paste(sort(setdiff(setdiff(gdsc_mut_dgs, ctrp_mut_dgs), ccle_mut_dgs)), collapse = "\n")
 # in GDSC and CTRP only
-drug_venn_mut[[8]]$label <- paste(intersect(gdsc_dgs, ctrp_dgs), collapse = "\n")
+drug_venn_mut[[8]]$label <- paste(intersect(gdsc_mut_dgs, ctrp_mut_dgs), collapse = "\n")
 # in CTRP only
-drug_venn_mut[[9]]$label <- paste(sort(setdiff(setdiff(ctrp_dgs, gdsc_dgs), ccle_dgs)), collapse = "\n")
+drug_venn_mut[[9]]$label <- paste(sort(setdiff(setdiff(ctrp_mut_dgs, gdsc_mut_dgs), ccle_mut_dgs)), collapse = "\n")
 # in CTRP and CCLE only
-drug_venn_mut[[10]]$label <- intersect(ccle_dgs, ctrp_dgs)
+drug_venn_mut[[10]]$label <- intersect(ccle_mut_dgs, ctrp_mut_dgs)
 
 drug_venn_ge <- venn.diagram(list("CCLE" = ccle_ge_dgs, "CTRP" = ctrp_ge_dgs, "GDSC" = gdsc_ge_dgs), resolution = 5000, main = "B", main.pos = c(0, 1), main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
 
@@ -2056,7 +2077,7 @@ drugscreen_venns <- arrangeGrob(grobTree(drug_venn_mut),
              grobTree(drug_venn_cn),
              ncol = 1, 
              heights = c(2/5, 2/5, 1/5))
- # ggsave(file = "./plots/manuscript/drugscreen_venns.pdf", drugscreen_venns) #saves g
+# ggsave(file = "./plots/manuscript/drugscreen_venns.pdf", drugscreen_venns) #saves g
  
 # png("./plots/manuscript/drugscreen_venn_mut.png")
 # grid.newpage()
@@ -2387,7 +2408,7 @@ g2p_ks_res_plot_spearman
 # ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.pdf", g2p_ks_res_plot_spearman, device = "pdf", dpi = 500, width = 12, height = 6, units = "in")
 ```
 
-# Pancancer vs. Lineage
+# Comopare pancancer vs. lineage
 
 --------------------------------------------------------------------------------
 
