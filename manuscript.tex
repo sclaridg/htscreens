@@ -196,7 +196,8 @@ conducted in cancer cell lines. Thus, our goal was to evaluate how well
 these functional screens recapitulate known drug, gene, and tumor type
 associations that are currently used in clinical decision-making.
 
-We derived our clinical associations from a new project conducted by the
+To curate an evidence-based list of these clinical biomarkers, we
+utilized a new oncological data aggregation project conducted by the
 Variant Interpretation for Cancer Consortium (VICC;
 \url{https://cancervariants.org/}), a Driver Project for the Global
 Alliance for Genomics and Health (GA4GH) (The Global Alliance for
@@ -286,20 +287,20 @@ re-index to a CID to avoid accidental mischaracterization.
 
 After filtering, 894 level-A G2P interpretations were carried forward in
 subsequent analyses, constituting 57 unique drugs and 34 unique genes in
-88 distinct level-A combinations (\emph{Figure 1A}). The number of
-level-A interpretations per drug ranged from 1 to 176 (\(M =\) 15.68,
-\(SD =\) 34.63), 1 to 264 (\(M =\) 26.24, \(SD =\) 61.58) per gene, and
-for each level-A drug-gene combination, the range was 1 to 103 (\(M =\)
-10.14, \(SD =\) 19.80). These unique drugs, genes, and combinations are
-hereafter referred to as G2P drugs, G2P genes, and G2P associations.
-Filtering our screening datasets by these clinical criteria yields
-panels of potentially clinically relevant omic features. Of the 57
-unique G2P drugs, 37 of them were screened in at least one of the drug
-screen datasets, 17 drugs were screened in at least two of the three
-datasets, and only 3 were screened in all three datasets. The remaining
-20 un-screened G2P drugs suggests an incompleteness of these drug
-screens, though these projects frequently release new screening data
-that may include these drugs in future releases.
+88 distinct level-A combinations (\emph{Figure 1A: Pink heatmap}). The
+number of level-A interpretations per drug ranged from 1 to 176 (\(M =\)
+15.68, \(SD =\) 34.63), 1 to 264 (\(M =\) 26.24, \(SD =\) 61.58) per
+gene, and for each level-A drug-gene combination, the range was 1 to 103
+(\(M =\) 10.14, \(SD =\) 19.80). These unique drugs, genes, and
+combinations are hereafter referred to as G2P drugs, G2P genes, and G2P
+associations. Filtering our screening datasets by these clinical
+criteria yields panels of potentially clinically relevant omic features.
+Of the 57 unique G2P drugs, 37 of them were screened in at least one of
+the drug screen datasets, 17 drugs were screened in at least two of the
+three datasets, and only 3 were screened in all three datasets. The
+remaining 20 un-screened G2P drugs suggests an incompleteness of these
+drug screens, though these projects frequently release new screening
+data that may include these drugs in future releases.
 
 Using cell-line-specific point mutation annotations from the CCLE, we
 compared z-score-transformed area under the dose-response curve (AUC)
@@ -308,15 +309,15 @@ associations tested in the CCLE, CTRP, and GDSC drug screens. Of the 88
 G2P associations, data was available for 9 associations in CCLE, 48 in
 CTRP, and 44 in GDSC. Controlling for a false discovery rate (FDR)
 \textless{} 5\%, CCLE yielded no significant correlations (Wilcoxon
-rank-sum tests, \(p_k = 2.1^{-4}\)), though the most significant G2P
-association was selumetinib-\emph{KRAS} (\(p_{adj} = 1.9^{-3}\)). In
+rank-sum tests, \(p_k = 1.2^{-4}\)), though the most significant G2P
+association was selumetinib-\emph{KRAS} (\(p_{adj} = 1.1^{-3}\)). In
 CTRP, AUC from 3 drug-gene associations correlated with the gene's
-mutation status (\(p_k = 4.5^{-3}\)): selumetinib-\emph{KRAS}
-(\(p_{adj} = 4.4^{-8}\)), vemurafenib-\emph{BRAF}
-(\(p_{adj} = 4.4^{-8}\)), and dabrafenib-\emph{BRAF}
-(\(p_{adj} = 7.7^{-5}\)). Dabrafenib-\emph{BRAF}
-(\(p_{adj} = 8.6^{-11}\)) and trametinib-\emph{BRAF}
-(\(p_{adj} = 4.2^{-6}\)) were significant in GDSC (\(p_k = 2.3^{-3}\)).
+mutation status (\(p_k = 2.6^{-3}\)): vemurafenib-\emph{BRAF}
+(\(p_{adj} = 5.8^{-9}\)), selumetinib-\emph{KRAS}
+(\(p_{adj} = 4.6^{-8}\)), and dabrafenib-\emph{BRAF}
+(\(p_{adj} = 8.3^{-5}\)). Dabrafenib-\emph{BRAF}
+(\(p_{adj} = 3.2^{-11}\)) was the only significant association in GDSC
+(\(p_k = 2.6^{-6}\)).
 
 \begin{quote}
 \textbf{(???) Describe why we compare all pairwise combos rather than
@@ -325,24 +326,24 @@ filtering for just the drug-gene combos in G2P?}
 
 To test for potentially novel drug-gene associations, we conducted
 similar Wilcoxon rank-sum tests for all pairwise combinations of G2P
-genes and drugs tested in the three drug screens (\emph{Figures 1B and
-2A}). At an unadjusted \(\alpha = 0.05\), the tests revealed that in
-CCLE, AUC significantly correlated with mutation status for 18 out of
-170 (10.59\%) tested drug-gene combinations were significantly
-different, 135 out of 918 (14.71\%) were significantly different for
-CTRP, and 89 out of 850 (10.47\%) for GDSC.
+genes and drugs tested in the three drug screens (\emph{Figures 1B:
+Green heatmaps}). At an unadjusted \(\alpha = 0.05\), the tests revealed
+that in CCLE, AUC significantly correlated with mutation status for 14
+out of 170 (8.24\%) tested drug-gene combinations were significantly
+different, 93 out of 918 (10.13\%) were significantly different for
+CTRP, and 72 out of 850 (8.47\%) for GDSC.
 
 Controlling for a FDR \textless{} 5\%, selumetinib-\emph{BRAF}
-(\(p_{adj} = 1.4^{-10}\)) was the only significant drug-gene combination
-tested in CCLE (\(p_k = 7.9^{-4}\)). CTRP (\(p_k = 6.5^{-4}\)) yielded 5
+(\(p_{adj} = 2.9^{-10}\)) was the only significant drug-gene combination
+tested in CCLE (\(p_k = 1.2^{-4}\)). CTRP (\(p_k = 3.9^{-4}\)) yielded 4
 significant combinations, one of which was selumetinib-\emph{BRAF}.
-There were 3 significant G2P associations in the GDSC dataset
-(\(p_k = 9.5^{-5}\)). Of all the significant correlations between
+There were 2 significant G2P associations in the GDSC dataset
+(\(p_k = 2.3^{-4}\)). Of all the significant correlations between
 mutation status and AUC across datasets, the only genes represented were
-\emph{KRAS} and \emph{BRAF} (Figure~\ref{fig:drug-venn}). Of the 7
-significant drug-gene associations across datasets, 4 were G2P
-associations. The remaining 3 associations were selumetinib-\emph{BRAF},
-trametinib-\emph{KRAS}, and pazopanib-\emph{BRAF}.
+\emph{KRAS} and \emph{BRAF} (Figure~\ref{fig:drug-venn}). Of the 5
+significant drug-gene associations across datasets, 3 were G2P
+associations. The remaining 2 associations were selumetinib-\emph{BRAF}
+and trametinib-\emph{KRAS}.
 
 \begin{quote}
 \textbf{(???) Trametinib and selumetinib are both \emph{MEK} inhibitors,
@@ -369,11 +370,13 @@ association\ldots{}\textbf{(???) need to complete this thought/analysis}
 
 
 
+
 \begin{figure}
 \centering
 \includegraphics{./plots/manuscript/drugscreen_venns.pdf}
-\caption{\label{fig:drug-venn}Overlap of drug-gene associations drawn from all
-pairwise combinations of G2P drugs and G2P genes whose drug effects
+\caption{\label{fig:drug-venn}\textbf{Overlap of significant drug-gene associations
+from CCLE, CTRP, and GDSC}. Overlap of drug-gene associations drawn from
+all pairwise combinations of G2P drugs and G2P genes whose drug effects
 significantly correlated with (\textbf{A}) mutation status, (\textbf{B})
 gene expression, and (\textbf{C}) copy number across CCLE, CTRP, and
 GDSC.}
@@ -486,16 +489,17 @@ had data for 61, and GDSC had data for 53, yielding a total of 73 unique
 DGLs across all three datasets. Only 7 DGLs were screened in all three
 datasets.
 
-Prior to correction for an FDR of 5\%, no DGLs were identified in the
-CCLE screen when using mutation status as a correlate (\(n =\) 7, 2 DGLs
-were not analyzed due to lack of mutation annotations in \emph{UGT1A1}
-in \enquote{cancer} lineages), but CTRP (\(n =\) 48) and GDSC (\(n =\)
-39) identified 6 and 5, respectively, in skin cancer, lung cancer, and
-cancer. After Benjamini-Hochberg FDR correction, none of the datasets
-yielded significant DGL interactions.
+Prior to correction for an FDR of 5\%, 1 DGL,
+selumetinib-\emph{KRAS}-lung cancer, was identified in the CCLE screen
+when using mutation status as a correlate (\(n =\) 7, 2 DGLs were not
+analyzed due to lack of mutation annotations in \emph{UGT1A1} in
+\enquote{cancer} lineages), but CTRP (\(n =\) 48) and GDSC (\(n =\) 39)
+identified 5 and 4, respectively, in skin cancer, lung cancer, and
+cancer lineages. After Benjamini-Hochberg FDR correction, none of the
+datasets yielded significant DGL interactions.
 
 \begin{quote}
-\textbf{(???) KS test results}
+\textbf{(???) KS test results: Need to flesh out this section}
 \end{quote}
 
 (Figure~\ref{fig:ksplot})
@@ -507,15 +511,23 @@ yielded significant DGL interactions.
 
 
 
+
+
+
+
 \begin{figure}
 \centering
 \includegraphics{./plots/manuscript/g2p_spearman_ks_res_plot.pdf}
-\caption{\label{fig:ksplot}Comparison of Spearman correlation coefficients (\(r_s\))
-derived from copy number (log\(_2\) ratio), gene expression (RPKM), and
-AUC z-scores from G2P drug-gene associations. Coefficients were grouped
-by whether or not the associated lineage for each comparison was in a
-G2P drug-gene-lineage association or not. Distributions of these grouped
-coefficients were compared using Kolmogorov-Smirnov tests.}
+\caption{\label{fig:ksplot}\textbf{Comparison of drug-gene AUC vs.~gene expression and
+vs.~copy number in G2P and non-G2P cell lines}. Comparison of Spearman
+correlation coefficients (\(r_s\)) derived from copy number (log\(_2\)
+ratio) vs.~AUC z-scores and gene expression (RPKM) vs.~AUC z-scores for
+G2P drug-gene associations. Correlation coefficients were grouped by
+whether or not the associated lineage for each comparison was in a
+level-A G2P drug-gene-lineage association or not. The distributions of
+these grouped coefficients were compared using Kolmogorov-Smirnov tests
+to identify whether correlations in G2P lineages were distinct from
+correlations in non-G2P lineages.}
 \end{figure}
 
 \subsection{Are CRISPR/Cas9 gene essentiality results comparable to
@@ -524,12 +536,22 @@ screens?}\label{are-crisprcas9-gene-essentiality-results-comparable-to-those-of-
 
 
 
+\begin{figure}
+\centering
+\includegraphics{./plots/manuscript/crispr_spearman_corr_plot.pdf}
+\caption{\label{fig:crispr-waterfall}Stuff stuff stuff!}
+\end{figure}
+
+
+
+
 
 \begin{figure}
 \centering
 \includegraphics{./plots/manuscript/crispr_venn.pdf}
-\caption{\label{fig:crispr-venn}Overlap of genes whose gene expression and/or copy
-number significantly correlated with CERES score.}
+\caption{\label{fig:crispr-venn}\textbf{CRISPR sceen results}. Overlap of genes whose
+gene expression and/or copy number significantly correlated with CERES
+score (Spearman rank-order correlations).}
 \end{figure}
 
 The CRISPR screen from the Broad Institute reports gene dependency using
@@ -543,22 +565,22 @@ common core essential genes. Of the 34 G2P genes, only \emph{G6PD} was
 not targeted by an sgRNA in the CRISPR dataset.
 
 When we don't account for lineage, Wilcoxon rank-sum tests
-(\(p_k = 5.1^{-3}\), FDR \textless{} 5\%) revealed that mutations in 2
-genes significantly correlated with CERES score: \emph{KRAS}
-(\(p_{adj} = 2.6^{-37}\)) and \emph{BRAF} (\(p_{adj} = 8.2^{-18}\)).
-Gene expression (RPKM) of 12 out of 33 (36.36\%) G2P genes significantly
+(\(p_k = 4.1^{-17}\), FDR \textless{} 5\%) revealed that mutations in 1
+gene significantly correlated with CERES score: \emph{KRAS}
+(\(p_{adj} = 3.7^{-37}\)). Gene expression (RPKM) of 13 out of 33
+(39.39\%, Spearman rank-order correlations) G2P genes significantly
 correlated with CERES score, as did copy number (log2-ratio) for 12 out
-of 33 (36.36\%) G2P genes (Figure~\ref{fig:crispr-venn}).
+of 33 (36.36\%, Spearman rank-order correlations) G2P genes
+(Figure~\ref{fig:crispr-waterfall}). We see moderate overlap between
+these genes whose CERES scores significantly correlated with gene
+expression and with copy number (Figure~\ref{fig:crispr-venn}). For the
+purpose of comparison to the drug screen data, if we treat CRISPR
+knockdown like a small-molecule drug, then these results are more
+comprehensive than the results from CCLE, CTRP, and GDSC.
 
-For the purpose of comparison to the drug screen data, if we treat
-CRISPR knockdown like a small-molecule drug, then these results are more
-comprehensive than the results from CCLE, CTRP, and GDSC (Table 2).
-
-\begin{itemize}
-\tightlist
-\item
-  Lineage?
-\end{itemize}
+\begin{quote}
+\textbf{(???) Lineage????}
+\end{quote}
 
 \subsection{Are known copy number driven associations recapitulated in
 the drug and CRISPR
@@ -568,23 +590,26 @@ If a gene's response to is copy number driven, we would expect copy
 number to significantly correlate with AUC and gene essentiality scores,
 as would gene expression is expression and copy number are associated.
 
-In a lineage-agnostic context of the CRISPR screen, ERBB2 gene
-essentiality score had a significant negative correlation with ERBB2
-gene expression (\(p < 10^{-12}\), \(r = -0.31\)) and ERBB2 copy number
-(\(p < 10^{-15}\), \(r = -0.34\)) (\emph{Figure \#\#2}). Similarly, MET
-gene essentiality also correlated with both MET gene expression
-(\(p < 10^{-12}\), \(r = -0.31\)) and copy number (\(p < 10^{-8}\),
-\(r = -0.25\)). Notably, BRCA1 also significantly correlated with both
-gene expression (\(p < 0.001\), \(r = 0.16\)) and copy number
-(\(p < 0.01\), \(r = 0.14\)). BRCA2 significantly correlated with all
-three of the genomic features tested: gene expression (\(p < 0.05\),
-\(r = 0.10\)), copy number (\(p < 10^{-7}\), \(r = 0.23\)), and mutation
-status (\(p < 0.001\)).
+In a lineage-agnostic context of the CRISPR screen, \emph{ERBB2} gene
+essentiality score had significant negative correlations with
+\emph{ERBB2} gene expression (\(p = 8.3^{-12}\), \(r_s =\) -0.30) and
+\emph{ERBB2} copy number (\(p = 3.8^{-10}\), \(r_s =\) -0.27)
+(\emph{Figure \#\#2}). Notably, gene essentiality of \emph{MET}, which
+is known to have copy number alterations in some cancers (An et al.,
+2014; J. H. Kim, Kim, \& Kim, 2018), did not significantly correlate
+with \emph{MET} gene expression nor \emph{MET} copy number. \emph{BRCA1}
+gene essentiality also significantly correlated with both \emph{BRCA1}
+gene expression (\(p = 4.7^{-6}\), \(r_s =\) 0.20) and \emph{BRCA1} copy
+number (\(p = 1.1^{-3}\), \(r_s =\) 0.14). \emph{BRCA2} gene
+essentiality significantly correlated \emph{BRCA2} gene expression
+(\(p = 6.6^{-7}\), \(r_s =\) 0.22) but not \emph{BRCA2} copy number.
 
 \subsection{Which genomic features drive KRAS, EGFR, and BRAF drug-gene
 associations?}\label{which-genomic-features-drive-kras-egfr-and-braf-drug-gene-associations}
 
-\textbf{Should we do this?}
+\begin{quote}
+\textbf{(???) Should we do this?}
+\end{quote}
 
 \section{Discussion}\label{discussion}
 
@@ -697,7 +722,7 @@ processing}\label{depmap-data-retrieval-and-processing}
 CRISPR/Cas9, CCLE mutation calls, and CCLE copy number data were all
 retrieved from the Broad Institute's Cancer Dependency Map (DepMap)
 Public 18Q4 release via the DepMap data portal
-(\url{https://depmap.org/portal/download/}) (Broad DepMap, 2018). Gene
+(\url{https://depmap.org/portal/download/}) (DepMap, 2018). Gene
 expression data was retrieved from the DepMap Public 18Q3 release (Broad
 DepMap, 2018) from the same data portal. For cell lines with no CCLE
 annotation, the DepMap group drew raw copy number and mutation data from
@@ -715,12 +740,12 @@ a CRISPR/Cas9 (clustered regularly interspaced short palindromic
 repeats/CRISPR-associated 9) screen using the Broad Institute's Avana
 knockout library (Doench et al., 2016). The Broad Institute's data
 processing and screening methods are available from the figshare record
-(Broad DepMap, 2018) and the original publication of CERES, the
-algorithm that computes inferred gene dependency scores (Meyers et al.,
-2017). The DepMap releases new data quarterly, with the current data set
-being the 18Q4 release. This release has 175 more cell lines than the
-original data release that was published with CERES (dataset:
-gene\_effect.csv, accessed 15 November 2018).
+(DepMap, 2018) and the original publication of CERES, the algorithm that
+computes inferred gene dependency scores (Meyers et al., 2017). The
+DepMap releases new data quarterly, with the current data set being the
+18Q4 release. This release has 175 more cell lines than the original
+data release that was published with CERES (dataset: gene\_effect.csv,
+accessed 15 November 2018).
 
 \subsubsection{Mutation calls}\label{mutation-calls}
 
@@ -746,11 +771,11 @@ line.
 \subsubsection{Copy number data}\label{copy-number-data}
 
 The CCLE generated genomic copy number (CN) data using the Affymetrix
-Genome-Wide Human SNP Array 6.0 and GenePattern pipeline (The Cancer
-Genome Atlas Research Network, 2008) and normalized segmented CN
-log2-ratios for 23,299 genes across 1,098 cell lines using circular
-binary segmentation (Olshen, Venkatraman, Lucito, \& Wigler, 2004)
-(dataset: public\_18Q4\_gene\_cn.csv, accessed 15 November 2018).
+Genome-Wide Human SNP Array 6.0 and GenePattern pipeline (Network, 2008)
+and normalized segmented CN log2-ratios for 23,299 genes across 1,098
+cell lines using circular binary segmentation (Olshen, Venkatraman,
+Lucito, \& Wigler, 2004) (dataset: public\_18Q4\_gene\_cn.csv, accessed
+15 November 2018).
 
 \subsubsection{Gene expression data}\label{gene-expression-data}
 
@@ -822,10 +847,10 @@ For \emph{Figure 1}, all data were imported and manipulated using pandas
 executed on Python (v2.7.15) (Python Software Foundation,
 \url{https://www.python.org/}) in an IPython (v5.5.0) (Pérez \& Granger,
 2007) kernel within a localhost Jupyter (v5.2.2) notebook (Kluyver et
-al., 2016). All other analyses were conducted in R (v3.5.0) (R
-Development Core Team, 2010, \url{https://www.R-project.org/}) in an
-RStudio environment (v1.1.447) (RStudio, 2012). All other plots were
-drawn using the ggplot2 (v3.0.0) R package (Wickham, 2016).
+al., 2016). All other analyses were conducted in R (v3.5.0) (R. D. C.
+Team, 2010, \url{https://www.R-project.org/}) in an RStudio environment
+(v1.1.447) (RStudio, 2012). All other plots were drawn using the ggplot2
+(v3.0.0) R package (Wickham, 2016).
 
 \subsubsection{Statistics}\label{statistics}
 
@@ -835,9 +860,9 @@ in the ggpubr (v0.1.7.999) R package (Kassambara, 2018).
 the \texttt{p.adjust} function from the \texttt{stats} base R package.
 
 For computing Spearman correlation coefficients, we used the
-\texttt{cor.test} base R package. If there were 3 or fewer data points,
-then the correlation was not done and a value of \texttt{NA} was
-supplied.
+\texttt{cor.test} function from the \texttt{stats} package. If there
+were 3 or fewer data points, then the correlation was not done and a
+value of \texttt{NA} was supplied.
 
 \newpage
 
@@ -856,6 +881,13 @@ Alley, M. C., Scudiere, D. A., Monks, A., Hursey, M. L., Czerwinski, M.
 J., Fine, D. L., \ldots{} Boyd, M. R. (1988). Feasibility of Drug
 Screening with Panels of Human Tumor Cell Lines Using a Microculture
 Tetrazolium Assay. \emph{Cancer Research}, \emph{48}, 589--601.
+
+\hypertarget{ref-an2014}{}
+An, X., Wang, F., Shao, Q., Wang, F.-H., Wang, Z.-Q., Chen, C., \ldots{}
+Li, Y.-H. (2014). MET amplification is not rare and predicts unfavorable
+clinical outcomes in patients with recurrent/metastatic gastric cancer
+after chemotherapy. \emph{Cancer}, \emph{120}(5), 675--682.
+doi:\href{https://doi.org/10.1002/cncr.28454}{10.1002/cncr.28454}
 
 \hypertarget{ref-bairoch2018}{}
 Bairoch, A. (2018). The Cellosaurus, a Cell-Line Knowledge Resource.
@@ -890,11 +922,6 @@ alters cancer cell line drug response. \emph{Nature}, \emph{560}(7718),
 325--330.
 doi:\href{https://doi.org/10.1038/s41586-018-0409-3}{10.1038/s41586-018-0409-3}
 
-\hypertarget{ref-broaddepmap2018a}{}
-Broad DepMap. (2018, January 11). DepMap Achilles 18Q4 public. Figshare.
-Retrieved from
-\url{https://figshare.com/articles/DepMap_Achilles_18Q4_public/7270880}
-
 \hypertarget{ref-broaddepmap2018}{}
 Broad DepMap. (2018, January 8). DepMap Achilles 18Q3 public. Figshare.
 Retrieved from
@@ -918,6 +945,11 @@ Consortium, T. C. C. L. E., \& Consortium, T. G. of D. S. in C. (2015).
 Pharmacogenomic agreement between two cancer cell line data sets.
 \emph{Nature}, \emph{528}(7580), 84--87.
 doi:\href{https://doi.org/10.1038/nature15736}{10.1038/nature15736}
+
+\hypertarget{ref-broaddepmap2018a}{}
+DepMap, B. (2018, January 11). DepMap Achilles 18Q4 public. Figshare.
+Retrieved from
+\url{https://figshare.com/articles/DepMap_Achilles_18Q4_public/7270880}
 
 \hypertarget{ref-doench2016a}{}
 Doench, J. G., Fusi, N., Sullender, M., Hegde, M., Vaimberg, E. W.,
@@ -1029,6 +1061,12 @@ Kassambara, A. (2018). Ggpubr: 'Ggplot2' Based Publication Ready Plots
 (Version 0.1.7.999). Retrieved from
 \url{https://cran.r-project.org/web/packages/ggpubr/index.html}
 
+\hypertarget{ref-kim2018}{}
+Kim, J. H., Kim, H. S., \& Kim, B. J. (2018). Prognostic value of MET
+copy number gain in non-small-cell lung cancer: An updated
+meta-analysis. \emph{J Cancer}, \emph{9}(10), 1836--1845.
+doi:\href{https://doi.org/10.7150/jca.24980}{10.7150/jca.24980}
+
 \hypertarget{ref-kluyver2016}{}
 Kluyver, T., Ragan-Kelley, B., Pérez, F., Granger, B., Bussonnier, M.,
 Frederic, J., \ldots{} Team, J. D. (2016). Jupyter Notebooks - a
@@ -1083,6 +1121,12 @@ Lines Are Representative Models of the Main Molecular Subtypes of
 Primary Cancer. \emph{Cancer Research}, \emph{74}(12), 3238--3247.
 doi:\href{https://doi.org/10.1158/0008-5472.CAN-14-0013}{10.1158/0008-5472.CAN-14-0013}
 
+\hypertarget{ref-thecancergenomeatlasresearchnetwork2008}{}
+Network, T. C. G. A. R. (2008). Comprehensive genomic characterization
+defines human glioblastoma genes and core pathways, \emph{455},
+1061--1068.
+doi:\href{https://doi.org/10.1038/nature07385}{10.1038/nature07385}
+
 \hypertarget{ref-neve2006}{}
 Neve, R. M., Chin, K., Fridlyand, J., Yeh, J., Baehner, F. L., Fevr, T.,
 \ldots{} Gray, J. W. (2006). A collection of breast cancer cell lines
@@ -1119,11 +1163,6 @@ Cancer Cell Lines, \emph{63}, 1114--1121.
 Pérez, F., \& Granger, B. (2007). IPython: A System for Interactive
 Scientific Computing, \emph{9}(3), 21--29.
 doi:\href{https://doi.org/10.1109/MCSE.2007.53}{10.1109/MCSE.2007.53}
-
-\hypertarget{ref-rdevelopmentcoreteam2010}{}
-R Development Core Team. (2010). \emph{R: A Language and Environment for
-Statistical Computing}. Vienna, Austria: R Foundation for Statistical
-Computing. Retrieved from \url{https://www.R-project.org/}
 
 \hypertarget{ref-ramos2015a}{}
 Ramos, A. H., Lichtenstein, L., Gupta, M., Lawrence, M. S., Pugh, T. J.,
@@ -1192,11 +1231,10 @@ Interpreter annotates the biological and clinical relevance of tumor
 alterations. \emph{Genome Med}, \emph{10}.
 doi:\href{https://doi.org/10.1186/s13073-018-0531-8}{10.1186/s13073-018-0531-8}
 
-\hypertarget{ref-thecancergenomeatlasresearchnetwork2008}{}
-The Cancer Genome Atlas Research Network. (2008). Comprehensive genomic
-characterization defines human glioblastoma genes and core pathways,
-\emph{455}, 1061--1068.
-doi:\href{https://doi.org/10.1038/nature07385}{10.1038/nature07385}
+\hypertarget{ref-rdevelopmentcoreteam2010}{}
+Team, R. D. C. (2010). \emph{R: A Language and Environment for
+Statistical Computing}. Vienna, Austria: R Foundation for Statistical
+Computing. Retrieved from \url{https://www.R-project.org/}
 
 \hypertarget{ref-theglobalallianceforgenomicsandhealth2016}{}
 The Global Alliance for Genomics and Health. (2016). A federated
