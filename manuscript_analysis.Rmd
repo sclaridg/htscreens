@@ -566,11 +566,12 @@ maf_raw <- read.delim("./data_munging/18Q4/depmap_18Q4_mutation_calls_20181114.c
 colnames(maf_raw)[colnames(maf_raw) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
 # Select columns
 maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID", "Variant_Classification", "Reference_Allele", "Tumor_Seq_Allele1", "Genome_Change"))
-maf_df$Reference_Allele_Length <- ifelse(maf_df$Reference_Allele == "-", 0, nchar(as.character(maf_df$Reference_Allele)))
-maf_df$Tumor_Seq_Allele1_Length <- nchar(as.character(maf_df$Tumor_Seq_Allele1))
+maf_df$Reference_Allele <- ifelse(maf_df$Reference_Allele == "-", 0, nchar(as.character(maf_df$Reference_Allele)))
+maf_df$Tumor_Seq_Allele1 <- nchar(as.character(maf_df$Tumor_Seq_Allele1))
+maf_df <- maf_df[maf_df$Variant_Classification != "Silent",]
 # Add Mutation_Status column
-maf_df$Mutation_Status_Nonsilent <- ifelse(maf_df$Variant_Classification == "Silent", "Wildtype", "Mutant")
-maf_df <- unique(maf_df)
+maf_df$Mutation_Status_Nonsilent <- "Mutant"
+
 saveRDS(maf_df, "./data_munging/rds/maf_df_18Q4.rds", compress = "xz")
 ```
 
@@ -761,27 +762,42 @@ saveRDS(gdsc_data, "./data_munging/rds/gdsc_data_18Q4_g2pgenes.rds", compress = 
 
 ### Filter drug data
 
-```{r}
+```{r, eval=FALSE}
 ccle_data <- readRDS("./data_munging/rds/ccle_data_18Q4_g2pgenes.rds")
-ccle_data_ptmuts <- filter(ccle_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
-ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele_Length == 1 | is.na(ccle_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+ccle_data_ptmuts <- filter(ccle_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
+ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele == 1 | is.na(ccle_data_ptmuts$Reference_Allele), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
 ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ccle_data_ptmuts <- subset(ccle_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
 ccle_data_ptmuts$Dataset <- "CCLE"
 ccle_data_ptmuts$Hugo_Symbol <- ordered(ccle_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
+ccle_data_ptmuts <- unique(ccle_data_ptmuts)
+saveRDS(ccle_data_ptmuts, "./data_munging/rds/ccle_data_18Q4_g2pgenes_ptmuts.rds", compress = "xz")
 
 ctrp_data <- readRDS("./data_munging/rds/ctrp_data_18Q4_g2pgenes.rds")
-ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
-ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele_Length == 1 | is.na(ctrp_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
+ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele == 1 | is.na(ctrp_data_ptmuts$Reference_Allele), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
 ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
+ctrp_data_ptmuts <- subset(ctrp_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
 ctrp_data_ptmuts$Dataset <- "CTRP"
 ctrp_data_ptmuts$Hugo_Symbol <- ordered(ctrp_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
+ctrp_data_ptmuts <- unique(ctrp_data_ptmuts)
+saveRDS(ctrp_data_ptmuts, "./data_munging/rds/ctrp_data_18Q4_g2pgenes_ptmuts.rds", compress = "xz")
 
 gdsc_data <- readRDS("./data_munging/rds/gdsc_data_18Q4_g2pgenes.rds")
-gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
-gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele_Length == 1 | is.na(gdsc_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
+gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
+gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele == 1 | is.na(gdsc_data_ptmuts$Reference_Allele), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
 gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
+gdsc_data_ptmuts <- subset(gdsc_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
 gdsc_data_ptmuts$Dataset <- "GDSC"
 gdsc_data_ptmuts$Hugo_Symbol <- ordered(gdsc_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
+gdsc_data_ptmuts <- unique(gdsc_data_ptmuts)
+saveRDS(gdsc_data_ptmuts, "./data_munging/rds/gdsc_data_18Q4_g2pgenes_ptmuts.rds", compress = "xz")
+```
+
+```{r}
+ccle_data_ptmuts <- readRDS("./data_munging/rds/ccle_data_18Q4_g2pgenes_ptmuts.rds")
+ctrp_data_ptmuts <- readRDS("./data_munging/rds/ctrp_data_18Q4_g2pgenes_ptmuts.rds")
+gdsc_data_ptmuts <- readRDS("./data_munging/rds/gdsc_data_18Q4_g2pgenes_ptmuts.rds")
 
 # Filter drug screen datasets for G2P drug-gene associations
 ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_druggenes)
@@ -806,9 +822,8 @@ ctrp_data_g2p_grid <- filter(ctrp_data_ptmuts, Drug %in% g2p_drugs)
 ctrp_data_g2p_grid$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
 gdsc_data_g2p_grid <- filter(gdsc_data_ptmuts, Drug %in% g2p_drugs)
 gdsc_data_g2p_grid$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-```
 
-```{r}
+# Testing
 test_ccle <- ccle_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 test_ctrp <- ctrp_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
 test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
@@ -816,6 +831,7 @@ test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilen
 # drug_summ <- data.frame(Drug = g2p_drugs, Dataset_Count = 0)
 ```
 
+How many datasets screen each G2P drug?
 ```{r}
 drug_summ <- data.frame(Drug = character(), Dataset_Count = integer(), stringsAsFactors = FALSE)
 
@@ -886,13 +902,26 @@ ge_crispr_18Q3 <- filter(ge_melt_18Q3, Hugo_Symbol %in% as.character(unique(cris
 crispr_data <- merge(crispr_data, ge_crispr_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
 # crispr_data <- merge(crispr_data, ge_crispr_18Q4, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
 saveRDS(crispr_data, "./../htscreens_giant_files/crispr_data_18Q4.rds", compress = "xz")
+
+# Takes a really long time to run (4+ hours)
+# crispr_data_ptmuts <- filter(crispr_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
+# crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele == 1 | is.na(crispr_data_ptmuts$Reference_Allele), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
+# crispr_data_ptmuts <- filter(crispr_data_ptmuts, Keep_PtMut_Tests == TRUE)
+# crispr_data_ptmuts <- subset(crispr_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
+# crispr_data_ptmuts <- unique(crispr_data_ptmuts)
+# saveRDS(crispr_data_ptmuts, "./data_munging/rds/crispr_data_18Q4_ptmuts.rds", compress = "xz")
 ```
 
 ```{r}
 crispr_data <- readRDS("./../htscreens_giant_files/crispr_data_18Q4.rds")
-crispr_data_ptmuts <- filter(crispr_data, Reference_Allele_Length == 1 | Reference_Allele_Length == 0 | is.na(Reference_Allele_Length))
-crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele_Length == 1 | is.na(crispr_data_ptmuts$Reference_Allele_Length), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1_Length == 1, TRUE, FALSE))
-crispr_data_ptmuts <- filter(crispr_data_ptmuts, Keep_PtMut_Tests == TRUE)
+# crispr_data_ptmuts <- readRDS("./../htscreens_giant_files/crispr_data_18Q4_ptmuts.rds")
+# 
+# crispr_data_ptmuts <- filter(crispr_data, Hugo_Symbol %in% g2p_genes)
+# crispr_data_ptmuts <- filter(crispr_data_ptmuts, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
+# crispr_data_ptmuts$Keep_PtMut_Tests <- ifelse(crispr_data_ptmuts$Reference_Allele == 1 | is.na(crispr_data_ptmuts$Reference_Allele), TRUE, ifelse(crispr_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
+# crispr_data_ptmuts <- filter(crispr_data_ptmuts, Keep_PtMut_Tests == TRUE)
+# crispr_data_ptmuts <- subset(crispr_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
+# crispr_data_ptmuts <- unique(crispr_data_ptmuts)
 
 # Filter CRISPR for G2P genes in G2P
 crispr_data_g2p <- filter(crispr_data_ptmuts, Hugo_Symbol %in% g2p_genes)
