@@ -33,7 +33,7 @@ wordcount         : "X"
 bibliography      : ["manuscript.bib"]
 
 floatsintext      : yes
-figsintext        : no
+figsintext        : yes
 figurelist        : no
 tablelist         : no
 footnotelist      : no
@@ -380,7 +380,7 @@ crispr_spearman_res_CN_sig <- filter(crispr_spearman_res_CN, p < 0.05)
 ```
 
 
-(ref:crispr-waterfall) Stuff stuff stuff!
+(ref:crispr-waterfall) **CRISPR screen correlations between  dependencey score, gene expression, and copy number**. Significance of Spearman correlation coefficients ($r_s$) derived from comparisons of CERES score/gene expression and CERES score/copy number for the `r length(crispr_signif_g2p_gene$Hugo_Symbol)` G2P genes screened in the CRISPR dataset. Inset plots show example derivations of Spearman correlation coefficients using *KRAS* gene expression (left) and copy number (right). In both inset plots, each point represents data from one cell line.
 
 ```{r crispr-waterfall, echo = FALSE, message=FALSE, warning=FALSE, fig.cap='(ref:crispr-waterfall)'}
 knitr::include_graphics("./plots/manuscript/crispr_spearman_corr_plot.pdf")
