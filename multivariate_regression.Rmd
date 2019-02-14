@@ -1,0 +1,140 @@
+---
+title: "Multivariate Regression"
+author: "Sally Claridge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+    code_folding: hide
+    pandoc_args: [
+      "+RTS", "-K2048m",
+      "-RTS"
+    ]
+---
+
+This is part of the ongoing [Variant Interpretation for Cancer Consortium Meta-Knowledgebase (G2P)](https://search.cancervariants.org/#*) project. This part of the project is mentored by Denise Duma, PhD, in which we aim to use a partial least squares (PLS) multivariate regression model to (**1**) determine the feature modules that best explain the drug responses observed in the [Cancer Cell Line Encyclopedia (CCLE)](https://portals.broadinstitute.org/ccle), [Cancer Therapeutics Response Portal (CTRP)](https://portals.broadinstitute.org/ctrp/), and [Genomics of Drug Senstitivity in Cancer (GDSC)](https://www.cancerrxgene.org/) pharmacogenomics screens in cancer cell lines, and (**2**) develop a robust predictive model for linking multiple omics features to drug sensitivity across these hundreds of cell lines of various cancer lineages. We utillize gene expression, copy number, and mutation status data collected by the CCLE for nearly all of these cell lines and distributed via the [Cancer Dependency Map (DepMap)](https://depmap.org/portal/), a collaborative project helmed by the Broad Institute and Wellcome Trust Sanger Institute.
+
+# SET UP
+
+--------------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+set.seed(1234)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# num_cores <- parallel::detectCores()
+options(mc.cores = parallel::detectCores(), expressions = 5e5, digits = 4)
+```
+
+```{r libraries}
+library(tidyverse)
+library(pls)
+```
+
+# Introduction to the `pls` package
+
+--------------------------------------------------------------------------------
+
+These examples are derived from "Introduction to `pls` Package" by Bjorn Mevik and Ron Wehrens (2018).
+
+Load example data sets:
+```{r}
+data(yarn)
+data(oliveoil)
+data(gasoline)
+```
+
+## `gasoline` example
+
+Divide data into test and training sets:
+```{r}
+gasTrain <- gasoline[1:50,]
+gasTest <- gasoline[51:60,]
+```
+
+Fit a PLSR model. Note that validation is presented as RMSEP, which is Root Mean Squared Error of Prediction. `CV` are ordinary crossvalidation estimates, and `adjCV` are bias-corrected crossvalidation estimates.
+```{r}
+gas1 <- plsr(octane ~ NIR, ncomp = 10, data = gasTrain, validation = "LOO")
+
+summary(gas1)
+```
+
+The first plot is of the the RMSEP curves for gasoline data, grouped by `CV` and `adjCV` as functions of the number of components. Visually, we see the main inflection point occurs at 2 components. Using those 2 components, make a prediction plot. This plots the cross-validated predictions with two components versus measured values. The plots fall along the target $y = 1$ line and we do not observe any curvature or abnormalities.
+```{r}
+par(mfrow = c(1, 2))
+plot(RMSEP(gas1), legendpos = "topright")
+# plot(gas1, plottype = "validation", legendpos = "topright")
+plot(gas1, ncomp = 2, asp = 1, line = TRUE)
+par(mfrow = c(1, 1))
+```
+
+This is a pairwise plot of the score values for the first 3 coponents, which can be used to look for patterns, groups, or outliers in the data.
+```{r}
+plot(gas1, plottype = "scores", comps = 1:3)
+```
+
+The percents in parentheses above indicate the relative amount of X variance explained by each component. These explained variances can be extracted:
+```{r}
+explvar(gas1)
+```
+
+Loading plots are frequently used for interpretation purposes.
+```{r}
+plot(gas1, "loadings", comps = 1:2, legendpos = "topleft", labels = "numbers", xlab = "nm")
+```
+
+Using the `gas1` model, we can predict response values of new observations. Since we know the true response values for these samples, we can calculate the RMSEP for the test set. We se that for 2 components, we get 0.2445, which is close to the crossvalidated RMSEP (0.297).
+```{r}
+predict(gas1, ncomp = 2, newdata = gasTest)
+RMSEP(gas1, newdata = gasTest)
+```
+
+## Model fitting examples
+
+When the response term is a matrix, a multi-response model is fit:
+```{r}
+dim(oliveoil$sensory)
+dim(oliveoil$chemical)
+plsr(sensory ~ chemical, data = oliveoil)
+```
+
+You can use `update()` to refit a prevoous model using new parameters or new/different observations:
+```{r}
+dens1 <- plsr(density ~ NIR, ncomp = 5, data = yarn)
+trainid <- which(yarn$train == TRUE)
+dens2 <- update(dens1, subset = trainid)
+dens3 <- update(dens1, ncomp = 10)
+```
+
+In PLS, predictor variables are always centered as part of the fit algorithm. If `scale = TRUE`, then each variable is standardized by dividing it by its standard deviation, and if `scale` is a numeric vector, each variable is divided by the corresponding number.
+```{r}
+olive1 <- plsr(sensory ~ chemical, scale = TRUE, data = oliveoil)
+```
+
+## Choosing the number of components with crossvalidation
+
+There are two component selection strategies in `seelctNcomp`. (1) Is the one-sigma heuristic that consists of choosing the model with the fewest components that is still less than one standard error away from the overall best model. (2) Uses a permutation approach that tests whether adding a new component is beneficial by taking the global minimum of the crossvalidation curve and reducing the number of components one by one as long as no significant deterioration in performance is found (default is $\alpha = 0.01$).
+```{r}
+par(mfrow = c(1, 2))
+ncomp.onesigma <- selectNcomp(gas1, method = "onesigma", plot = TRUE, main = "One-Sigma")
+ncomp.permut <- selectNcomp(gas1, method = "randomization", plot = TRUE, main = "Permutation")
+par(mfrow = c(1, 1))
+```
+
+The `crossval` function takes an `mvr` object and performs crossvalidation such that the pre-treatment is done for each segment. Applying MSC in this case leads to nearly identical crossvalidation estimates of prediction error. Whe n the scaling does not depend on dividing the data into segments, `crossval`, though slower, gives the same results as `mvrCv`.
+```{r}
+gas2 <- plsr(octane ~ msc(NIR), ncomp = 10, data = gasTrain) # msc is domain-sepcific to NIR
+gas2.cv <- crossval(gas2, segments = 10)
+plot(MSEP(gas2.cv), legendpos = "topright")
+summary(gas2.cv, what = "validation")
+```
+
+
+
+
+
+
