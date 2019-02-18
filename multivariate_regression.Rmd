@@ -72,7 +72,7 @@ plot(gas1, ncomp = 2, asp = 1, line = TRUE)
 par(mfrow = c(1, 1))
 ```
 
-This is a pairwise plot of the score values for the first 3 coponents, which can be used to look for patterns, groups, or outliers in the data.
+This is a pairwise plot of the score values for the first 3 coponents, which can be used to look for patterns, groups, or outliers in the data (can use `scoreplot` function).
 ```{r}
 plot(gas1, plottype = "scores", comps = 1:3)
 ```
@@ -82,7 +82,7 @@ The percents in parentheses above indicate the relative amount of X variance exp
 explvar(gas1)
 ```
 
-Loading plots are frequently used for interpretation purposes.
+Loading plots are frequently used for interpretation purposes (can use `loadingplot` function).
 ```{r}
 plot(gas1, "loadings", comps = 1:2, legendpos = "topleft", labels = "numbers", xlab = "nm")
 ```
@@ -132,6 +132,53 @@ gas2.cv <- crossval(gas2, segments = 10)
 plot(MSEP(gas2.cv), legendpos = "topright")
 summary(gas2.cv, what = "validation")
 ```
+
+## Inspecting fitted models
+
+### Plots
+
+Prediction plots (`predplot`) can be used to compare predicted vs. measured values. Test data predictions are used if the `newdata` argument is called, crossvalidated predictions are used if the model was built using crossvalidation, and the default is to use predictions from the training set.
+
+We can use a validation plot (`validationplot`) to visually assess the optimal number of components. The y-axis is RMSEP, MSEP, or R^2^, and the x-axis is the number of components. Usually, you take the first locak minimum rather than the absolute minimum to avoid overfitting.
+
+We can look at the loadings and scores using `loadingplot` and `scoreplot` functions (examples of these plots are above).
+
+We can also visualize the regression coefficients using `coefplot` or as below. We can plot the regression vectors for multiple components simultaneously. Coefficients for component 2 and 3 look similar becasue component 3 contributes little to the predictions.
+```{r}
+plot(gas1, plottype = "coef", ncomp = 1:3, legendpos = "bottomleft", labels = "numbers", xlab = "nm")
+```
+
+A correlation loadings plot (`corrplot` function) shows correlations between each variable and specified components. From the manual:
+
+>These plots are scatter plots of two sets of scores with concentric circles of radii given by `radii`. Each point corresponds to an X variable. The squared distance between the point and the origin equals the fraction of the variance of the variable explained by the components in the panel. The default values for radii correspond to 50% and 100% explained variance, respectively.
+
+```{r}
+plot(gas1, plottype = "correlation", comps = 1:3)
+```
+
+### Extraction
+
+Using `coef`, you can extract the regression coefficients from the model. You can modify how many components to take into account and whether or not an intercept is necessary (default is `FALSE`).
+
+Scores and loadings can be extracted via `scores` and `loadings` for X and `Yscores` and `Yloadings` for Y. The `loading.weights` function can extract the weights from a PLSR model but not a PCA model.
+
+## Predicting new observations
+
+The `predict` method is used to predict future observations. Standard form is `predict(mymodel, ncomp = myncomp, newdata = mynewdata)`, where `mymodel` is a fitted model, `myncomp` specifies the model size to be used, and `mynewdata` is a data frame or matrix of new X observations and can contain new Y data to compare against the predictions or to estimate the predictive ability of the model. You can also make predictions using specific components with the `comps` argument. `predict` returns a three-dimensional array, in which entry (*i*, *j*, *k*) is the predicted value for observation *i*, response *j*, and model size *k*. When `comps` is used, the *k* dimension is dropped because the results are always from a single model. `drop` drops singleton dimensions. You can use `predplot` to view the predictions comparing predicted and measured values.
+```{r}
+drop(predict(gas1, ncomp = 2:3, newdata = gasTest[1:5,]))
+predplot(gas1, ncomp = 2:3, newdata = gasTest, asp = 1, line = TRUE)
+```
+
+##
+
+
+
+
+
+
+
+
 
 
 
