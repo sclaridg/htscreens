@@ -31,6 +31,7 @@ options(mc.cores = parallel::detectCores(), expressions = 5e5, digits = 4)
 ```
 
 ```{r libraries}
+library(reshape2)
 library(tidyverse)
 library(pls)
 ```
@@ -117,7 +118,7 @@ olive1 <- plsr(sensory ~ chemical, scale = TRUE, data = oliveoil)
 
 ## Choosing the number of components with crossvalidation
 
-There are two component selection strategies in `seelctNcomp`. (1) Is the one-sigma heuristic that consists of choosing the model with the fewest components that is still less than one standard error away from the overall best model. (2) Uses a permutation approach that tests whether adding a new component is beneficial by taking the global minimum of the crossvalidation curve and reducing the number of components one by one as long as no significant deterioration in performance is found (default is $\alpha = 0.01$).
+There are two component selection strategies in `selectNcomp`. (1) Is the one-sigma heuristic that consists of choosing the model with the fewest components that is still less than one standard error away from the overall best model. (2) Uses a permutation approach that tests whether adding a new component is beneficial by taking the global minimum of the crossvalidation curve and reducing the number of components one by one as long as no significant deterioration in performance is found (default is $\alpha = 0.01$).
 ```{r}
 par(mfrow = c(1, 2))
 ncomp.onesigma <- selectNcomp(gas1, method = "onesigma", plot = TRUE, main = "One-Sigma")
@@ -170,14 +171,133 @@ drop(predict(gas1, ncomp = 2:3, newdata = gasTest[1:5,]))
 predplot(gas1, ncomp = 2:3, newdata = gasTest, asp = 1, line = TRUE)
 ```
 
-##
+# Test `pls` with drugscreen data
 
+--------------------------------------------------------------------------------
 
+## Global data files
 
+Load in G2P data for gene filtering:
+```{r}
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
+ach2cvcl <- select(ccl_converter, accession_id, DepMap_ID)
+lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
 
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
+g2p[, 1:2] <- NULL
+g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
 
+g2p$Drug <- tolower(g2p$Drug)
+g2p[g2p == -1] <- NA
+g2p$Ref[g2p$Ref == "None"] <- NA
+g2p$Alt[g2p$Alt == "None"] <- NA
+g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
+g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
+g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
+g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
 
+g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
+g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
+g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+# g2p_druggenes
+# g2p_drugs
+# g2p_genes
+# g2p_lins
 
+# Order and genes taken from pink heatmapo from Daniel's analyses
+g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
+```
+
+Drug metadata and gene expression data:
+```{r}
+drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv", sep = "\t", header = FALSE)
+colnames(drug_meta) <- c("CID", "Drug")
+drug_meta$Drug <- tolower(drug_meta$Drug)
+
+ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
+# ge <- filter(ge_melt_18Q3, DepMap_ID %in% ach2cvcl$DepMap_ID)
+# ge <- dcast(ge[sample(nrow(ge), 5000),], CCLE_Name + DepMap_ID ~ Hugo_Symbol, value.var = "RPKM")
+ge <- filter(ge_melt_18Q3, Hugo_Symbol %in% g2p_genes)
+ge <- dcast(ge, CCLE_Name + DepMap_ID ~ Hugo_Symbol, value.var = "RPKM")
+ge <- merge(ach2cvcl, ge, by = "DepMap_ID")
+rownames(ge) <- ge$accession_id
+ge[, 1:3] <- NULL
+ge[] <- sapply(ge, function(x) log2(x + 0.25))
+```
+
+## CCLE
+
+```{r}
+ccle <- read.delim("./data_munging/data_drug_auc_ccle_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
+ccle <- merge(drug_meta, ccle, by = "CID")
+ccle <- filter(ccle, Drug %in% g2p_drugs)
+rownames(ccle) <- ccle$Drug
+ccle$Drug <- NULL
+ccle$CID <- NULL
+ccle$Dataset <- NULL
+ccle[] <- sapply(ccle, function(x) as.numeric(as.character(x)))
+ccle <- t(ccle)
+
+ccle <- ccle[intersect(rownames(ccle), rownames(ge)),]
+ge_ccle <- ge[intersect(rownames(ccle), rownames(ge)),]
+
+# Test only erlotinib
+ccle_eqn <- data.frame(depy = I(as.matrix(ccle[,2])), indx = I(as.matrix(ge_ccle))) 
+ccle_plsr1 <- plsr(depy ~ indx, data = ccle_eqn, validation = "LOO")
+summary(ccle_plsr1)
+
+par(mfrow = c(1, 2))
+ccle_erlot_ncomp.onesigma <- selectNcomp(ccle_plsr1, method = "onesigma", plot = TRUE, main = "One-Sigma")
+ccle_erlot_ncomp.permut <- selectNcomp(ccle_plsr1, method = "randomization", plot = TRUE, main = "Permutation")
+par(mfrow = c(1, 1))
+```
+
+```{r}
+plot(RMSEP(ccle_plsr1))
+plot(ccle_plsr1, ncomp = ccle_erlot_ncomp.onesigma, asp = 1, line = TRUE)
+plot(ccle_plsr1, plottype = "scores", comps = 1:5)
+plot(ccle_plsr1, plottype = "loadings", comps = 1:5, legendpos = "topright")
+plot(ccle_plsr1, plottype = "correlation", comps = 1:5)
+plot(ccle_plsr1, plottype = "coef", ncomp = 1:5, legendpos = "topright")
+```
+
+## CTRP
+
+```{r}
+ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
+ctrp <- merge(drug_meta, ctrp, by = "CID")
+ctrp <- filter(ctrp, Drug %in% g2p_drugs)
+rownames(ctrp) <- ctrp$Drug
+ctrp$Drug <- NULL
+ctrp$CID <- NULL
+ctrp$Dataset <- NULL
+ctrp[] <- sapply(ctrp, function(x) as.numeric(as.character(x)))
+ctrp <- t(ctrp)
+
+ctrp <- ctrp[intersect(rownames(ctrp), rownames(ge)),]
+ge_ctrp <- ge[intersect(rownames(ctrp), rownames(ge)),]
+
+ctrp_eqn <- data.frame(depy = I(as.matrix(ctrp[,6])), indx = I(as.matrix(ge_ctrp))) 
+ctrp_plsr1 <- plsr(depy ~ indx, data = ctrp_eqn, validation = "LOO")
+summary(ctrp_plsr1)
+```
+
+```{r, eval=FALSE}
+ctrp_plsr <- list()
+for(i in 1:ncol(ctrp)) {
+  ctrp_eqn <- data.frame(depy = I(as.matrix(ctrp[,i])), indx = I(as.matrix(ge_ctrp)))
+  ctrp_plsr_new <- plsr(depy ~ indx, data = ctrp_eqn, validation = "LOO")
+  ctrp_plsr[[i]] <- ctrp_plsr_new
+  # summary(ctrp_plsr1)
+}
+names(ctrp_plsr) <- colnames(ctrp)
+
+test <- selectNcomp(ctrp_plsr[["fluorouracil"]], method = "randomization", plot = TRUE)
+```
 
 
 

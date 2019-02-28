@@ -536,7 +536,7 @@ makeDrugBoxplots <- function(drug, dataset) {
 
 ## D. Charytonowicz cell line converter
 
-This comprehensive cancer cell line information curated by Daniel Charytonowicz.
+This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 ```{r}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
