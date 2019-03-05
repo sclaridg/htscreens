@@ -1,5 +1,5 @@
 ---
-title: "Manuscript"
+title: "18Q4"
 author: "Sally Claridge"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
@@ -17,7 +17,7 @@ output:
     ]
 ---
 
-Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017) and the Broad and Dana-Farber Cancer Institite's Achilles shRNA (MacFarland et al. 2018, Data Science 2018).
+Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017), the Cancer Therapeutics Response Portal (CTRP) drug screen dataset (v2) (Basu et al., 2013; M. G. Rees et al., 2016; B. Seashore-Ludlow et al., 2015), the Genomics of Drug Sensitivity in Cancer (GDSC) drug screen dataset (Garnett et al., 2012; Yang et al., 2012) , and the Cancer Cell Line Encyclopedia (CCLE) drug screen dataset (J. Barretina et al., 2012; T. C. C. L. E. Consortium & Consortium, 2015).
 
 The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meyers et al. 2017) ([GitHub](https://github.com/cancerdatasci/ceres)), which generates gene dependency scores from sgRNA depletion scores from gene essentiality screens and eliminates bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes.
 
