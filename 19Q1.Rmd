@@ -1,0 +1,65 @@
+---
+title: "19Q1"
+author: "Sally Claridge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+    code_folding: hide
+    pandoc_args: [
+      "+RTS", "-K2048m",
+      "-RTS"
+    ]
+---
+
+Analysis of the Broad's Avana CRISPR (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017) and the Broad and Dana-Farber Cancer Institite's Achilles shRNA (MacFarland et al. 2018, Data Science 2018).
+
+The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meyers et al. 2017) ([GitHub](https://github.com/cancerdatasci/ceres)), which generates gene dependency scores from sgRNA depletion scores from gene essentiality screens and eliminates bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes.
+
+All annotation files (copy number, mutation status, and gene expression) (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/).
+
+# SET UP
+
+--------------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+set.seed(1234)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# num_cores <- parallel::detectCores()
+options(mc.cores = parallel::detectCores(), expressions = 5e5)
+```
+
+Edited `.Renviron` to avoid "Error: memory exhausted (limit reached?)" when melting the GE dataset, as per the suggestion from [StackOverflow](https://stackoverflow.com/questions/51295402/r-on-macos-error-vector-memory-exhausted-limit-reached)
+```
+cd ~
+touch .Renviron
+open .Renviron
+# Added following line to .Renviron:
+R_MAX_VSIZE=100Gb
+```
+
+```{r}
+library(bsselectR)
+library(cowplot)
+theme_set(theme_light())
+library(data.table)
+library(ggpubr)
+library(ggrepel)
+library(ggsignif)
+library(gplots)
+library(gridExtra)
+library(htmlwidgets)
+library(kableExtra)
+library(papaja)
+library(plotly)
+library(reshape2)
+library(scales)
+library(tidyverse)
+library(VennDiagram)
+# devtools::install_github("crsh/papaja")
+```
