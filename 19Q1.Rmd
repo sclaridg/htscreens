@@ -111,7 +111,7 @@ maf_df <- maf_df[maf_df$Variant_Classification != "Silent",]
 # Add Mutation_Status column
 maf_df$Mutation_Status_Nonsilent <- "Mutant"
 
-saveRDS(maf_df, "./data_munging/rds/maf_df_19Q1.rds", compress = "xz")
+saveRDS(maf_df, "./data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
 
 ### Copy number (CN)
@@ -124,7 +124,7 @@ colnames(cn) <- gsub(" .*", "", colnames(cn))
 colnames(cn)[1] <- "Broad_ID"
 # Melt
 cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Hugo_Symbol", value.name = "CN")
-saveRDS(cn_melt, "./data_munging/rds/cn_melt_19Q1.rds", compress = "xz")
+saveRDS(cn_melt, "./data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```
 
 ### Gene expression (GE)
@@ -151,9 +151,9 @@ ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.
 colnames(ge_19Q1) <- gsub(" .*", "", colnames(ge_19Q1))
 colnames(ge_19Q1)[1] <- "Broad_ID"
 # Melt
-ge_melt_19Q1_all <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
+ge_melt_19Q1 <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
 # ge_melt_19Q1 <- unique(ge_melt_19Q1_all)
-saveRDS(ge_melt_19Q1, "./data_munging/rds/ge_melt_19Q1.rds", compress = "xz")
+saveRDS(ge_melt_19Q1, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
 
 ## G2P
@@ -198,9 +198,9 @@ summ
 ```
 
 ```{r, eval=FALSE}
-cn_melt <- readRDS("./data_munging/rds/cn_melt_19Q1.rds")
+cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
 ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
-# ge_melt_19Q1 <- readRDS("./data_munging/rds/ge_melt_19Q1.rds")
+# ge_melt_19Q1 <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
 
 # maf_filt_dan <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
 # write.table(maf_filt_dan, file = "~/Desktop/maf_filt_dan_19Q1_2018112.csv", quote = FALSE, sep = ",", row.names = FALSE)
@@ -211,7 +211,7 @@ ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 ### Merge drug data and annotations
 
 ```{r}
-maf_df <- readRDS("./data_munging/rds/maf_df_19Q1.rds")
+maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
 test <- filter(maf_df, Hugo_Symbol %in% g2p_genes) %>% count(Hugo_Symbol, CCLE_Name)
 test <- test[order(test$n, decreasing = TRUE),]
 ```
@@ -252,7 +252,7 @@ ccle_data$Color_Nonsilent <- ifelse(ccle_data$Mutation_Status_Nonsilent == "Wild
 ccle_data$Color_Nonsilent <- factor(ccle_data$Color_Nonsilent)
 ccle_data$Drug_Gene <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol)
 ccle_data$Drug_Gene_Lin <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol, "_", ccle_data$group_general_lineage_name)
-saveRDS(ccle_data, "./data_munging/rds/ccle_data_19Q1_g2pgenes.rds", compress = "xz")
+saveRDS(ccle_data, "./data_munging/19Q1/ccle_data_19Q1_g2pgenes.rds", compress = "xz")
 
 # CTRP
 ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
@@ -274,7 +274,7 @@ ctrp_data$Color_Nonsilent <- ifelse(ctrp_data$Mutation_Status_Nonsilent == "Wild
 ctrp_data$Color_Nonsilent <- factor(ctrp_data$Color_Nonsilent)
 ctrp_data$Drug_Gene <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol)
 ctrp_data$Drug_Gene_Lin <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol, "_", ctrp_data$group_general_lineage_name)
-saveRDS(ctrp_data, "./data_munging/rds/ctrp_data_19Q1_g2pgenes.rds", compress = "xz")
+saveRDS(ctrp_data, "./data_munging/19Q1/ctrp_data_19Q1_g2pgenes.rds", compress = "xz")
 
 # GDSC
 gdsc <- read.delim("./data_munging/data_drug_auc_gdsc_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
@@ -296,13 +296,13 @@ gdsc_data$Color_Nonsilent <- ifelse(gdsc_data$Mutation_Status_Nonsilent == "Wild
 gdsc_data$Color_Nonsilent <- factor(gdsc_data$Color_Nonsilent)
 gdsc_data$Drug_Gene <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol)
 gdsc_data$Drug_Gene_Lin <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol, "_", gdsc_data$group_general_lineage_name)
-saveRDS(gdsc_data, "./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds", compress = "xz")
+saveRDS(gdsc_data, "./data_munging/19Q1/gdsc_data_19Q1_g2pgenes.rds", compress = "xz")
 ```
 
 ### Filter drug data
 
 ```{r, eval=FALSE}
-ccle_data <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
+ccle_data <- readRDS("./data_munging/19Q1/ccle_data_19Q1_g2pgenes.rds")
 ccle_data_ptmuts <- filter(ccle_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
 ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele == 1 | is.na(ccle_data_ptmuts$Reference_Allele), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
 ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
@@ -311,9 +311,9 @@ ccle_data_ptmuts <- subset(ccle_data_ptmuts, select = -c(Variant_Classification,
 ccle_data_ptmuts$Dataset <- "CCLE"
 ccle_data_ptmuts$Hugo_Symbol <- ordered(ccle_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
 ccle_data_ptmuts <- unique(ccle_data_ptmuts)
-saveRDS(ccle_data_ptmuts, "./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
+saveRDS(ccle_data_ptmuts, "./data_munging/19Q1/ccle_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
 
-ctrp_data <- readRDS("./data_munging/rds/ctrp_data_19Q1_g2pgenes.rds")
+ctrp_data <- readRDS("./data_munging/19Q1/ctrp_data_19Q1_g2pgenes.rds")
 ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
 ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele == 1 | is.na(ctrp_data_ptmuts$Reference_Allele), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
 ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
@@ -322,9 +322,9 @@ ctrp_data_ptmuts <- subset(ctrp_data_ptmuts, select = -c(Variant_Classification,
 ctrp_data_ptmuts$Dataset <- "CTRP"
 ctrp_data_ptmuts$Hugo_Symbol <- ordered(ctrp_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
 ctrp_data_ptmuts <- unique(ctrp_data_ptmuts)
-saveRDS(ctrp_data_ptmuts, "./data_munging/rds/ctrp_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
+saveRDS(ctrp_data_ptmuts, "./data_munging/19Q1/ctrp_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
 
-gdsc_data <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
+gdsc_data <- readRDS("./data_munging/19Q1/gdsc_data_19Q1_g2pgenes.rds")
 gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
 gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele == 1 | is.na(gdsc_data_ptmuts$Reference_Allele), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
 gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
@@ -333,16 +333,16 @@ gdsc_data_ptmuts <- subset(gdsc_data_ptmuts, select = -c(Variant_Classification,
 gdsc_data_ptmuts$Dataset <- "GDSC"
 gdsc_data_ptmuts$Hugo_Symbol <- ordered(gdsc_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
 gdsc_data_ptmuts <- unique(gdsc_data_ptmuts)
-saveRDS(gdsc_data_ptmuts, "./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
+saveRDS(gdsc_data_ptmuts, "./data_munging/19Q1/gdsc_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
 ```
 
 ```{r}
-ccle_data <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
-ctrp_data <- readRDS("./data_munging/rds/ctrp_data_19Q1_g2pgenes.rds")
-gdsc_data <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
-ccle_data_ptmuts <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds")
-ctrp_data_ptmuts <- readRDS("./data_munging/rds/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
-gdsc_data_ptmuts <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
+ccle_data <- readRDS("./data_munging/19Q1/ccle_data_19Q1_g2pgenes.rds")
+ctrp_data <- readRDS("./data_munging/19Q1/ctrp_data_19Q1_g2pgenes.rds")
+gdsc_data <- readRDS("./data_munging/19Q1/gdsc_data_19Q1_g2pgenes.rds")
+ccle_data_ptmuts <- readRDS("./data_munging/19Q1/ccle_data_19Q1_g2pgenes_ptmuts.rds")
+ctrp_data_ptmuts <- readRDS("./data_munging/19Q1/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
+gdsc_data_ptmuts <- readRDS("./data_munging/19Q1/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
 
 # Filter drug screen datasets for G2P drug-gene associations
 ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_druggenes)
