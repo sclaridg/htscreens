@@ -57,24 +57,39 @@ theme_set(theme_light())
 
 --------------------------------------------------------------------------------
 
+Note that the new 19Q1 release made multiple changes to variable names:
+
+- They reverted back to "Broad_ID" from 18Q3 rather than "DepMap_ID" that was used in 18Q4
+- Primary.Disease column of the cell line metadata file is more consistently named (Subtype.Disease now has the specific disease annotations), though there are a couple capitalization inconsistencies
+- MAF file no longer has "CCLE_Name" column and has a duplicate column of the Broad IDs (DepMap_ID and Tumor_Sample_Barcode)
+
+And data (the following is taken from the [data portal](https://depmap.org/portal/download/)):
+
+- **Expression**: We use the GTEx pipeline. Since last release, there have been some updates to the versions of different components of the pipeline and minor bug fixes on GTEx's end.
+- **Mutation**: In this release, we additionally process DepMap WES samples through the CGA mutation calling pipeline adapted for cell lines and available on FireCloud. We have added a column for the allele counts from this pipeline run (CGA_WES_AC). Previously, the WES_AC column was generated from running the Van Allen mutation calling pipeline for SNPs + Mutect2 for INDELs. This column is now named VA_WES_AC.
+- **Copy Number**: We have moved to using the newest version of the GATK pipeline.
+
 ## D. Charytonowicz cell line converter
 
 This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 ```{r}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
-colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
 ```
 
 ## DepMap cell line metadata
 
+19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
 ```{r}
-ccl_info <- read.delim("./data_munging/19Q1/DepMap-2019Q1-celllines_20181115.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-ccl_info$Primary.Disease <- gsub("\\\\", "", ccl_info$Primary.Disease)
-ccl_info$Primary.Disease <- gsub("Ewings", "Ewing's", ccl_info$Primary.Disease)
-# From figshare
-crispr_meta <- read.delim("./data_munging/19Q1/sample_info_19Q1_crispr_20181115.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-colnames(crispr_meta)[7] <- "CCLE_Name"
+ccl_info <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+# Convert Primary.Disease entries to all lower case to fix factorization
+ccl_info$Primary.Disease <- as.factor(tolower(ccl_info$Primary.Disease))
+# Harmonize ID column name
+colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
+
+# Sample info from figshare
+crispr_meta <- read.delim("./data_munging/19Q1/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
 ```
 
 ## CCLE genomic annotations
@@ -85,10 +100,11 @@ For mutation calling, get paired gene name and cell line fields in a data frame.
 
 Mutation calls (coding region, germline filtered):
 ```{r, eval=FALSE}
-maf_raw <- read.delim("./data_munging/19Q1/depmap_19Q1_mutation_calls_20181114.csv.gz", header = TRUE, sep = ",", row.names = 1)
-colnames(maf_raw)[colnames(maf_raw) == "Tumor_Sample_Barcode"] <- "CCLE_Name"
+maf_raw <- read.delim("./data_munging/19Q1/depmap_19Q1_mutation_calls_20190305.csv.gz", header = TRUE, sep = ",", row.names = 1)
+# Harmonize ID column name
+colnames(maf_raw)[colnames(maf_raw) == "DepMap_ID"] <- "Broad_ID"
 # Select columns
-maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID", "Variant_Classification", "Reference_Allele", "Tumor_Seq_Allele1", "Genome_Change"))
+maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "Broad_ID", "Variant_Classification", "Reference_Allele", "Tumor_Seq_Allele1", "Genome_Change"))
 maf_df$Reference_Allele <- ifelse(maf_df$Reference_Allele == "-", 0, nchar(as.character(maf_df$Reference_Allele)))
 maf_df$Tumor_Seq_Allele1 <- nchar(as.character(maf_df$Tumor_Seq_Allele1))
 maf_df <- maf_df[maf_df$Variant_Classification != "Silent",]
@@ -102,12 +118,12 @@ saveRDS(maf_df, "./data_munging/rds/maf_df_19Q1.rds", compress = "xz")
 
 DepMap WES CN Data:
 ```{r, eval=FALSE}
-cn <- read.delim("./data_munging/19Q1/public_19Q1_gene_cn_20181115.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
-# Remove Entrez gene IDs from colnames
-# Format: Hugo_Symbol (Entrez ID)
+cn <- read.delim("./data_munging/19Q1/public_19Q1_gene_cn_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
+# Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(cn) <- gsub(" .*", "", colnames(cn))
+colnames(cn)[1] <- "Broad_ID"
 # Melt
-cn_melt <- melt(data = cn, id.vars = "DepMap_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Hugo_Symbol", value.name = "CN")
+cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Hugo_Symbol", value.name = "CN")
 saveRDS(cn_melt, "./data_munging/rds/cn_melt_19Q1.rds", compress = "xz")
 ```
 
@@ -115,29 +131,28 @@ saveRDS(cn_melt, "./data_munging/rds/cn_melt_19Q1.rds", compress = "xz")
 
 18Q3, Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
 ```{r, eval=FALSE}
-ge_18Q3 <- read.delim("./../htscreens_giant_files/CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
-# Edit columns
-ge_18Q3$Name <- NULL
-colnames(ge_18Q3)[1] <- "Hugo_Symbol"
-# Melt
-ge_melt_18Q3 <- melt(data = ge_18Q3, id.vars = "Hugo_Symbol", measure.vars = colnames(ge_18Q3[2:ncol(ge_18Q3)]), value.name = "RPKM")
-## Split variable column
-ge_melt_18Q3 <- with(ge_melt_18Q3, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "DepMap_ID")), RPKM))
-## Remove parentheses around Broad IDs
-ge_melt_18Q3$DepMap_ID <- gsub("\\(|\\)", "", ge_melt_18Q3$DepMap_ID)
-saveRDS(ge_melt_18Q3, "./../htscreens_giant_files/ge_melt_18Q3.rds", compress = "xz")
+# ge_18Q3 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
+# # Edit columns
+# ge_18Q3$Name <- NULL
+# colnames(ge_18Q3)[1] <- "Hugo_Symbol"
+# # Melt
+# ge_melt_18Q3 <- melt(data = ge_18Q3, id.vars = "Hugo_Symbol", measure.vars = colnames(ge_18Q3[2:ncol(ge_18Q3)]), value.name = "RPKM")
+# ## Split variable column
+# ge_melt_18Q3 <- with(ge_melt_18Q3, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "DepMap_ID")), RPKM))
+# ## Remove parentheses around Broad IDs
+# ge_melt_18Q3$DepMap_ID <- gsub("\\(|\\)", "", ge_melt_18Q3$DepMap_ID)
+# saveRDS(ge_melt_18Q3, "./../htscreens_giant_files/ge_melt_18Q3.rds", compress = "xz")
 ```
 
 19Q1, CCLE RNAseq gene expression data (log2(TPM+1)):
 ```{r, eval=FALSE}
-ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_v2_20181115.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
-# Remove Entrez gene IDs from colnames
-# Format: Hugo_Symbol (Entrez ID)
+ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+# Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(ge_19Q1) <- gsub(" .*", "", colnames(ge_19Q1))
-colnames(ge_19Q1)[1] <- "DepMap_ID"
+colnames(ge_19Q1)[1] <- "Broad_ID"
 # Melt
-ge_melt_19Q1_all <- melt(ge_19Q1, id.vars = "DepMap_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
-ge_melt_19Q1 <- unique(ge_melt_19Q1)
+ge_melt_19Q1_all <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
+# ge_melt_19Q1 <- unique(ge_melt_19Q1_all)
 saveRDS(ge_melt_19Q1, "./data_munging/rds/ge_melt_19Q1.rds", compress = "xz")
 ```
 
