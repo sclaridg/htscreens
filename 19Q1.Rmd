@@ -376,8 +376,31 @@ test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilen
 # drug_summ <- data.frame(Drug = g2p_drugs, Dataset_Count = 0)
 ```
 
+## Denise's GCN dataframes
 
+Code for Denise's graph convolutional networks analyses (see meeting notes from 6 March 2019).
+- Convert drug/compound names to all capitalized for harmonization.
 
+```{r, eval=FALSE}
+maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
+cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
+ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
+
+ctrp <- read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.data.curves_post_qc.txt.gz", sep = "\t", header  = TRUE, check.names = FALSE) 
+# area_under_curve: integrated area under the sigmoid-fit concentration-response curve
+ctrp_filt <- ctrp[, c("experiment_id", "area_under_curve", "master_cpd_id")]
+ctrp_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_cell_line_20190306.txt"), master_ccl_id, ccl_name, ccle_primary_site)
+ctrp_meta_exp <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_experiment_20190306.txt"), experiment_id, master_ccl_id)
+ctrp_meta_cpd <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_compound_20190306.txt"), master_cpd_id, cpd_name)
+ctrp_keep <- merge(merge(ctrp_meta_ccl, ctrp_meta_exp, by = "master_ccl_id", all = TRUE), merge(ctrp_meta_cpd, ctrp_filt, by = "master_cpd_id", all = TRUE), by = "experiment_id", all = TRUE)
+ctrp_keep$cpd_name <- toupper(ctrp_keep$cpd_name)
+ctrp_keep$ccle_primary_site <- ifelse(as.character(ctrp_keep$ccle_primary_site) == "", NA, as.character(ctrp_keep$ccle_primary_site))
+ctrp4harm_long <- select(ctrp_keep, ccl_name, ccle_primary_site, cpd_name, area_under_curve)
+colnames(ctrp4harm_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
+ctrp4harm_long$source <- "CTRP"
+ctrp4harm_long$sample_id <- with(ctrp4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+ctrp4harm <- dcast(ctrp4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fill = 0)
+```
 
 
 
