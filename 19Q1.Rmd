@@ -50,6 +50,7 @@ library(ggsignif)
 library(kableExtra)
 library(reshape2)
 library(tidyverse)
+library(naniar)
 theme_set(theme_light())
 ```
 
@@ -129,21 +130,6 @@ saveRDS(cn_melt, "./data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 
 ### Gene expression (GE)
 
-18Q3, Gene expression data (Reads Per Kilobase of transcript, per Million mapped reads, RPKM).
-```{r, eval=FALSE}
-# ge_18Q3 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", skip = 2, header = TRUE, sep = "\t", check.names = FALSE)
-# # Edit columns
-# ge_18Q3$Name <- NULL
-# colnames(ge_18Q3)[1] <- "Hugo_Symbol"
-# # Melt
-# ge_melt_18Q3 <- melt(data = ge_18Q3, id.vars = "Hugo_Symbol", measure.vars = colnames(ge_18Q3[2:ncol(ge_18Q3)]), value.name = "RPKM")
-# ## Split variable column
-# ge_melt_18Q3 <- with(ge_melt_18Q3, cbind(Hugo_Symbol, colsplit(variable, pattern = " ", names = c("CCLE_Name", "DepMap_ID")), RPKM))
-# ## Remove parentheses around Broad IDs
-# ge_melt_18Q3$DepMap_ID <- gsub("\\(|\\)", "", ge_melt_18Q3$DepMap_ID)
-# saveRDS(ge_melt_18Q3, "./../htscreens_giant_files/ge_melt_18Q3.rds", compress = "xz")
-```
-
 19Q1, CCLE RNAseq gene expression data (log2(TPM+1)):
 ```{r, eval=FALSE}
 ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
@@ -156,237 +142,36 @@ ge_melt_19Q1 <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_1
 saveRDS(ge_melt_19Q1, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
 
-## G2P
-
-```{r}
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
-g2p[, 1:2] <- NULL
-g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
-
-g2p$Drug <- tolower(g2p$Drug)
-g2p[g2p == -1] <- NA
-g2p$Ref[g2p$Ref == "None"] <- NA
-g2p$Alt[g2p$Alt == "None"] <- NA
-g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
-g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
-g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
-g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
-g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
-
-g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
-g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
-g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
-g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
-g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
-g2p_druggenes
-g2p_drugs
-g2p_genes
-g2p_lins
-
-# Order and genes taken from pink heatmapo from Daniel's analyses
-g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
-```
-
-```{r}
-# levels(g2p_filt$Phenotype.Description)
-unique(g2p_filt$group_generals_lineage_name)
-levels(g2p_filt$group_general_lineage_name)
-
-g2p_nonCID <- subset(g2p, !grepl("^CID", g2p$DrugID))
-summ <- g2p_nonCID %>% group_by(Drug, DrugID) %>% tally() %>% summarize(DrugID = DrugID, n = n, percent = formatC(n / 402 * 100, digits = 6, format = "f"))
-summ
-```
-
-```{r, eval=FALSE}
-cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
-ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
-# ge_melt_19Q1 <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
-
-# maf_filt_dan <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
-# write.table(maf_filt_dan, file = "~/Desktop/maf_filt_dan_19Q1_2018112.csv", quote = FALSE, sep = ",", row.names = FALSE)
-```
-
-## Drug screens
-
-### Merge drug data and annotations
-
-```{r}
-maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
-test <- filter(maf_df, Hugo_Symbol %in% g2p_genes) %>% count(Hugo_Symbol, CCLE_Name)
-test <- test[order(test$n, decreasing = TRUE),]
-```
-
-`r nrow(filter(test, n == 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
-
-```{r, eval=FALSE}
-# Drug metadata
-drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv", sep = "\t", header = FALSE)
-colnames(drug_meta) <- c("CID", "Drug")
-drug_meta$Drug <- tolower(drug_meta$Drug)
-maf_df_g2p <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
-ge_filt_18Q3 <- filter(ge_melt_18Q3, Hugo_Symbol %in% g2p_genes)
-# ge_filt_19Q1 <- filter(ge_melt_19Q1, Hugo_Symbol %in% g2p_genes)
-cn_filt <- filter(cn_melt, Hugo_Symbol %in% g2p_genes)
-
-# CCLE
-ccle <- read.delim("./data_munging/data_drug_auc_ccle_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
-ccle <- merge(drug_meta, ccle, by = "CID")
-ccle_melt <- melt(ccle, id.vars = c("CID", "Drug"), measure.vars = colnames(ccle)[3:ncol(ccle)], variable.name = "accession_id", value.name = "ActArea")
-ccle_grid <- expand.grid("accession_id" = unique(ccle_melt$accession_id), "Hugo_Symbol" = g2p_genes)
-ccle_data <- merge(ccle_grid, ccle_melt, by = "accession_id", all.x = TRUE)
-ccle_data <- merge(ccle_data, ccl_converter, by = "accession_id", all.x = TRUE)
-ccle_data <- merge(ccle_data, maf_df_g2p, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-ccle_data$Mutation_Status_Nonsilent <- ifelse(is.na(ccle_data$Mutation_Status_Nonsilent), "Wildtype", ccle_data$Mutation_Status_Nonsilent)
-ccle_data <- merge(ccle_data, ge_filt_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-# ccle_data <- merge(ccle_data, ge_filt_19Q1, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-ccle_data <- merge(ccle_data, cn_filt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-ccle_data$Hugo_Symbol <- factor(ccle_data$Hugo_Symbol)
-ccle_data$ActArea <- as.numeric(ccle_data$ActArea)
-# CCLE AUC is actually AOC
-# assuming scale is 0-8, transform to range between 0 and 1
-# get AUC by 1 - AOC
-ccle_data$AUC <- 1 - (ccle_data$ActArea / 8)
-ccle_data <- filter(ccle_data, !is.na(ccle_data$AUC))
-ccle_data$AUC_zscore <- (ccle_data$AUC - mean(ccle_data$AUC)) / sd(ccle_data$AUC)
-ccle_data$Color_Nonsilent <- ifelse(ccle_data$Mutation_Status_Nonsilent == "Wildtype", "palegreen3", "springgreen4")
-ccle_data$Color_Nonsilent <- factor(ccle_data$Color_Nonsilent)
-ccle_data$Drug_Gene <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol)
-ccle_data$Drug_Gene_Lin <- paste0(ccle_data$Drug, "_", ccle_data$Hugo_Symbol, "_", ccle_data$group_general_lineage_name)
-saveRDS(ccle_data, "./data_munging/19Q1/ccle_data_19Q1_g2pgenes.rds", compress = "xz")
-
-# CTRP
-ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
-ctrp <- merge(drug_meta, ctrp, by = "CID")
-ctrp_melt <- melt(ctrp, id.vars = c("CID", "Drug"), measure.vars = colnames(ctrp)[3:ncol(ctrp)], variable.name = "accession_id", value.name = "AUC")
-ctrp_grid <- expand.grid("accession_id" = unique(ctrp_melt$accession_id), "Hugo_Symbol" = g2p_genes)
-ctrp_data <- merge(ctrp_grid, ctrp_melt, by = "accession_id", all.x = TRUE)
-ctrp_data <- merge(ctrp_data, ccl_converter, by = "accession_id", all.x = TRUE)
-ctrp_data <- merge(ctrp_data, maf_df_g2p, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-ctrp_data$Mutation_Status_Nonsilent <- ifelse(is.na(ctrp_data$Mutation_Status_Nonsilent), "Wildtype", ctrp_data$Mutation_Status_Nonsilent)
-ctrp_data <- merge(ctrp_data, ge_filt_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-# ctrp_data <- merge(ctrp_data, ge_filt_19Q1, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-ctrp_data <- merge(ctrp_data, cn_filt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-ctrp_data$Hugo_Symbol <- factor(ctrp_data$Hugo_Symbol)
-ctrp_data$AUC <- as.numeric(ctrp_data$AUC)
-ctrp_data <- filter(ctrp_data, !is.na(ctrp_data$AUC))
-ctrp_data$AUC_zscore <- (ctrp_data$AUC - mean(ctrp_data$AUC)) / sd(ctrp_data$AUC)
-ctrp_data$Color_Nonsilent <- ifelse(ctrp_data$Mutation_Status_Nonsilent == "Wildtype", "slategray3", "steelblue4")
-ctrp_data$Color_Nonsilent <- factor(ctrp_data$Color_Nonsilent)
-ctrp_data$Drug_Gene <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol)
-ctrp_data$Drug_Gene_Lin <- paste0(ctrp_data$Drug, "_", ctrp_data$Hugo_Symbol, "_", ctrp_data$group_general_lineage_name)
-saveRDS(ctrp_data, "./data_munging/19Q1/ctrp_data_19Q1_g2pgenes.rds", compress = "xz")
-
-# GDSC
-gdsc <- read.delim("./data_munging/data_drug_auc_gdsc_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
-gdsc <- merge(drug_meta, gdsc, by = "CID")
-gdsc_melt <- melt(gdsc, id.vars = c("CID", "Drug"), measure.vars = colnames(gdsc)[3:ncol(gdsc)], variable.name = "accession_id", value.name = "AUC")
-gdsc_grid <- expand.grid("accession_id" = unique(gdsc_melt$accession_id), "Hugo_Symbol" = g2p_genes)
-gdsc_data <- merge(gdsc_grid, gdsc_melt, by = "accession_id", all.x = TRUE)
-gdsc_data <- merge(gdsc_data, ccl_converter, by = "accession_id", all.x = TRUE)
-gdsc_data <- merge(gdsc_data, maf_df_g2p, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-gdsc_data$Mutation_Status_Nonsilent <- ifelse(is.na(gdsc_data$Mutation_Status_Nonsilent), "Wildtype", gdsc_data$Mutation_Status_Nonsilent)
-gdsc_data <- merge(gdsc_data, ge_filt_18Q3, by = c("Hugo_Symbol", "CCLE_Name", "DepMap_ID"), all.x = TRUE)
-# gdsc_data <- merge(gdsc_data, ge_filt_19Q1, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-gdsc_data <- merge(gdsc_data, cn_filt, by = c("Hugo_Symbol", "DepMap_ID"), all.x = TRUE)
-gdsc_data$Hugo_Symbol <- factor(gdsc_data$Hugo_Symbol)
-gdsc_data$AUC <- as.numeric(gdsc_data$AUC)
-gdsc_data <- filter(gdsc_data, !is.na(gdsc_data$AUC))
-gdsc_data$AUC_zscore <- (gdsc_data$AUC - mean(gdsc_data$AUC)) / sd(gdsc_data$AUC)
-gdsc_data$Color_Nonsilent <- ifelse(gdsc_data$Mutation_Status_Nonsilent == "Wildtype", "paleturquoise3", "turquoise4")
-gdsc_data$Color_Nonsilent <- factor(gdsc_data$Color_Nonsilent)
-gdsc_data$Drug_Gene <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol)
-gdsc_data$Drug_Gene_Lin <- paste0(gdsc_data$Drug, "_", gdsc_data$Hugo_Symbol, "_", gdsc_data$group_general_lineage_name)
-saveRDS(gdsc_data, "./data_munging/19Q1/gdsc_data_19Q1_g2pgenes.rds", compress = "xz")
-```
-
-### Filter drug data
-
-```{r, eval=FALSE}
-ccle_data <- readRDS("./data_munging/19Q1/ccle_data_19Q1_g2pgenes.rds")
-ccle_data_ptmuts <- filter(ccle_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
-ccle_data_ptmuts$Keep_PtMut_Tests <- ifelse(ccle_data_ptmuts$Reference_Allele == 1 | is.na(ccle_data_ptmuts$Reference_Allele), TRUE, ifelse(ccle_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
-ccle_data_ptmuts <- filter(ccle_data_ptmuts, Keep_PtMut_Tests == TRUE)
-# Remove columns that lead to duplicate mutation entries
-ccle_data_ptmuts <- subset(ccle_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
-ccle_data_ptmuts$Dataset <- "CCLE"
-ccle_data_ptmuts$Hugo_Symbol <- ordered(ccle_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
-ccle_data_ptmuts <- unique(ccle_data_ptmuts)
-saveRDS(ccle_data_ptmuts, "./data_munging/19Q1/ccle_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
-
-ctrp_data <- readRDS("./data_munging/19Q1/ctrp_data_19Q1_g2pgenes.rds")
-ctrp_data_ptmuts <- filter(ctrp_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
-ctrp_data_ptmuts$Keep_PtMut_Tests <- ifelse(ctrp_data_ptmuts$Reference_Allele == 1 | is.na(ctrp_data_ptmuts$Reference_Allele), TRUE, ifelse(ctrp_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
-ctrp_data_ptmuts <- filter(ctrp_data_ptmuts, Keep_PtMut_Tests == TRUE)
-# Remove columns that lead to duplicate mutation entries
-ctrp_data_ptmuts <- subset(ctrp_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
-ctrp_data_ptmuts$Dataset <- "CTRP"
-ctrp_data_ptmuts$Hugo_Symbol <- ordered(ctrp_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
-ctrp_data_ptmuts <- unique(ctrp_data_ptmuts)
-saveRDS(ctrp_data_ptmuts, "./data_munging/19Q1/ctrp_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
-
-gdsc_data <- readRDS("./data_munging/19Q1/gdsc_data_19Q1_g2pgenes.rds")
-gdsc_data_ptmuts <- filter(gdsc_data, Reference_Allele == 1 | Reference_Allele == 0 | is.na(Reference_Allele))
-gdsc_data_ptmuts$Keep_PtMut_Tests <- ifelse(gdsc_data_ptmuts$Reference_Allele == 1 | is.na(gdsc_data_ptmuts$Reference_Allele), TRUE, ifelse(gdsc_data_ptmuts$Tumor_Seq_Allele1 == 1, TRUE, FALSE))
-gdsc_data_ptmuts <- filter(gdsc_data_ptmuts, Keep_PtMut_Tests == TRUE)
-# Remove columns that lead to duplicate mutation entries
-gdsc_data_ptmuts <- subset(gdsc_data_ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, Genome_Change, Keep_PtMut_Tests))
-gdsc_data_ptmuts$Dataset <- "GDSC"
-gdsc_data_ptmuts$Hugo_Symbol <- ordered(gdsc_data_ptmuts$Hugo_Symbol, levels = g2p_genes)
-gdsc_data_ptmuts <- unique(gdsc_data_ptmuts)
-saveRDS(gdsc_data_ptmuts, "./data_munging/19Q1/gdsc_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
-```
-
-```{r}
-ccle_data <- readRDS("./data_munging/19Q1/ccle_data_19Q1_g2pgenes.rds")
-ctrp_data <- readRDS("./data_munging/19Q1/ctrp_data_19Q1_g2pgenes.rds")
-gdsc_data <- readRDS("./data_munging/19Q1/gdsc_data_19Q1_g2pgenes.rds")
-ccle_data_ptmuts <- readRDS("./data_munging/19Q1/ccle_data_19Q1_g2pgenes_ptmuts.rds")
-ctrp_data_ptmuts <- readRDS("./data_munging/19Q1/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
-gdsc_data_ptmuts <- readRDS("./data_munging/19Q1/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
-
-# Filter drug screen datasets for G2P drug-gene associations
-ccle_data_g2p <- filter(ccle_data_ptmuts, Drug_Gene %in% g2p_druggenes)
-ccle_data_g2p$Mutation_Status_Nonsilent <- factor(ccle_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-ctrp_data_g2p <- filter(ctrp_data_ptmuts, Drug_Gene %in% g2p_druggenes)
-ctrp_data_g2p$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-gdsc_data_g2p <- filter(gdsc_data_ptmuts, Drug_Gene %in% g2p_druggenes)
-gdsc_data_g2p$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-
-# Filter drug screen datasets for G2P drug-gene-lineage associations
-ccle_data_g2p_dgl <- filter(ccle_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
-ccle_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ccle_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-ctrp_data_g2p_dgl <- filter(ctrp_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
-ctrp_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-gdsc_data_g2p_dgl <- filter(gdsc_data_ptmuts, Drug_Gene_Lin %in% g2p_dgls)
-gdsc_data_g2p_dgl$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_dgl$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-
-# Filter drug screen datasets for G2P drugs and genes
-ccle_data_g2p_grid <- filter(ccle_data_ptmuts, Drug %in% g2p_drugs)
-ccle_data_g2p_grid$Mutation_Status_Nonsilent <- factor(ccle_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-ctrp_data_g2p_grid <- filter(ctrp_data_ptmuts, Drug %in% g2p_drugs)
-ctrp_data_g2p_grid$Mutation_Status_Nonsilent <- factor(ctrp_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-gdsc_data_g2p_grid <- filter(gdsc_data_ptmuts, Drug %in% g2p_drugs)
-gdsc_data_g2p_grid$Mutation_Status_Nonsilent <- factor(gdsc_data_g2p_grid$Mutation_Status_Nonsilent, levels = c("Mutant", "Wildtype"))
-
-# Testing
-test_ccle <- ccle_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
-test_ctrp <- ctrp_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
-test_gdsc <- gdsc_data_ptmuts %>% group_by(Hugo_Symbol, Mutation_Status_Nonsilent) %>% tally()
-
-# drug_summ <- data.frame(Drug = g2p_drugs, Dataset_Count = 0)
-```
-
 ## Denise's GCN dataframes
 
 Code for Denise's graph convolutional networks analyses (see meeting notes from 6 March 2019).
 - Convert drug/compound names to all capitalized for harmonization.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
 cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
 ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
 
-ctrp <- read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.data.curves_post_qc.txt.gz", sep = "\t", header  = TRUE, check.names = FALSE) 
+ccle <- read.delim("./data_munging/pharmacogenomics_raw_files/CCLE_NP24.2009_Drug_data_2015.02.24_20190307.csv", sep = ",", header  = TRUE, check.names = FALSE)
+ctrp <- read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.data.curves_post_qc.txt.gz", sep = "\t", header  = TRUE, check.names = FALSE)
+gdsc <- read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_v17.3_fitted_dose_response_20190306.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
+
+
+## CCLE
+# Note that ActArea is NOT an AUC value
+ccle_filt <- ccle[, c("CCLE Cell Line Name", "ActArea", "Compound")]
+ccle_filt$source_ccl_name <- sapply(strsplit(as.character(ccle_filt$`CCLE Cell Line Name`), split = "_"), function(x) x[1])
+ccle_filt$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccle_filt$`CCLE Cell Line Name`, ignore.case = TRUE))
+ccle_filt$source_histology <- ifelse(as.character(ccle_filt$source_histology) == "", NA, as.character(ccle_filt$source_histology))
+ccle_filt$compound_name <- toupper(ccle_filt$Compound)
+colnames(ccle_filt)[colnames(ccle_filt) == "ActArea"] <- "AUC"
+ccle4harm_long <- select(ccle_filt, source_ccl_name, source_histology, compound_name, AUC)
+ccle4harm_long$source <- "CCLE"
+ccle4harm_long$sample_id <- with(ccle4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+ccle4harm <- dcast(ccle4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
+ccle4harm[, 5:ncol(ccle4harm)] <- ccle4harm[, 5:ncol(ccle4harm)] %>% replace_with_na_all(condition = ~.x == 10000)
+
+## CTRP
 # area_under_curve: integrated area under the sigmoid-fit concentration-response curve
 ctrp_filt <- ctrp[, c("experiment_id", "area_under_curve", "master_cpd_id")]
 ctrp_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_cell_line_20190306.txt"), master_ccl_id, ccl_name, ccle_primary_site)
@@ -399,7 +184,35 @@ ctrp4harm_long <- select(ctrp_keep, ccl_name, ccle_primary_site, cpd_name, area_
 colnames(ctrp4harm_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
 ctrp4harm_long$source <- "CTRP"
 ctrp4harm_long$sample_id <- with(ctrp4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
-ctrp4harm <- dcast(ctrp4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fill = 0)
+ctrp4harm <- dcast(ctrp4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
+ctrp4harm[, 5:ncol(ctrp4harm)] <- ctrp4harm[, 5:ncol(ctrp4harm)] %>% replace_with_na_all(condition = ~.x == 10000)
+
+## GDSC
+gdsc_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_Cell_Lines_Details.csv", sep = ","), Line, Site)
+gdsc_filt <- gdsc[, c("CELL_LINE_NAME", "DRUG_NAME", "AUC")]
+gdsc_filt$DRUG_NAME <- toupper(gdsc_filt$DRUG_NAME)
+colnames(gdsc_filt)[colnames(gdsc_filt) ==  "CELL_LINE_NAME"] <- "Line"
+gdsc_filt <- merge(gdsc_filt, gdsc_meta_ccl, by = "Line", all = TRUE)
+gdsc4harm_long <- select(gdsc_filt, Line, Site, DRUG_NAME, AUC)
+colnames(gdsc4harm_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
+gdsc4harm_long$source <- "GDSC"
+gdsc4harm_long$sample_id <- with(gdsc4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+gdsc4harm <- dcast(gdsc4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
+gdsc4harm[, 5:ncol(gdsc4harm)] <- gdsc4harm[, 5:ncol(gdsc4harm)] %>% replace_with_na_all(condition = ~.x == 10000)
+
+## BIND ALL
+pgx_harm_list <- list(ccle4harm, ctrp4harm, gdsc4harm)
+pgx_harm_names <- unique(unlist(lapply(pgx_harm_list, names)))
+pgx_harm <- do.call(rbind,
+                    c(lapply(pgx_harm_list,
+                             function(x) data.frame(c(x,
+                                                      sapply(setdiff(pgx_harm_names, names(x)),
+                                                             function(y) NA)
+                                                      )
+                                                    )
+                             )
+                      )
+                    )
 ```
 
 
