@@ -3,15 +3,22 @@
 #BSUB -J <your job name>
 #BSUB -P <your acount name>
 #BSUB -q premium ##or alloc or expressalloc; the queue to submit the job to
+
 #BSUB -n 10 ##number of cores to run the job on  
-##BSUB -R span[ptile=10] ##request each core on a separate machine
-##BSUB -R span[hosts=1] ##request all cores on a single machine
+
+##BSUB -R span[ptile=5] ##request 5 cores be on the same machine, so you're requesting 10 cores mapped on 2 machines; it's not usually necessary better let LSF grab cores from wherever it can (the default)
+
+##BSUB -R span[hosts=1] ##request all cores be on the same machine, this is necessary for multi-threaded programs where multiple threads are spawned which share memory and thus have to be on the same machine (the OpenMP paradigm for parallel programming)
+
 #BSUB -R rusage[mem=20000] ##memory requested per core in MB, 20GB here
 #BSUB -W 02:00 ##request to run for 2 hours
-#BSUB -m manda ##on partition manda
-##BSUB -R himem ##if you want to run on the big-memory node 
+
+#BSUB -m manda ##run on partition manda
+##BSUB -R himem ##if you want to run on the big-memory node, then you have to comment out the previous line about the partition 
+
 #BSUB -o out.txt ##where the output of the job is to be written
 #BSUB -eo err.txt ##where the error output, if any, is to be written
+
 #BSUB -L /bin/bash ##init the bash shell environment afresh within the job
 
 echo ""
