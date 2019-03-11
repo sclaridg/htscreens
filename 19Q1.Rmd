@@ -21,7 +21,7 @@ Analysis of the [Broad's Avana CRISPR](https://depmap.org/portal/download/) (Bro
 
 The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meyers et al. 2017) ([GitHub](https://github.com/cancerdatasci/ceres)), which generates gene dependency scores from sgRNA depletion scores from gene essentiality screens and eliminates bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes.
 
-All annotation files (copy number, mutation status, and gene expression) (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/).
+Annotation files for mutation status, copy number, and gene expression of the CCLE and CTRP datasets (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/). Note that the group that conducted the GDSC screen also collected their own genomic annotation information for mutation status, copy number, and gene expression, but we did not use it.
 
 # SET UP
 
@@ -51,6 +51,7 @@ library(kableExtra)
 library(reshape2)
 library(tidyverse)
 library(naniar)
+library(VennDiagram)
 theme_set(theme_light())
 ```
 
@@ -58,13 +59,13 @@ theme_set(theme_light())
 
 --------------------------------------------------------------------------------
 
-Note that the new 19Q1 release made multiple changes to variable names:
+Note that the new DepMap 19Q1 release made multiple changes to variable names:
 
-- They reverted back to "Broad_ID" from 18Q3 rather than "DepMap_ID" that was used in 18Q4
-- Primary.Disease column of the cell line metadata file is more consistently named (Subtype.Disease now has the specific disease annotations), though there are a couple capitalization inconsistencies
-- MAF file no longer has "CCLE_Name" column and has a duplicate column of the Broad IDs (DepMap_ID and Tumor_Sample_Barcode)
+- For their universal ccancer cell line nomenclature, they reverted back to `Broad_ID` from 18Q3 rather than `DepMap_ID` that was used in 18Q4
+- The `Primary.Disease` column of the cell line metadata file is more consistently named (`Subtype.Disease` now has the specific disease annotations), though there are a couple capitalization inconsistencies
+- MAF file no longer has `CCLE_Name` column and has a duplicate column of the Broad IDs (i.e. `DepMap_ID` and `Tumor_Sample_Barcode`)
 
-And data (the following is taken from the [data portal](https://depmap.org/portal/download/)):
+And changes to the data processing pipelines (the following is taken verbatim from the [DepMap data portal](https://depmap.org/portal/download/)):
 
 - **Expression**: We use the GTEx pipeline. Since last release, there have been some updates to the versions of different components of the pipeline and minor bug fixes on GTEx's end.
 - **Mutation**: In this release, we additionally process DepMap WES samples through the CGA mutation calling pipeline adapted for cell lines and available on FireCloud. We have added a column for the allele counts from this pipeline run (CGA_WES_AC). Previously, the WES_AC column was generated from running the Van Allen mutation calling pipeline for SNPs + Mutect2 for INDELs. This column is now named VA_WES_AC.
@@ -146,6 +147,12 @@ saveRDS(ge_melt_19Q1, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 
 Code for Denise's graph convolutional networks analyses (see meeting notes from 6 March 2019).
 - Convert drug/compound names to all capitalized for harmonization.
+- Convert all cell line histologies to lower case with words separated by an underscore
+- Maintain same rows across all four data frames, filling with NAs as necessary
+- For each dataframe, maintain same columns for all three source datasets
+- Columns in final dataframes: `source`, `source_ccl_name`, `source_histology`, `sample_id`, and `genes[p]`
+
+### AUC
 
 ```{r, eval=TRUE}
 maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
@@ -156,23 +163,22 @@ ccle <- read.delim("./data_munging/pharmacogenomics_raw_files/CCLE_NP24.2009_Dru
 ctrp <- read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.data.curves_post_qc.txt.gz", sep = "\t", header  = TRUE, check.names = FALSE)
 gdsc <- read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_v17.3_fitted_dose_response_20190306.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 
-
-## CCLE
-# Note that ActArea is NOT an AUC value
+# CCLE
+## Note that ActArea is NOT an AUC value
 ccle_filt <- ccle[, c("CCLE Cell Line Name", "ActArea", "Compound")]
 ccle_filt$source_ccl_name <- sapply(strsplit(as.character(ccle_filt$`CCLE Cell Line Name`), split = "_"), function(x) x[1])
 ccle_filt$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccle_filt$`CCLE Cell Line Name`, ignore.case = TRUE))
 ccle_filt$source_histology <- ifelse(as.character(ccle_filt$source_histology) == "", NA, as.character(ccle_filt$source_histology))
 ccle_filt$compound_name <- toupper(ccle_filt$Compound)
 colnames(ccle_filt)[colnames(ccle_filt) == "ActArea"] <- "AUC"
-ccle4harm_long <- select(ccle_filt, source_ccl_name, source_histology, compound_name, AUC)
-ccle4harm_long$source <- "CCLE"
-ccle4harm_long$sample_id <- with(ccle4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
-ccle4harm <- dcast(ccle4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
-ccle4harm[, 5:ncol(ccle4harm)] <- ccle4harm[, 5:ncol(ccle4harm)] %>% replace_with_na_all(condition = ~.x == 10000)
+ccle_auc_long <- select(ccle_filt, source_ccl_name, source_histology, compound_name, AUC)
+ccle_auc_long$source <- "CCLE"
+ccle_auc_long$sample_id <- with(ccle_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+ccle_auc <- dcast(ccle_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
+ccle_auc[, 5:ncol(ccle_auc)] <- ccle_auc[, 5:ncol(ccle_auc)] %>% replace_with_na_all(condition = ~.x == 10000)
 
-## CTRP
-# area_under_curve: integrated area under the sigmoid-fit concentration-response curve
+# CTRP
+## area_under_curve: integrated area under the sigmoid-fit concentration-response curve
 ctrp_filt <- ctrp[, c("experiment_id", "area_under_curve", "master_cpd_id")]
 ctrp_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_cell_line_20190306.txt"), master_ccl_id, ccl_name, ccle_primary_site)
 ctrp_meta_exp <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_experiment_20190306.txt"), experiment_id, master_ccl_id)
@@ -180,42 +186,83 @@ ctrp_meta_cpd <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CT
 ctrp_keep <- merge(merge(ctrp_meta_ccl, ctrp_meta_exp, by = "master_ccl_id", all = TRUE), merge(ctrp_meta_cpd, ctrp_filt, by = "master_cpd_id", all = TRUE), by = "experiment_id", all = TRUE)
 ctrp_keep$cpd_name <- toupper(ctrp_keep$cpd_name)
 ctrp_keep$ccle_primary_site <- ifelse(as.character(ctrp_keep$ccle_primary_site) == "", NA, as.character(ctrp_keep$ccle_primary_site))
-ctrp4harm_long <- select(ctrp_keep, ccl_name, ccle_primary_site, cpd_name, area_under_curve)
-colnames(ctrp4harm_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
-ctrp4harm_long$source <- "CTRP"
-ctrp4harm_long$sample_id <- with(ctrp4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
-ctrp4harm <- dcast(ctrp4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
-ctrp4harm[, 5:ncol(ctrp4harm)] <- ctrp4harm[, 5:ncol(ctrp4harm)] %>% replace_with_na_all(condition = ~.x == 10000)
-
-## GDSC
+ctrp_auc_long <- select(ctrp_keep, ccl_name, ccle_primary_site, cpd_name, area_under_curve)
+colnames(ctrp_auc_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
+ctrp_auc_long$source <- "CTRP"
+ctrp_auc_long$sample_id <- with(ctrp_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+ctrp_auc <- dcast(ctrp_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
+ctrp_auc[, 5:ncol(ctrp_auc)] <- ctrp_auc[, 5:ncol(ctrp_auc)] %>% replace_with_na_all(condition = ~.x = GDSC
 gdsc_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_Cell_Lines_Details.csv", sep = ","), Line, Site)
 gdsc_filt <- gdsc[, c("CELL_LINE_NAME", "DRUG_NAME", "AUC")]
 gdsc_filt$DRUG_NAME <- toupper(gdsc_filt$DRUG_NAME)
 colnames(gdsc_filt)[colnames(gdsc_filt) ==  "CELL_LINE_NAME"] <- "Line"
 gdsc_filt <- merge(gdsc_filt, gdsc_meta_ccl, by = "Line", all = TRUE)
-gdsc4harm_long <- select(gdsc_filt, Line, Site, DRUG_NAME, AUC)
-colnames(gdsc4harm_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
-gdsc4harm_long$source <- "GDSC"
-gdsc4harm_long$sample_id <- with(gdsc4harm_long, paste(source, source_ccl_name, source_histology, sep = "_"))
-gdsc4harm <- dcast(gdsc4harm_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
-gdsc4harm[, 5:ncol(gdsc4harm)] <- gdsc4harm[, 5:ncol(gdsc4harm)] %>% replace_with_na_all(condition = ~.x == 10000)
+gdsc_auc_long <- select(gdsc_filt, Line, Site, DRUG_NAME, AUC)
+colnames(gdsc_auc_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
+gdsc_auc_long$source <- "GDSC"
+gdsc_auc_long$sample_id <- with(gdsc_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+gdsc_auc <- dcast(gdsc_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
+gdsc_auc[, 5:ncol(gdsc_auc)] <- gdsc_auc[, 5:ncol(gdsc_auc)] %>% replace_with_na_all(condition = ~.x == 10000)
 
-## BIND ALL
-pgx_harm_list <- list(ccle4harm, ctrp4harm, gdsc4harm)
-pgx_harm_names <- unique(unlist(lapply(pgx_harm_list, names)))
-pgx_harm <- do.call(rbind,
-                    c(lapply(pgx_harm_list,
-                             function(x) data.frame(c(x,
-                                                      sapply(setdiff(pgx_harm_names, names(x)),
-                                                             function(y) NA)
-                                                      )
-                                                    )
-                             )
-                      )
-                    )
+# Bind all AUC
+pgx_auc_list <- list(ccle_auc, ctrp_auc, gdsc_auc)
+pgx_auc_names <- unique(unlist(lapply(pgx_auc_list, names)))
+pgx_all_auc <- do.call(rbind, c(lapply(pgx_auc_list, function(x) data.frame(c(x, sapply(setdiff(pgx_auc_names, names(x)), function(y) NA)), check.names = FALSE))))
+
+# Bind all AUC long files for plotting
+ctrp_auc_long_div <- ctrp_auc_long
+ctrp_auc_long_div$AUC <- ctrp_auc_long_div$AUC / 100
+pgx_auc_long <- rbind(ccle_auc_long, ctrp_auc_long_div, gdsc_auc_long)
 ```
 
+Plots for Denise:
+```{r, eval=FALSE}
+hist_auc_ccle <- ggplot(data = ccle_auc_long) +
+  geom_histogram(mapping = aes(x = AUC, fill = source), color = "black", binwidth = 0.25, boundary = 0, closed = "left") +
+  scale_x_continuous(breaks = seq(0, 8, by = 1), labels = seq(0, 8, by = 1)) +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  labs(title = "Distributions of AUC/ActArea values for all drug-cell line combinations", subtitle = "CCLE", y = "Frequency", x = "ActArea") +
+  guides(fill = FALSE)
+hist_auc_ctrp <- ggplot(data = ctrp_auc_long_div) +
+  geom_histogram(mapping = aes(x = AUC, fill = source), color = "black", binwidth = 0.0125, boundary = 0, closed = "left") +
+  scale_x_continuous(breaks = seq(0, 0.3, by = 0.025), labels = seq(0, 0.3, by = 0.025)) +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  labs(y = "Frequency", x = "AUC", subtitle = "CTRP", caption = "CTRP AUC values were divided by 100 prior to plotting.") +
+  guides(fill = FALSE)
+hist_auc_gdsc <- ggplot(data = gdsc_auc_long) +
+  geom_histogram(mapping = aes(x = AUC, fill = source), color = "black", binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_x_continuous(breaks = seq(0, 1, by = 0.1), labels = seq(0, 1, by = 0.1)) +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  labs(y = "Frequency", x = "AUC", subtitle = "GDSC") +
+  guides(fill = FALSE)
+hist_auc_ccle <- ggplot_gtable(ggplot_build(hist_auc_ccle))
+hist_auc_ctrp <- ggplot_gtable(ggplot_build(hist_auc_ctrp))
+hist_auc_gdsc <- ggplot_gtable(ggplot_build(hist_auc_gdsc))
+p_maxWidth <-  grid::unit.pmax(hist_auc_ccle$widths[2:3], hist_auc_ctrp$widths[2:3], hist_auc_gdsc$widths[2:3])
+hist_auc_ccle$widths[2:3] <- p_maxWidth
+hist_auc_ctrp$widths[2:3] <- p_maxWidth
+hist_auc_gdsc$widths[2:3] <- p_maxWidth
+hist_auc_all <- cowplot::plot_grid(hist_auc_ccle, hist_auc_ctrp, hist_auc_gdsc, nrow = 3, rel_heights = c(9, 9, 8))
+ggsave("./gcn_denise/hist_auc_all.png", hist_auc_all, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
+venn_ccl <- venn.diagram(list("CCLE" = unique(ccle_auc_long$source_ccl_name), "CTRP" = unique(ctrp_auc_long$source_ccl_name), "GDSC" = unique(gdsc_auc_long$source_ccl_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+png("./gcn_denise/venn_ccl.png")
+grid.newpage()
+grid.draw(venn_ccl)
+dev.off()
+
+venn_histology <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$source_histology)), "CTRP" = unique(na.omit(ctrp_auc_long$source_histology)), "GDSC" = unique(na.omit(gdsc_auc_long$source_histology))), resolution = 5000, main = "Overlap of cancer cell line histologies screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+png("./gcn_denise/venn_histology.png")
+grid.newpage()
+grid.draw(venn_histology)
+dev.off()
+
+venn_compound <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$compound_name)), "CTRP" = unique(na.omit(ctrp_auc_long$compound_name)), "GDSC" = unique(na.omit(gdsc_auc_long$compound_name))), resolution = 5000, main = "Overlap of compounds screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+png("./gcn_denise/venn_compound.png")
+grid.newpage()
+grid.draw(venn_compound)
+dev.off()
+```
 
 
 
