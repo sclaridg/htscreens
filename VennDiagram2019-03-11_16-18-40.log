@@ -1,0 +1,38 @@
+INFO [2019-03-11 16:18:40] [[1]]
+INFO [2019-03-11 16:18:40] list(CCLE = unique(ccle_auc_long$compound_name), CTRP = unique(ctrp_auc_long$compound_name), 
+INFO [2019-03-11 16:18:40]     GDSC = unique(gdsc_auc_long$compound_name))
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $resolution
+INFO [2019-03-11 16:18:40] [1] 5000
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $main
+INFO [2019-03-11 16:18:40] [1] "Overlap of compounds screened in each dataset"
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $main.fontface
+INFO [2019-03-11 16:18:40] [1] "bold"
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $lty
+INFO [2019-03-11 16:18:40] rep("blank", 3)
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $fill
+INFO [2019-03-11 16:18:40] c("springgreen4", "steelblue4", "turquoise4")
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $alpha
+INFO [2019-03-11 16:18:40] c(0.5, 0.5, 0.5)
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $cat.pos
+INFO [2019-03-11 16:18:40] c(-30, 30, 180)
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $cat.dist
+INFO [2019-03-11 16:18:40] c(0.001, 0.001, 0.001)
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $cat.cex
+INFO [2019-03-11 16:18:40] [1] 1.5
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $cex
+INFO [2019-03-11 16:18:40] [1] 1
+INFO [2019-03-11 16:18:40] 
+INFO [2019-03-11 16:18:40] $filename
+INFO [2019-03-11 16:18:40] NULL
+INFO [2019-03-11 16:18:40] 
+ERROR [2019-03-11 16:18:40] NAs in dataset
