@@ -168,6 +168,8 @@ gdsc <- read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_v17.3_fitted_
 ccle_filt <- ccle[, c("CCLE Cell Line Name", "ActArea", "Compound")]
 ccle_filt$source_ccl_name <- sapply(strsplit(as.character(ccle_filt$`CCLE Cell Line Name`), split = "_"), function(x) x[1])
 ccle_filt$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccle_filt$`CCLE Cell Line Name`, ignore.case = TRUE))
+# FIX CCL NAMES BEING PUT INTO HISTOLOGY COLUMN
+# ccle_filt$source_histology <- ifelse(grepl("^[a-z0-9]*", ccle_filt$source_histology), NA, ccle_filt$source_histology)
 ccle_filt$source_histology <- ifelse(as.character(ccle_filt$source_histology) == "", NA, as.character(ccle_filt$source_histology))
 ccle_filt$compound_name <- toupper(ccle_filt$Compound)
 colnames(ccle_filt)[colnames(ccle_filt) == "ActArea"] <- "AUC"
@@ -191,7 +193,9 @@ colnames(ctrp_auc_long) <- c("source_ccl_name", "source_histology", "compound_na
 ctrp_auc_long$source <- "CTRP"
 ctrp_auc_long$sample_id <- with(ctrp_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
 ctrp_auc <- dcast(ctrp_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
-ctrp_auc[, 5:ncol(ctrp_auc)] <- ctrp_auc[, 5:ncol(ctrp_auc)] %>% replace_with_na_all(condition = ~.x = GDSC
+ctrp_auc[, 5:ncol(ctrp_auc)] <- ctrp_auc[, 5:ncol(ctrp_auc)] %>% replace_with_na_all(condition = ~.x == 10000)
+                                                                                       
+# GDSC
 gdsc_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_Cell_Lines_Details.csv", sep = ","), Line, Site)
 gdsc_filt <- gdsc[, c("CELL_LINE_NAME", "DRUG_NAME", "AUC")]
 gdsc_filt$DRUG_NAME <- toupper(gdsc_filt$DRUG_NAME)
