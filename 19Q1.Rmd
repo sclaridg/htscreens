@@ -44,13 +44,14 @@ R_MAX_VSIZE=100Gb
 ```
 
 ```{r}
+library(crunch)
 library(ggpubr)
 library(ggrepel)
 library(ggsignif)
 library(kableExtra)
+library(naniar)
 library(reshape2)
 library(tidyverse)
-library(naniar)
 library(VennDiagram)
 theme_set(theme_light())
 ```
@@ -84,7 +85,16 @@ lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_gen
 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
 ```{r}
 ccl_info <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-# Convert Primary.Disease entries to all lower case to fix factorization
+ccl_info$source <- "CCLE"
+ccl_info$source_ccl_name <- strsplit(as.character(ccl_info$CCLE_Name), split = "_")
+ccl_info$source_ccl_name <- as.character(lapply(ccl_info$source_ccl_name, function(x) ifelse("[MERGED" %in% x || "NORMAL" %in% x, NA, x[1])))
+ccl_info$source_ccl_name[ccl_info$source_ccl_name == "NA"] <- NA
+ccl_info$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_info$CCLE_Name, ignore.case = TRUE))
+ccl_info$source_histology <- ifelse(ccl_info$CCLE_Name == ccl_info$source_ccl_name, NA, ccl_info$source_histology)
+ccl_info$sample_id <- with(ccl_info, paste(source, source_ccl_name, source_histology, sep = "_"))
+# This CCL had a histology of "primary": Looking at the DepMap reference, this is an immortalize epithelial line from the CNS (https://depmap.org/portal/cell_line/NHAHTDD_PRIMARY), so I chanegd the histology accordingly
+ccl_info$source_histology[ccl_info$source_ccl_name == "NHAHTDD"] <- "central_nervous_system"
+# Convert Primary.Disease entries to all lower case to fix factorization issue
 ccl_info$Primary.Disease <- as.factor(tolower(ccl_info$Primary.Disease))
 # Harmonize ID column name
 colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
@@ -137,9 +147,14 @@ ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(ge_19Q1) <- gsub(" .*", "", colnames(ge_19Q1))
 colnames(ge_19Q1)[1] <- "Broad_ID"
+
+pgx_ccle_ge <- merge(select(ccl_info, source, source_ccl_name, source_histology, sample_id, Broad_ID), ge_19Q1, by = "Broad_ID", all = TRUE)
+
 # Melt
 ge_melt_19Q1 <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
 # ge_melt_19Q1 <- unique(ge_melt_19Q1_all)
+
+saveRDS(pgx_ccle_ge, "./data_munging/19Q1/pgx_ccle_ge.rds", compress = "xz")
 saveRDS(ge_melt_19Q1, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
 
@@ -150,15 +165,21 @@ Code for Denise's graph convolutional networks analyses (see meeting notes from 
 - Convert all cell line histologies to lower case with words separated by an underscore
 - Maintain same rows across all four data frames, filling with NAs as necessary
 - For each dataframe, maintain same columns for all three source datasets
-- Columns in final dataframes: `source`, `source_ccl_name`, `source_histology`, `sample_id`, and `genes[p]`
+- Columns in final dataframes: `source`, `source_ccl_name`, `source_histology`, `sample_id`, and `genes/compounds/mutations[p]`
 
 ### AUC
 
-```{r, eval=TRUE}
-maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
-cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
-ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
+Column descriptions for `pgx_all_auc`:
 
+- `source`: the dataset from which the data comes from (either CCLE, CTRP, or GDSC)
+- `source_ccl_name`: the name of the cancer cell line (CCL) included in the source dataset
+    - Note that all CCLs (excluding matched normal tissues and "merged" CCLs) from the CCLE dataset (N = 1,645) were included in `pgx_all_auc` for imputation
+- `source_histology`: the general histology/tissue type of the CCL
+- `sample_id`: custom identifiers for our datasets that are concatenations of the `source`, `source_ccl_name`, and `source_histology`
+- All other columns: compound and drug names that were screened in at least one CCL in at least one source dataset
+    - NA values indictate that compound wasn't screened in the respective CCL in the respective source dataset
+
+```{r, eval=TRUE}
 ccle <- read.delim("./data_munging/pharmacogenomics_raw_files/CCLE_NP24.2009_Drug_data_2015.02.24_20190307.csv", sep = ",", header  = TRUE, check.names = FALSE)
 ctrp <- read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.data.curves_post_qc.txt.gz", sep = "\t", header  = TRUE, check.names = FALSE)
 gdsc <- read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_v17.3_fitted_dose_response_20190306.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
@@ -168,14 +189,13 @@ gdsc <- read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_v17.3_fitted_
 ccle_filt <- ccle[, c("CCLE Cell Line Name", "ActArea", "Compound")]
 ccle_filt$source_ccl_name <- sapply(strsplit(as.character(ccle_filt$`CCLE Cell Line Name`), split = "_"), function(x) x[1])
 ccle_filt$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccle_filt$`CCLE Cell Line Name`, ignore.case = TRUE))
-# FIX CCL NAMES BEING PUT INTO HISTOLOGY COLUMN
-# ccle_filt$source_histology <- ifelse(grepl("^[a-z0-9]*", ccle_filt$source_histology), NA, ccle_filt$source_histology)
-ccle_filt$source_histology <- ifelse(as.character(ccle_filt$source_histology) == "", NA, as.character(ccle_filt$source_histology))
+ccle_filt$source_histology <- ifelse(ccle_filt$`CCLE Cell Line Name` == ccle_filt$source_ccl_name, NA, ccle_filt$source_histology)
+ccle_filt <- merge(select(ccl_info, source, source_ccl_name, source_histology, sample_id), ccle_filt, by = c("source_ccl_name", "source_histology"), all = TRUE)
 ccle_filt$compound_name <- toupper(ccle_filt$Compound)
 colnames(ccle_filt)[colnames(ccle_filt) == "ActArea"] <- "AUC"
-ccle_auc_long <- select(ccle_filt, source_ccl_name, source_histology, compound_name, AUC)
-ccle_auc_long$source <- "CCLE"
-ccle_auc_long$sample_id <- with(ccle_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+ccle_auc_long <- select(ccle_filt, source, source_ccl_name, source_histology, sample_id, compound_name, AUC)
+# ccle_auc_long$source <- "CCLE"
+# ccle_auc_long$sample_id <- with(ccle_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
 ccle_auc <- dcast(ccle_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
 ccle_auc[, 5:ncol(ccle_auc)] <- ccle_auc[, 5:ncol(ccle_auc)] %>% replace_with_na_all(condition = ~.x == 10000)
 
@@ -186,25 +206,38 @@ ctrp_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CT
 ctrp_meta_exp <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_experiment_20190306.txt"), experiment_id, master_ccl_id)
 ctrp_meta_cpd <- select(read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.meta.per_compound_20190306.txt"), master_cpd_id, cpd_name)
 ctrp_keep <- merge(merge(ctrp_meta_ccl, ctrp_meta_exp, by = "master_ccl_id", all = TRUE), merge(ctrp_meta_cpd, ctrp_filt, by = "master_cpd_id", all = TRUE), by = "experiment_id", all = TRUE)
+ctrp_keep$ccl_name <- gsub("-", "", ctrp_keep$ccl_name, ignore.case = TRUE)
 ctrp_keep$cpd_name <- toupper(ctrp_keep$cpd_name)
 ctrp_keep$ccle_primary_site <- ifelse(as.character(ctrp_keep$ccle_primary_site) == "", NA, as.character(ctrp_keep$ccle_primary_site))
 ctrp_auc_long <- select(ctrp_keep, ccl_name, ccle_primary_site, cpd_name, area_under_curve)
 colnames(ctrp_auc_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
 ctrp_auc_long$source <- "CTRP"
 ctrp_auc_long$sample_id <- with(ctrp_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+ctrp_auc_long_div <- ctrp_auc_long
+ctrp_auc_long_div$AUC <- ctrp_auc_long_div$AUC / 100
 ctrp_auc <- dcast(ctrp_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
 ctrp_auc[, 5:ncol(ctrp_auc)] <- ctrp_auc[, 5:ncol(ctrp_auc)] %>% replace_with_na_all(condition = ~.x == 10000)
                                                                                        
 # GDSC
 gdsc_meta_ccl <- select(read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_Cell_Lines_Details.csv", sep = ","), Line, Site)
+## For following 4 Lines, Site == "NS"
+## Assigned new Sites by looking up cell lines in GDSC cell line portal (https://www.cancerrxgene.org/translation/CellLine#t-all)
+gdsc_meta_ccl$Site[gdsc_meta_ccl$Line == "COR-L321"] <- "lung"
+gdsc_meta_ccl$Site[gdsc_meta_ccl$Line == "SU-DHL-8"] <- "haematopoietic_and_lymphoid_tissue"
+gdsc_meta_ccl$Site[gdsc_meta_ccl$Line == "CRO-AP3"] <- "haematopoietic_and_lymphoid_tissue"
+gdsc_meta_ccl$Site[gdsc_meta_ccl$Line == "Hep_3B2_1-7"] <- "liver"
+## For tollowing line, Site did not match CCLE notation, so I changed it to CCLE notation
+gdsc_meta_ccl$Site[gdsc_meta_ccl$Line == "SW13"] <- "adrenal_cortex"
 gdsc_filt <- gdsc[, c("CELL_LINE_NAME", "DRUG_NAME", "AUC")]
 gdsc_filt$DRUG_NAME <- toupper(gdsc_filt$DRUG_NAME)
 colnames(gdsc_filt)[colnames(gdsc_filt) ==  "CELL_LINE_NAME"] <- "Line"
 gdsc_filt <- merge(gdsc_filt, gdsc_meta_ccl, by = "Line", all = TRUE)
+gdsc_filt$Line <- gsub("-", "", gdsc_filt$Line, ignore.case = TRUE)
 gdsc_auc_long <- select(gdsc_filt, Line, Site, DRUG_NAME, AUC)
 colnames(gdsc_auc_long) <- c("source_ccl_name", "source_histology", "compound_name", "AUC")
 gdsc_auc_long$source <- "GDSC"
 gdsc_auc_long$sample_id <- with(gdsc_auc_long, paste(source, source_ccl_name, source_histology, sep = "_"))
+gdsc_auc_long$source_histology <- as.character(gdsc_auc_long$source_histology)
 gdsc_auc <- dcast(gdsc_auc_long, source + source_ccl_name + source_histology + sample_id ~ compound_name, value.var = "AUC", fun.aggregate = mean, fill = 10000)
 gdsc_auc[, 5:ncol(gdsc_auc)] <- gdsc_auc[, 5:ncol(gdsc_auc)] %>% replace_with_na_all(condition = ~.x == 10000)
 
@@ -212,14 +245,41 @@ gdsc_auc[, 5:ncol(gdsc_auc)] <- gdsc_auc[, 5:ncol(gdsc_auc)] %>% replace_with_na
 pgx_auc_list <- list(ccle_auc, ctrp_auc, gdsc_auc)
 pgx_auc_names <- unique(unlist(lapply(pgx_auc_list, names)))
 pgx_all_auc <- do.call(rbind, c(lapply(pgx_auc_list, function(x) data.frame(c(x, sapply(setdiff(pgx_auc_names, names(x)), function(y) NA)), check.names = FALSE))))
-
-# Bind all AUC long files for plotting
-ctrp_auc_long_div <- ctrp_auc_long
-ctrp_auc_long_div$AUC <- ctrp_auc_long_div$AUC / 100
-pgx_auc_long <- rbind(ccle_auc_long, ctrp_auc_long_div, gdsc_auc_long)
+# saveRDS(pgx_all_auc, "./data_munging/19Q1/pgx_all_auc.rds", compress = "xz")
+# write.csv.gz(pgx_all_auc, "./data_munging/19Q1/pgx_all_auc.csv.gz", row.names = FALSE)
 ```
 
-Plots for Denise:
+Compare histology representation for CCLE, CTRP, and GDSC:
+```{r}
+sort(unique(na.omit(ccle_auc_long$source_histology)))
+sort(unique(na.omit(ctrp_auc_long$source_histology)))
+sort(unique(na.omit(gdsc_auc_long$source_histology)))
+
+setdiff(unique(na.omit(ccle_auc_long$source_histology)), unique(na.omit(gdsc_auc_long$source_histology)))
+setdiff(unique(na.omit(gdsc_auc_long$source_histology)), unique(na.omit(ctrp_auc_long$source_histology)))
+```
+
+### GE 
+
+```{r, eval=FALSE}
+ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
+ge_merged <- merge(select(ccl_info, Broad_ID, source_histology, source_ccl_name), ge_melt, by = "Broad_ID", all = TRUE)
+```
+
+### CN
+
+```{r, eval=FALSE}
+cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
+```
+
+### Mut
+
+```{r, eval=FALSE}
+maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
+```
+
+### Summary figures
+
 ```{r, eval=FALSE}
 hist_auc_ccle <- ggplot(data = ccle_auc_long) +
   geom_histogram(mapping = aes(x = AUC, fill = source), color = "black", binwidth = 0.25, boundary = 0, closed = "left") +
@@ -249,18 +309,21 @@ hist_auc_gdsc$widths[2:3] <- p_maxWidth
 hist_auc_all <- cowplot::plot_grid(hist_auc_ccle, hist_auc_ctrp, hist_auc_gdsc, nrow = 3, rel_heights = c(9, 9, 8))
 ggsave("./gcn_denise/hist_auc_all.png", hist_auc_all, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
-venn_ccl <- venn.diagram(list("CCLE" = unique(ccle_auc_long$source_ccl_name), "CTRP" = unique(ctrp_auc_long$source_ccl_name), "GDSC" = unique(gdsc_auc_long$source_ccl_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn_ccl <- venn.diagram(list("CCLE" = unique(na.omit(ccl_info$source_ccl_name)), "CTRP" = unique(ctrp_auc_long$source_ccl_name), "GDSC" = unique(gdsc_auc_long$source_ccl_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 0), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
 png("./gcn_denise/venn_ccl.png")
 grid.newpage()
 grid.draw(venn_ccl)
 dev.off()
 
-venn_histology <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$source_histology)), "CTRP" = unique(na.omit(ctrp_auc_long$source_histology)), "GDSC" = unique(na.omit(gdsc_auc_long$source_histology))), resolution = 5000, main = "Overlap of cancer cell line histologies screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn_histology <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$source_histology)), "CTRP" = unique(na.omit(ctrp_auc_long$source_histology)), "GDSC" = unique(na.omit(gdsc_auc_long$source_histology))), resolution = 5000, main = "Overlap of cancer cell line histologies screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(0, 0, 0), cat.dist = c(0.001, 0.001, -0.01), cat.cex = 1.5, cex = 1, filename = NULL)
 png("./gcn_denise/venn_histology.png")
 grid.newpage()
 grid.draw(venn_histology)
 dev.off()
 
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_compound <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$compound_name)), "CTRP" = unique(na.omit(ctrp_auc_long$compound_name)), "GDSC" = unique(na.omit(gdsc_auc_long$compound_name))), resolution = 5000, main = "Overlap of compounds screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
 png("./gcn_denise/venn_compound.png")
 grid.newpage()
