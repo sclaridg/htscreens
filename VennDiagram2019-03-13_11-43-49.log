@@ -1,0 +1,37 @@
+INFO [2019-03-13 11:43:49] [[1]]
+INFO [2019-03-13 11:43:49] list(CCLE = unique(na.omit(ccl_info$source_ccl_name)), CTRP = unique(ctrp_auc_long$source_ccl_name), 
+INFO [2019-03-13 11:43:49]     GDSC = unique(gdsc_auc_long$source_ccl_name))
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $resolution
+INFO [2019-03-13 11:43:49] [1] 5000
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $main
+INFO [2019-03-13 11:43:49] [1] "Overlap of cancer cell lines (CCLs) screened in each dataset"
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $main.fontface
+INFO [2019-03-13 11:43:49] [1] "bold"
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $lty
+INFO [2019-03-13 11:43:49] rep("blank", 3)
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $fill
+INFO [2019-03-13 11:43:49] c("springgreen4", "steelblue4", "turquoise4")
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $alpha
+INFO [2019-03-13 11:43:49] c(0.5, 0.5, 0.5)
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $cat.pos
+INFO [2019-03-13 11:43:49] c(-30, 30, 0)
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $cat.dist
+INFO [2019-03-13 11:43:49] c(0.001, 0.001, 0.005)
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $cat.cex
+INFO [2019-03-13 11:43:49] [1] 1.5
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $cex
+INFO [2019-03-13 11:43:49] [1] 1
+INFO [2019-03-13 11:43:49] 
+INFO [2019-03-13 11:43:49] $filename
+INFO [2019-03-13 11:43:49] NULL
+INFO [2019-03-13 11:43:49] 
