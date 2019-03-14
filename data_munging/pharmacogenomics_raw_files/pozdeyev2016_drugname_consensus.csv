@@ -1,0 +1,628 @@
+﻿CCLE_drug_names,GDSC_drug_names,CTRP_drug_names,Consensus_drug_names
+,,968,968
+,681640,,681640
+,,16-beta-bromoandrosterone,16-beta-bromoandrosterone
+17-AAG,17-AAG,tanespimycin,17-AAG
+,,"1S,3R-RSL-3","1S,3R-RSL-3"
+,,3-Cl-AHPC,3-Cl-AHPC
+,A-443654,,A-443654
+,A-770041,,A-770041
+,,A-804598,A-804598
+,,AA-COCF3,AA-COCF3
+,,abiraterone,Abiraterone
+,,ABT-199,ABT-199
+,,ABT-737,ABT-737
+,,AC55649,AC55649
+AEW541,,,AEW541
+,BIBW2992,afatinib,Afatinib
+,AG-014699,,AG-014699
+,,AGK-2,AGK-2
+,AICAR,,AICAR
+,AKT inhibitor VIII,,AKT inhibitor VIII
+,,alisertib,Alisertib
+,,alisertib:navitoclax (2:1 mol/mol),Alisertib_navitoclax 2 to 1 ratio mol by mol
+,,AM-580,AM-580
+,AMG-706,,AMG-706
+,AP-24534,,AP-24534
+,,apicidin,Apicidin
+,AS601245,,AS601245
+,,AT-406,AT-406
+,,AT13387,AT13387
+,,AT7867,AT7867
+,ATRA,,ATRA
+,,austocystin D,Austocystin D
+,AUY922,,AUY922
+,,avicin D,Avicin D
+,,avrainvillamide,Avrainvillamide
+,Axitinib,axitinib,Axitinib
+,,AZ-3146,AZ-3146
+,AZ628,,AZ628
+,,azacitidine,Azacitidine
+,,AZD1480,AZD1480
+,,AZD4547,AZD4547
+,AZD6482,AZD6482,AZD6482
+,,AZD7545,AZD7545
+,AZD7762,AZD7762,AZD7762
+,AZD8055,AZD8055,AZD8055
+,,B02,B02
+,,bafilomycin A1,Bafilomycin A1
+,,barasertib,Barasertib
+,,carboplatin,Carboplatin
+,,carboplatin:etoposide (40:17 mol/mol),Carboplatin_etoposide 40 to 17 ratio mol by mol
+,,carboplatin:UNC0638 (2:1 mol/mol),Carboplatin_UNC0638 2 to 1 ratio mol by mol
+,,bardoxolone methyl,Bardoxolone methyl
+,,Bax channel blocker,Bax channel blocker
+,BAY 61-3606,,BAY 61-3606
+,,BCL-LZH-4,BCL-LZH-4
+,,BEC,BEC
+,,belinostat,Belinostat
+,,bendamustine,Bendamustine
+,,betulinic acid,Betulinic acid
+,Bexarotene,bexarotene,Bexarotene
+,BI-2536,BI-2536,BI-2536
+,,BIBR-1532,BIBR-1532
+,Bicalutamide,,Bicalutamide
+,BIRB 0796,BIRB-796,BIRB-796
+,,birinapant,Birinapant
+,,BIX-01294,BIX-01294
+,,blebbistatin,Blebbistatin
+,Bleomycin,bleomycin A2,Bleomycin
+,,BMS-195614,BMS-195614
+,,BMS-270394,BMS-270394
+,,BMS-345541,BMS-345541
+,BMS-509744,,BMS-509744
+,BMS-536924,BMS-536924,BMS-536924
+,BMS-708163,,BMS-708163
+,BMS-754807,BMS-754807,BMS-754807
+,Bortezomib,bortezomib,Bortezomib
+,Bosutinib,bosutinib,Bosutinib
+,,BRD1812,BRD1812
+,,BRD1835,BRD1835
+,,BRD4132,BRD4132
+,,BRD6340,BRD6340
+,,BRD8899,BRD8899
+,,BRD8958,BRD8958
+,,BRD9647,BRD9647
+,,BRD9876,BRD9876
+,,BRD9876:MK-1775 (4:1 mol/mol),BRD9876_MK-1775 4 to 1 ratio mol by mol
+,,BRD-A02303741,BRD-A02303741
+,,BRD-A02303741:carboplatin (1:1 mol/mol),BRD-A02303741_carboplatin 1 to 1 ratio mol by mol
+,,BRD-A02303741:navitoclax (2:1 mol/mol),BRD-A02303741_navitoclax 2 to 1 ratio mol by mol
+,,BRD-A05715709,BRD-A05715709
+,,BRD-A71883111,BRD-A71883111
+,,BRD-A86708339,BRD-A86708339
+,,BRD-A94377914,BRD-A94377914
+,,BRD-K01737880,BRD-K01737880
+,,BRD-K02251932,BRD-K02251932
+,,BRD-K02492147,BRD-K02492147
+,,BRD-K03536150,BRD-K03536150
+,,BRD-K03911514,BRD-K03911514
+,,BRD-K04800985,BRD-K04800985
+,,BRD-K07442505,BRD-K07442505
+,,BRD-K09344309,BRD-K09344309
+,,BRD-K09587429,BRD-K09587429
+,,BRD-K11533227,BRD-K11533227
+,,BRD-K13185470,BRD-K13185470
+,,BRD-K13999467,BRD-K13999467
+,,BRD-K14844214,BRD-K14844214
+,,BRD-K16130065,BRD-K16130065
+,,BRD-K16147474,BRD-K16147474
+,,BRD-K17060750,BRD-K17060750
+,,BRD-K19103580,BRD-K19103580
+,,BRD-K20514654,BRD-K20514654
+,,BRD-K42260513,BRD-K42260513
+,,BRD-K24690302,BRD-K24690302
+,,BRD-K26531177,BRD-K26531177
+,,BRD-K27188169,BRD-K27188169
+,,BRD-K27188169:navitoclax (2:1 mol/mol),BRD-K27188169_navitoclax 2 to 1 ratio mol by mol
+,,BRD-K27224038,BRD-K27224038
+,,BRD-K27986637,BRD-K27986637
+,,BRD-K28456706,BRD-K28456706
+,,BRD-K29086754,BRD-K29086754
+,,BRD-K29313308,BRD-K29313308
+,,BRD-K30019337,BRD-K30019337
+,,BRD-K30748066,BRD-K30748066
+,,BRD-K33199242,BRD-K33199242
+,,BRD-K33514849,BRD-K33514849
+,,BRD-K34099515,BRD-K34099515
+,,BRD-K34222889,BRD-K34222889
+,,BRD-K34485477,BRD-K34485477
+,,BRD-K35604418,BRD-K35604418
+,,BRD-K37390332,BRD-K37390332
+,,BRD-K41334119,BRD-K41334119
+,,BRD-K41597374,BRD-K41597374
+,,BRD-K44224150,BRD-K44224150
+,,BRD-K45681478,BRD-K45681478
+,,BRD-K48334597,BRD-K48334597
+,,BRD-K48477130,BRD-K48477130
+,,BRD-K49290616,BRD-K49290616
+,,BRD-K50799972,BRD-K50799972
+,,BRD-K51490254,BRD-K51490254
+,,BRD-K51831558,BRD-K51831558
+,,BRD-K52037352,BRD-K52037352
+,,BRD-K55116708,BRD-K55116708
+,,BRD-K55473186,BRD-K55473186
+,,BRD-K58730230,BRD-K58730230
+,,BRD-K61166597,BRD-K61166597
+,,BRD-K63431240,BRD-K63431240
+,,BRD-K64610608,BRD-K64610608
+,,BRD-K66453893,BRD-K66453893
+,,BRD-K66532283,BRD-K66532283
+,,BRD-K70511574,BRD-K70511574
+,,BRD-K71781559,BRD-K71781559
+,,BRD-K71935468,BRD-K71935468
+,,BRD-K75293299,BRD-K75293299
+,,BRD-K78574327,BRD-K78574327
+,,BRD-K79669418,BRD-K79669418
+,,BRD-K80183349,BRD-K80183349
+,,BRD-K84807411,BRD-K84807411
+,,BRD-K85133207,BRD-K85133207
+,,BRD-K86535717,BRD-K86535717
+,,BRD-K88742110,BRD-K88742110
+,,BRD-K90370028,BRD-K90370028
+,,BRD-K92856060,BRD-K92856060
+,,BRD-K94991378,BRD-K94991378
+,,BRD-K96431673,BRD-K96431673
+,,BRD-K96970199,BRD-K96970199
+,,BRD-K97651142,BRD-K97651142
+,,BRD-K99006945,BRD-K99006945
+,,BRD-K99584050,BRD-K99584050
+,,BRD-M00053801,BRD-M00053801
+,,brefeldin A,Brefeldin A
+,,brivanib,Brivanib
+,Bryostatin 1,,Bryostatin 1
+,BX-795,,BX-795
+,,BYL-719,BYL-719
+,,C6-ceramide,C6-ceramide
+,,cabozantinib,Cabozantinib
+,,CAL-101,CAL-101
+,Camptothecin,,Camptothecin
+,,canertinib,Canertinib
+,,CAY10576,CAY10576
+,,CAY10594,CAY10594
+,,CAY10618,CAY10618
+,,CBB-1007,CBB-1007
+,CCT007093,,CCT007093
+,CCT018159,,CCT018159
+,,CCT036477,CCT036477
+,,CD-1530,CD-1530
+,,CD-437,CD-437
+,,cediranib,Cediranib
+,CEP-701,,CEP-701
+,,ceranib-2,Ceranib-2
+,,cerulenin,Cerulenin
+,CGP-082996,,CGP-082996
+,CGP-60474,,CGP-60474
+,,Ch-55,Ch-55
+,CHIR-99021,CHIR-99021,CHIR-99021
+,,chlorambucil,Chlorambucil
+,,CHM-1,CHM-1
+,CI-1040,,CI-1040
+,,CI-976,CI-976
+,,ciclopirox,Ciclopirox
+,,ciclosporin,Ciclosporin
+,,CID-5951923,CID-5951923
+,,CIL41,CIL41
+,,CIL55,CIL55
+,,CIL55A,CIL55A
+,,CIL56,CIL56
+,,CIL70,CIL70
+,,cimetidine,Cimetidine
+,Cisplatin,,Cisplatin
+,,clofarabine,Clofarabine
+,CMK,,CMK
+,,COL-3,COL-3
+,,Compound 1541A,Compound 1541A
+,,compound 1B,Compound 1B
+,,Compound 23 citrate,Compound 23 citrate
+,,Compound 7d-cis,Compound 7d-cis
+,,CR-1-31B,CR-1-31B
+PF2341066,PF-02341066,crizotinib,Crizotinib
+,,crizotinib:PLX-4032 (2:1 mol/mol),Crizotinib_PLX-4032 2 to 1 ratio mol by mol
+,,cucurbitacin I,Cucurbitacin I
+,,curcumin,Curcumin
+,,cyanoquinoline 11,Cyanoquinoline 11
+,Cyclopamine,,Cyclopamine
+,,cyclophosphamide,Cyclophosphamide
+,Cytarabine,cytarabine hydrochloride,Cytarabine
+,,cytochalasin B,Cytochalasin B
+,,dabrafenib,Dabrafenib
+,,dacarbazine,Dacarbazine
+,,dinaciclib,Dinaciclib
+,,daporinad,Daporinad
+,,darinaparsin,Darinaparsin
+,Dasatinib,dasatinib,Dasatinib
+,,DBeQ,DBeQ
+,,decitabine,Decitabine
+,,decitabine:carboplatin (1:1 mol/mol),Decitabine_carboplatin 1 to 1 ratio mol by mol
+,,decitabine:navitoclax (2:1 mol/mol),Decitabine_navitoclax 2 to 1 ratio mol by mol
+,,dexamethasone,Dexamethasone
+,DMOG,,DMOG
+,Docetaxel,docetaxel,Docetaxel
+,,docetaxel:tanespimycin (2:1 mol/mol),Docetaxel_tanespimycin 2 to 1 ratio mol by mol
+TKI258,,,Dovitinib
+,Doxorubicin,doxorubicin,Doxorubicin
+,,doxorubicin:navitoclax (2:1 mol/mol),Doxorubicin_navitoclax 2 to 1 ratio mol by mol
+,EHT 1864,,EHT 1864
+,,ELCPK,ELCPK
+,Elesclomol,,Elesclomol
+,,elocalcitol,Elocalcitol
+,Embelin,,Embelin
+,MS-275,entinostat,Entinostat
+,,epigallocatechin-3-monogallate,Epigallocatechin-3-monogallate
+,Epothilone B,,Epothilone B
+,,erastin,Erastin
+,,erismodegib,Erismodegib
+Erlotinib,Erlotinib,erlotinib,Erlotinib
+,,erlotinib:PLX-4032 (2:1 mol/mol),Erlotinib_vemurafenib 2 to 1 ratio mol by mol
+,,etomoxir,Etomoxir
+,Etoposide,etoposide,Etoposide
+,,ETP-46464,ETP-46464
+,,EX-527,EX-527
+,,FGIN-1-27,FGIN-1-27
+,FH535,,FH535
+,,fingolimod,Fingolimod
+,,alvocidib,Flavopiridol
+,,fluorouracil,Fluorouracil
+,,fluvastatin,Fluvastatin
+,,foretinib,Foretinib
+,,FQI-1,FQI-1
+,,FQI-2,FQI-2
+,,FSC231,FSC231
+,FTI-277,,FTI-277
+,,fulvestrant,Fulvestrant
+,,fumonisin B1,Fumonisin B1
+,,GANT-61,GANT-61
+,GDC-0449,,GDC-0449
+,,GDC-0879,GDC-0879
+,GDC0941,GDC-0941,GDC-0941
+,Gefitinib,gefitinib,Gefitinib
+,Gemcitabine,gemcitabine,Gemcitabine
+,,GMX-1778,GMX-1778
+,GNF-2,,GNF-2
+,,gossypol,Gossypol
+,,GSK1059615,GSK1059615
+,GSK-1904529A,,GSK-1904529A
+,,GSK2636771,GSK2636771
+,GSK269962A,,GSK269962A
+,,GSK-3 inhibitor IX,GSK-3 inhibitor IX
+,,GSK4112,GSK4112
+,,GSK461364,GSK461364
+,,GSK525762A,GSK525762A
+,GSK-650394,,GSK-650394
+,,GSK-J4,GSK-J4
+,GW 441756,,GW 441756
+,,GW-405833,GW-405833
+,GW843682X,GW-843682X,GW-843682X
+,,HBX-41108,HBX-41108
+,,HC-067047,HC-067047
+,,HLI 373,HLI 373
+,,hyperforin,Hyperforin
+,,I-BET151,I-BET151
+,,ibrutinib,Ibrutinib
+,,IC-87114,IC-87114
+,,ifosfamide,Ifosfamide
+,Imatinib,imatinib,Imatinib
+,,importazole,Importazole
+,,indisulam,Indisulam
+,IPA-3,,IPA-3
+,,IPR-456,IPR-456
+Irinotecan,,,Irinotecan
+,,isoevodiamine,Isoevodiamine
+,,isoliquiritigenin,Isoliquiritigenin
+,,isonicotinohydroxamic acid,Isonicotinohydroxamic acid
+,,ISOX,ISOX
+,,ISOX:bortezomib (250:1 mol/mol),ISOX_bortezomib 250 to 1 ratio mol by mol
+,,istradefylline,Istradefylline
+,,itraconazole,Itraconazole
+,,IU1,IU1
+,JNK Inhibitor VIII,,JNK Inhibitor VIII
+,JNK-9L,,JNK-9L
+,,JQ-1,JQ-1
+,,JQ-1:carboplatin (1:1 mol/mol),JQ-1_carboplatin 1 to 1 ratio mol by mol
+,,JQ-1:MK-0752 (1:1 mol/mol),JQ-1_MK-0752 1 to 1 ratio mol by mol
+,,JQ-1:navitoclax (2:1 mol/mol),JQ-1_navitoclax 2 to 1 ratio mol by mol
+,,JQ-1:UNC0638 (2:1 mol/mol),JQ-1_UNC0638 2 to 1 ratio mol by mol
+,,JQ-1:vorinostat (2:1 mol/mol),JQ-1_vorinostat 2 to 1 ratio mol by mol
+,,JW-480,JW-480
+,,JW-55,JW-55
+,JW-7-52-1,,JW-7-52-1
+,,JW-74,JW-74
+,,KH-CB19,KH-CB19
+,,KHS101,KHS101
+,,Ki8751,Ki8751
+,KIN001-135,,KIN001-135
+,,Ko-143,Ko-143
+,,KPT185,KPT185
+,,KU 0060648,KU 0060648
+,,KU-0063794,KU-0063794
+,KU-55933,KU-55933,KU-55933
+,,KU-60019,KU-60019
+,,KW-2449,KW-2449
+,,KX2-391,KX2-391
+L-685458,,L-685458,L-685458
+Lapatinib,Lapatinib,lapatinib,Lapatinib
+,LAQ824,,LAQ824
+LBW242,,,LBW242
+,,LE-135,LE-135
+,Lenalidomide,,Lenalidomide
+,,lenvatinib,Lenvatinib
+,,leptomycin B,Leptomycin B
+,LFM-A13,,LFM-A13
+,,linifanib,Linifanib
+,,lomeguatrib,Lomeguatrib
+,,lovastatin,Lovastatin
+,,LRRK2-IN-1,LRRK2-IN-1
+,,LY-2157299,LY-2157299
+,,LY-2183240,LY-2183240
+,,manumycin A,Manumycin A
+,,marinopyrrole A,Marinopyrrole A
+,,masitinib,Masitinib
+,,Mdivi-1,Mdivi-1
+,,Merck60,Merck60
+,,methylstat,Methylstat
+,Methotrexate,methotrexate,Methotrexate
+,MG-132,MG-132,MG-132
+,,MGCD-265,MGCD-265
+,,MI-1,MI-1
+,,MI-2,MI-2
+,Midostaurin,,Midostaurin
+,Mitomycin C,mitomycin,Mitomycin
+,,MK-0752,MK-0752
+,,MK-1775,MK-1775
+,MK-2206,MK-2206,MK-2206
+,,ML006,ML006
+,,ML029,ML029
+,,ML031,ML031
+,,ML050,ML050
+,,ML083,ML083
+,,ML162,ML162
+,,ML203,ML203
+,,ML210,ML210
+,,ML239,ML239
+,,ML258,ML258
+,,ML311,ML311
+,,ML312,ML312
+,,ML320,ML320
+,,ML334 diastereomer,ML334 diastereomer
+,,MLN2238,MLN2238
+,,MLN2480,MLN2480
+,,momelotinib,Momelotinib
+,,MST-312,MST-312
+,,myricetin,Myricetin
+,,myriocin,Myriocin
+,,N9-isopropylolomoucine,N9-isopropylolomoucine
+,,nakiterpiosin,Nakiterpiosin
+,,narciclasine,Narciclasine
+,ABT-263,navitoclax,Navitoclax
+,,navitoclax:birinapant (1:1 mol/mol),Navitoclax_birinapant 1 to 1 ratio mol by mol
+,,navitoclax:gemcitabine (1:1 mol/mol),Navitoclax_gemcitabine 1 to 1 ratio mol by mol
+,,navitoclax:MST-312 (1:1 mol/mol),Navitoclax_MST-312 1 to 1 ratio mol by mol
+,,navitoclax:piperlongumine (1:1 mol/mol),Navitoclax_piperlongumine 1 to 1 ratio mol by mol
+,,navitoclax:pluripotin (1:1 mol/mol),Navitoclax_pluripotin 1 to 1 ratio mol by mol
+,,navitoclax:sorafenib (1:1 mol/mol),Navitoclax_sorafenib 1 to 1 ratio mol by mol
+,,navitoclax:PLX-4032 (1:1 mol/mol),Navitoclax_vemurafenib 1 to 1 ratio mol by mol
+,,necrosulfonamide,Necrosulfonamide
+,,necrostatin-1,Necrostatin-1
+,,necrostatin-7,Necrostatin-7
+,,nelarabine,Nelarabine
+,,neopeltolide,Neopeltolide
+,,neratinib,Neratinib
+,,neuronal differentiation inducer III,Neuronal differentiation inducer III
+,,niclosamide,Niclosamide
+Nilotinib,Nilotinib,nilotinib,Nilotinib
+,,nintedanib,Nintedanib
+,,NPC-26,NPC-26
+,,NSC 74859,NSC 74859
+,,NSC19630,NSC19630
+,,NSC23766,NSC23766
+,,NSC30930,NSC30930
+,,NSC48300,NSC48300
+,,NSC632839,NSC632839
+,NSC-87877,,NSC-87877
+,,NSC95397,NSC95397
+,NU-7441,,NU-7441
+Nutlin-3,Nutlin-3a,nutlin-3,Nutlin-3
+,,NVP-231,NVP-231
+,,NVP-ADW742,NVP-ADW742
+,NVP-BEZ235,NVP-BEZ235,NVP-BEZ235
+,,NVP-BSK805,NVP-BSK805
+,,O-6-benzylguanine,O-6-benzylguanine
+,Obatoclax Mesylate,obatoclax,Obatoclax
+,AZD-2281,olaparib,Olaparib
+,,oligomycin A,Oligomycin A
+,,omacetaxine mepesuccinate,Omacetaxine mepesuccinate
+,,OSI-027,OSI-027
+,OSI-906,linsitinib,Linsitinib
+,,OSI-930,OSI-930
+,OSU-03012,,OSU-03012
+,,ouabain,Ouabain
+,,oxaliplatin,Oxaliplatin
+,PAC-1,PAC-1,PAC-1
+Paclitaxel,Paclitaxel,paclitaxel,Paclitaxel
+,,palmostatin B,Palmostatin B
+,,pandacostat,Pandacostat
+Panobinostat,,LBH-589,Panobinostat
+,,parbendazole,Parbendazole
+,Parthenolide,parthenolide,Parthenolide
+,Pazopanib,pazopanib,Pazopanib
+,,PD 153035,PD 153035
+PD-0325901,PD-0325901,,PD-0325901
+PD-0332991,PD-0332991,,PD-0332991
+,PD-173074,,PD-173074
+,,PD318088,PD318088
+,,PDMP,PDMP
+,,pevonedistat,Pevonedistat
+,,PF-184,PF-184
+,,PF-3758309,PF-3758309
+,PF-4708671,,PF-4708671
+,,PF-4800567 hydrochloride,PF-4800567
+,,PF-543,PF-543
+,PF-562271,,PF-562271
+,,PF-573228,PF-573228
+,,PF-750,PF-750
+PHA-665752,PHA-665752,,PHA-665752
+,,PHA-793887,PHA-793887
+,,phloretin,Phloretin
+,,PI-103,PI-103
+,,pifithrin-alpha,Pifithrin-alpha
+,,pifithrin-mu,Pifithrin-mu
+,,PIK-93,PIK-93
+,,piperlongumine,Piperlongumine
+,,piperlongumine:MST-312 (1:1 mol/mol),Piperlongumine_MST-312 1 to 1 ratio mol by mol
+,,pitstop2,Pitstop2
+,,Platin,Platin
+,,PL-DI,PL-DI
+,,pluripotin,Pluripotin
+PLX4720,PLX4720,PLX-4720,PLX-4720
+,,PRIMA-1,PRIMA-1
+,,PRIMA-1-Met,PRIMA-1-Met
+,,PRL-3 inhibitor I,PRL-3 inhibitor I
+,,procarbazine,Procarbazine
+,,prochlorperazine,Prochlorperazine
+,,purmorphamine,Purmorphamine
+,,PX-12,PX-12
+,,PYR-41,PYR-41
+,,pyrazolanthrone,Pyrazolanthrone
+,Pyrimethamine,,Pyrimethamine
+,QS11,QS-11,QS-11
+,,quizartinib,Quizartinib
+,,QW-BI-011,QW-BI-011
+,,R428,R428
+RAF265,,RAF265,RAF265
+,Rapamycin,sirolimus,Rapamycin
+,RDEA119,,RDEA119
+,,regorafenib,Regorafenib
+,,Repligen 136,Repligen 136
+,,RG-108,RG-108
+,,rigosertib,Rigosertib
+,,RITA,RITA
+,,RO4929097,RO4929097
+,RO-3306,,RO-3306
+,Roscovitine,,Roscovitine
+,,ruxolitinib,Ruxolitinib
+,,salermide,Salermide
+,,salermide:PLX-4032 (12:1 mol/mol),Salermide_vemurafenib 12 to 1 ratio mol by mol
+,Salubrinal,,Salubrinal
+AZD0530,AZD-0530,saracatinib,Saracatinib
+,SB 216763,,SB 216763
+,,SB-225002,SB-225002
+,,SB-431542,SB-431542
+,,SB-525334,SB-525334
+,SB590885,,SB590885
+,,SB-743921,SB-743921
+,,SCH-529074,SCH-529074
+,,SCH-79797,SCH-79797
+AZD6244,AZD6244,selumetinib,Selumetinib
+,,selumetinib:BRD-A02303741 (4:1 mol/mol),Selumetinib_BRD-A02303741 4 to 1 ratio mol by mol
+,,selumetinib:decitabine (4:1 mol/mol),Selumetinib_decitabine 4 to 1 ratio mol by mol
+,,selumetinib:GDC-0941 (4:1 mol/mol),Selumetinib_GDC-0941 4 to 1 ratio mol by mol
+,,selumetinib:JQ-1 (4:1 mol/mol),Selumetinib_JQ-1 4 to 1 ratio mol by mol
+,,selumetinib:MK-2206 (8:1 mol/mol),Selumetinib_MK-2206 8 to 1 ratio mol by mol
+,,selumetinib:navitoclax (8:1 mol/mol),Selumetinib_navitoclax 8 to 1 ratio mol by mol
+,,selumetinib:piperlongumine (8:1 mol/mol),Selumetinib_piperlongumine 8 to 1 ratio mol by mol
+,,selumetinib:tretinoin (2:1 mol/mol),Selumetinib_tretinoin 2 to 1 ratio mol by mol
+,,selumetinib:UNC0638 (4:1 mol/mol),Selumetinib_UNC0638 4 to 1 ratio mol by mol
+,,selumetinib:PLX-4032 (8:1 mol/mol),Selumetinib_vemurafenib 8 to 1 ratio mol by mol
+,,selumetinib:vorinostat (8:1 mol/mol),Selumetinib_vorinostat 8 to 1 ratio mol by mol
+,,semagacestat,Semagacestat
+,JNJ-26854165,serdemetan,Serdemetan
+,,serdemetan:SCH-529074 (1:1 mol/mol),Serdemetan_SCH-529074 1 to 1 ratio mol by mol
+,,SGX-523,SGX-523
+,Shikonin,,Shikonin
+,,SID 26681509,SID 26681509
+,,sildenafil,Sildenafil
+,,silmitasertib,Silmitasertib
+,,simvastatin,Simvastatin
+,,sirolimus:bortezomib (250:1 mol/mol),Sirolimus_bortezomib 250 to 1 ratio mol by mol
+,,sitagliptin,Sitagliptin
+,,SJ-172550,SJ-172550
+,,skepinone-L,Skepinone-L
+,,SKI-II,SKI-II
+,SL 0101-1,,SL 0101-1
+,,SMER-3,SMER-3
+,,SN-38,SN-38
+,,SNS-032,SNS-032
+,,SNX-2112,SNX-2112
+,,SNX-2112:bortezomib (250:1 mol/mol),SNX-2112_bortezomib 250 to 1 ratio mol by mol
+Sorafenib,Sorafenib,sorafenib,Sorafenib
+,,sotrastaurin,Sotrastaurin
+,,spautin-1,Spautin-1
+,,SR1001,SR1001
+,,SR8278,SR8278
+,,SR-II-138A,SR-II-138A
+,,SRT-1720,SRT-1720
+,,staurosporine,Staurosporine
+,,StemRegenin 1,StemRegenin 1
+,,STF-31,STF-31
+,S-Trityl-L-cysteine,,S-Trityl-L-cysteine
+,,SU11274,SU11274
+,Sunitinib,sunitinib,Sunitinib
+,,SZ4TA2,SZ4TA2
+,,tacedinaline,Tacedinaline
+,,tacrolimus,Tacrolimus
+TAE684,NVP-TAE684,NVP-TAE684,TAE684
+,,tamatinib,Tamatinib
+,,tamoxifen,Tamoxifen
+,,tandutinib,Tandutinib
+,,tanespimycin:bortezomib (250:1 mol/mol),Tanespimycin_bortezomib 250 to 1 ratio mol by mol
+,,tanespimycin:gemcitabine (1:1 mol/mol),Tanespimycin_gemcitabine 1 to 1 ratio mol by mol
+,,temozolomide,Temozolomide
+,Temsirolimus,temsirolimus,Temsirolimus
+,,teniposide,Teniposide
+,,TG-100-115,TG-100-115
+,,TG-101348,TG-101348
+,TGX221,TGX-221,TGX-221
+,,thalidomide,Thalidomide
+,Thapsigargin,,Thapsigargin
+,,tigecycline,Tigecycline
+,Tipifarnib,tipifarnib-P2,Tipifarnib
+,,tipifarnib-P1,Tipifarnib-P1
+,,tivantinib,Tivantinib
+,,tivozanib,Tivozanib
+Topotecan,,topotecan,Topotecan
+,,tosedostat,Tosedostat
+,,TPCA-1,TPCA-1
+,,trametinib,Trametinib
+,,tretinoin,Tretinoin
+,,tretinoin:carboplatin (2:1 mol/mol),Tretinoin_carboplatin 2 to 1 ratio mol by mol
+,,tretinoin:navitoclax (4:1 mol/mol),Tretinoin_navitoclax 4 to 1 ratio mol by mol
+,,triazolothiadiazine,Triazolothiadiazine
+,,trifluoperazine,Trifluoperazine
+,,triptolide,Triptolide
+,,tubastatin A,Tubastatin A
+,TW 37,TW-37,TW-37
+,,UNC0321,UNC0321
+,,UNC0638,UNC0638
+,,UNC0638:navitoclax (1:1 mol/mol),UNC0638_navitoclax 1 to 1 ratio mol by mol
+,,VAF-347,VAF-347
+,,valdecoxib,Valdecoxib
+ZD-6474,,vandetanib,Vandetanib
+,ABT-888,veliparib,Veliparib
+,,PLX-4032,Vemurafenib
+,,VER-155008,VER-155008
+,Vinblastine,,Vinblastine
+,,vincristine,Vincristine
+,Vinorelbine,,Vinorelbine
+,,vorapaxar,Vorapaxar
+,Vorinostat,vorinostat,Vorinostat
+,,vorinostat:carboplatin (1:1 mol/mol),Vorinostat_carboplatin 1 to 1 ratio mol by mol
+,,vorinostat:navitoclax (4:1 mol/mol),Vorinostat_navitoclax 4 to 1 ratio mol by mol
+,,VU0155056,VU0155056
+,VX-680,VX-680,VX-680
+,VX-702,,VX-702
+,,WAY-362450,WAY-362450
+,WH-4-023,,WH-4-023
+,,WP1130,WP1130
+,WZ-1-84,,WZ-1-84
+,,WZ4002,WZ4002
+,,WZ8040,WZ8040
+,,XL765,XL765
+,XMD8-85,,XMD8-85
+,,YK 4-279,YK 4-279
+,,YL54,YL54
+,,YM-155,YM-155
+,,zebularine,Zebularine
+,Z-LLNle-CHO,,Z-LLNle-CHO
+,ZM-447439,,ZM-447439
+,,ZSTK474,ZSTK474
