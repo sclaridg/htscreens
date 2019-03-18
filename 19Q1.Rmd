@@ -292,32 +292,37 @@ hist_auc_ccle$widths[2:3] <- p_maxWidth
 hist_auc_ctrp$widths[2:3] <- p_maxWidth
 hist_auc_gdsc$widths[2:3] <- p_maxWidth
 hist_auc_all <- cowplot::plot_grid(hist_auc_ccle, hist_auc_ctrp, hist_auc_gdsc, nrow = 3, rel_heights = c(9, 9, 8))
-ggsave("./gcn_denise/hist_auc_all.png", hist_auc_all, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+hist_auc_all
+# ggsave("./gcn_denise/hist_auc_all.png", hist_auc_all, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_ccl <- venn.diagram(list("CCLE" = unique(na.omit(ccl_info$source_ccl_name)), "CTRP" = unique(ctrp_auc_long$source_ccl_name), "GDSC" = unique(gdsc_auc_long$source_ccl_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 0), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/venn_ccl.png")
-grid.newpage()
-grid.draw(venn_ccl)
-dev.off()
+# png("./gcn_denise/venn_ccl.png")
+# grid.newpage()
+# grid.draw(venn_ccl)
+# dev.off()
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_histology <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$source_histology)), "CTRP" = unique(na.omit(ctrp_auc_long$source_histology)), "GDSC" = unique(na.omit(gdsc_auc_long$source_histology))), resolution = 5000, main = "Overlap of cancer cell line histologies screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(0, 0, 0), cat.dist = c(0.001, 0.001, -0.01), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/venn_histology.png")
-grid.newpage()
-grid.draw(venn_histology)
-dev.off()
+# png("./gcn_denise/venn_histology.png")
+# grid.newpage()
+# grid.draw(venn_histology)
+# dev.off()
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_compound <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$compound_name)), "CTRP" = unique(na.omit(ctrp_auc_long$compound_name)), "GDSC" = unique(na.omit(gdsc_auc_long$compound_name))), resolution = 5000, main = "Overlap of compounds screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.001, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/venn_compound.png")
-grid.newpage()
-grid.draw(venn_compound)
-dev.off()
+# png("./gcn_denise/venn_compound.png")
+# grid.newpage()
+# grid.draw(venn_compound)
+# dev.off()
 ```
 
 
-### Pozdeyev et al. (2016)
+# Pozdeyev et al. (2016) summary
+
+--------------------------------------------------------------------------------
+
+## Matched data
 
 ```{r}
 ccl_histologies <- select(ccl_info, source_ccl_name, source_histology) %>% drop_na(source_ccl_name)
@@ -325,6 +330,7 @@ colnames(ccl_histologies)[colnames(ccl_histologies) == "source_ccl_name"] <- "Ce
 auc <- read.delim("./data_munging/pharmacogenomics_raw_files/celline_stack.csv.gz", sep = ",")
 auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
 num_auc_per_db <- auc %>% count(Database)
+ccl_per_db <- unique(select(auc, Database, Cell_line))
 num_ccl_per_db <- unique(select(auc, Database, Cell_line)) %>% count(Database)
 # only CCLs represetented in 2 or 3 databases were included
 num_db_per_ccl <- unique(select(auc, Database, Cell_line)) %>% count(Cell_line)
@@ -332,14 +338,70 @@ num_db_per_ccl <- unique(select(auc, Database, Cell_line)) %>% count(Cell_line)
 
 There were `r length(setdiff(unique(ccl_histologies$Cell_line), unique(auc$Cell_line)))` cell lines not represented in the Pozdeyev et al. harmonized dataset.
 
-Plots:
+## Unmatched data
+
+```{r}
+CCLE_drug_response_metrics <- as.data.frame(get(load("./../../../Desktop/Drug_Sensitvity_Metrics/data/CCLE_drug_response_metrics.RData")))
+CTRP_drug_response_metrics <- as.data.frame(get(load("./../../../Desktop/Drug_Sensitvity_Metrics/data/CTRP_drug_response_metrics.RData")))
+GDSC_drug_response_metrics <- as.data.frame(get(load("./../../../Desktop/Drug_Sensitvity_Metrics/data/GDSC_drug_response_metrics.RData")))
+
+ccle_test <- merge(select(CCLE_drug_response_metrics, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CCLE"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
+
+ctrp_test <- merge(select(CTRP_drug_response_metrics, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CTRP"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
+
+gdsc_test <- merge(select(GDSC_drug_response_metrics, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "GDSC"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
+
+auc_unmatched <- rbind(CCLE_drug_response_metrics, CTRP_drug_response_metrics, GDSC_drug_response_metrics)
+auc_unmatched$AUC_EC50 <- as.numeric(as.character(auc_unmatched$AUC_EC50))
+auc_unmatched$AUC_IC50 <- as.numeric(as.character(auc_unmatched$AUC_IC50))
+num_auc_unmatched_per_db <- auc_unmatched %>% count(Database)
+```
+
+## Plots
+
+Unmatched: 
 ```{r}
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-venn_ccl_pozdeyev <- venn.diagram(list("CCLE" = unique(filter(ccl_per_db, Database == "CCLE"))$Cell_line, "CTRP" = unique(filter(ccl_per_db, Database == "CTRP"))$Cell_line, "GDSC" = unique(filter(ccl_per_db, Database == "GDSC"))$Cell_line), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/pozdeyev_venn_ccl.png")
-grid.newpage()
-grid.draw(venn_ccl_pozdeyev)
-dev.off()
+venn_all_ccl_pozdeyev <- venn.diagram(list("CCLE" = unique(ccle_test$Cell_line), "CTRP" = unique(ctrp_test$Cell_line), "GDSC" = unique(gdsc_test$Cell_line)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+# png("./gcn_denise/pozdeyev_venn_all_ccl.png", res = 500, units = "in", width = 6, height = 6)
+# grid.newpage()
+# grid.draw(venn_all_ccl_pozdeyev)
+# dev.off()
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn_all_drugs_pozdeyev <- venn.diagram(list("CCLE" = unique(ccle_test$Drug_name), "CTRP" = unique(ctrp_test$Drug_name), "GDSC" = unique(gdsc_test$Drug_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+# png("./gcn_denise/pozdeyev_venn_all_drugs.png", res = 500, units = "in", width = 6, height = 6)
+# grid.newpage()
+# grid.draw(venn_all_drugs_pozdeyev)
+# dev.off()
+
+aucic50_unmatched_per_db_dist <- ggplot(data = auc_unmatched) +
+  facet_wrap(~ Database, scales = "free_y") +
+  geom_histogram(aes(x = AUC_IC50, fill = Database), color = "black", alpha = 0.7, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  guides(fill = "none") +
+  labs(x = "AUC IC50", y = "Frequency", title = "Distributions of AUC IC50 values for all drugs in each dataset (unmatched)")
+aucic50_unmatched_per_db_dist
+# ggsave("./gcn_denise/pozdeyev_aucic50_unmatched_per_db_dist.png", aucic50_unmatched_per_db_dist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+
+aucec50_unmatched_per_db_dist <- ggplot(data = auc_unmatched) +
+  facet_wrap(~ Database, scale = "free_y") +
+  geom_histogram(aes(x = AUC_EC50, fill = Database), color = "black", alpha = 0.7, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  guides(fill = "none") +
+  labs(x = "AUC EC50", y = "Frequency", title = "Distributions of AUC EC50 values for all drugs in each dataset (unmatched)")
+aucec50_unmatched_per_db_dist
+# ggsave("./gcn_denise/pozdeyev_aucec50_unmatched_per_db_dist.png", aucec50_unmatched_per_db_dist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+```
+
+Matched:
+```{r}
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn_ccl_pozdeyev <- venn.diagram(list("CCLE" = unique(filter(ccl_per_db, Database == "CCLE"))$Cell_line, "CTRP" = unique(filter(ccl_per_db, Database == "CTRP"))$Cell_line, "GDSC" = unique(filter(ccl_per_db, Database == "GDSC"))$Cell_line), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in matched_all_pairs dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
+# png("./gcn_denise/pozdeyev_venn_ccl.png", res = 500, units = "in", width = 6, height = 6)
+# grid.newpage()
+# grid.draw(venn_ccl_pozdeyev)
+# dev.off()
 
 num_ccl_per_db_bar <- ggplot(data = unique(select(auc, Database, Cell_line))) +
   geom_bar(aes(x = Database, fill = Database), alpha = 0.7) +
@@ -348,27 +410,52 @@ num_ccl_per_db_bar <- ggplot(data = unique(select(auc, Database, Cell_line))) +
   scale_y_continuous(breaks = seq(0, 700, by = 50), labels = seq(0, 700, by = 50)) +
   geom_text(data = num_ccl_per_db, aes(x = Database, y = n + 20, label = n)) +
   labs(y = "Number of cell lines", title = "Number of unique cell lines per dataset")
-ggsave("./gcn_denise/pozdeyev_ccl_per_db.png", num_ccl_per_db_bar, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+num_ccl_per_db_bar
+# ggsave("./gcn_denise/pozdeyev_ccl_per_db.png", num_ccl_per_db_bar, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
-num_ccl_per_hist_bar <- ggplot(data = unique(select(auc, Database, Cell_line, source_histology))) +
+num_ccl_per_hist_per_db_bar <- ggplot(data = unique(select(auc, Database, Cell_line, source_histology))) +
   facet_wrap(~ Database, scales = "free_y") +
   geom_bar(aes(x = source_histology, fill = source_histology), alpha = 0.7) +
   guides(fill = "none") +
   coord_cartesian(ylim = c(0, 130)) +
   scale_y_continuous(breaks = seq(0, 130, by = 10), labels = seq(0, 130, by = 10)) +
-  labs(x = "Histology", y = "Number of cell lines", title = "Number of unique cell lines per histology") +
+  labs(x = "Histology", y = "Number of cell lines", title = "Number of unique cell lines per histology, grouped by database") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
-ggsave("./gcn_denise/pozdeyev_ccl_per_histology.png", num_ccl_per_hist_bar, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+num_ccl_per_hist_per_db_bar
+# ggsave("./gcn_denise/pozdeyev_ccl_per_histology_per_db.png", num_ccl_per_hist_per_db_bar, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
-auc_per_db_dist <- ggplot(data = auc) +
+num_ccl_per_hist_bar <- ggplot(data = unique(select(auc, Cell_line, source_histology))) +
+  geom_bar(aes(x = source_histology, fill = source_histology), alpha = 0.7) +
+  guides(fill = "none") +
+  coord_cartesian(ylim = c(0, 130)) +
+  scale_y_continuous(breaks = seq(0, 130, by = 10), labels = seq(0, 130, by = 10)) +
+  labs(x = "Histology", y = "Number of cell lines", title = "Number of unique cell lines per histology across all three databases") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+num_ccl_per_hist_bar
+# ggsave("./gcn_denise/pozdeyev_ccl_per_histology.png", num_ccl_per_hist_bar, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+
+aucic50_per_db_dist <- ggplot(data = auc) +
   facet_wrap(~ Database) +
   geom_histogram(aes(x = AUC_IC50, fill = Database), color = "black", alpha = 0.7, binwidth = 0.025, boundary = 0, closed = "left") +
   scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
   guides(fill = "none") +
   geom_text(data = num_auc_per_db, aes(x = 0.5, y = 4750, label = paste0("n = ", formatC(n, format = "d", big.mark = ",")))) +
   scale_y_continuous(breaks = seq(0, 5000, by = 500), labels = seq(0, 5000, by = 500)) +
-  labs(x = "AUC IC50", y = "Frequency", title = "Distributions of AUC IC50 values for all drugs in each dataset")
-ggsave("./gcn_denise/pozdeyev_aucic50_per_db_dist.png", auc_per_db_dist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+  labs(x = "AUC IC50", y = "Frequency", title = "Distributions of AUC IC50 values for all drugs in each dataset (filtered by matching)")
+aucic50_per_db_dist
+# ggsave("./gcn_denise/pozdeyev_aucic50_per_db_dist.png", aucic50_per_db_dist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+
+aucec50_per_db_dist <- ggplot(data = auc) +
+  facet_wrap(~ Database) +
+  geom_histogram(aes(x = AUC_EC50, fill = Database), color = "black", alpha = 0.7, binwidth = 0.025, boundary = 0, closed = "left") +
+  scale_fill_manual(values = c("CCLE" = "springgreen4", "CTRP" = "steelblue4", "GDSC" = "turquoise4")) +
+  guides(fill = "none") +
+  geom_text(data = num_auc_per_db, aes(x = 0.5, y = 4750, label = paste0("n = ", formatC(n, format = "d", big.mark = ",")))) +
+  scale_y_continuous(breaks = seq(0, 5000, by = 500), labels = seq(0, 5000, by = 500)) +
+  labs(x = "AUC EC50", y = "Frequency", title = "Distributions of AUC EC50 values for all drugs in each dataset (filtered by matching)")
+aucec50_per_db_dist
+# ggsave("./gcn_denise/pozdeyev_aucec50_per_db_dist.png", aucec50_per_db_dist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
+
 
 
