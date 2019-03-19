@@ -1,0 +1,79 @@
+,Cell_line,Histology,CCLE_ccl_name,Broad_ID,Notes,accession_id
+1,COLO677,haematopoietic_and_lymphoid_tissue,,,https://web.expasy.org/cellosaurus/CVCL_1862,CVCL_1862
+2,OC315,ovary,,,,CVCL_1617
+3,OVCAR3,ovary,NIHOVCAR3_OVARY,ACH-000001,https://depmap.org/portal/cell_line/NIHOVCAR3_OVARY,CVCL_0465
+4,2004,kidney,,,,CVCL_U759
+5,ASKA,soft_tissue,,,"https://web.expasy.org/cellosaurus/CVCL_6C43, synovial sarcoma like SYO1 and YAMATO cell lines",
+6,BT112,,,,CTRP collaborator,
+7,BT131,,,,CTRP collaborator,
+8,BT139,,,,CTRP collaborator,
+9,BT145,,,,CTRP collaborator,
+10,BT147,,,,CTRP collaborator,
+11,BT159,,,,CTRP collaborator,
+12,BT164,,,,CTRP collaborator,
+13,BT172,,,,CTRP collaborator,
+14,BT179,,,,CTRP collaborator,
+15,BT187,,,,CTRP collaborator,
+16,BT216,,,,CTRP collaborator,
+17,BT224,,,,CTRP collaborator,
+18,BT228,,,,CTRP collaborator,
+19,BT231,,,,CTRP collaborator,
+20,BT232,,,,CTRP collaborator,
+21,BT239,,,,CTRP collaborator,
+22,BT245,,,,CTRP collaborator,
+23,BT248,,,,CTRP collaborator,
+24,BT271,,,,CTRP collaborator,
+25,BT286,,,,CTRP collaborator,
+26,BT320,,,,CTRP collaborator,
+27,BT328,,,,CTRP collaborator,
+28,BT330,,,,CTRP collaborator,
+29,BT333,,,,CTRP collaborator,
+30,BT340,,,,CTRP collaborator,
+31,BT359,,,,CTRP collaborator,
+32,BT416,,,,CTRP collaborator,
+33,BT422,,,,CTRP collaborator,
+34,BT428,,,,CTRP collaborator,
+35,BT440,,,,CTRP collaborator,
+36,BT444,,,,CTRP collaborator,
+37,BT482,,,,CTRP collaborator,
+38,BT498,,,,CTRP collaborator,
+39,BT504,,,,CTRP collaborator,
+40,H292,lung,NCIH292_LUNG,ACH-001075,https://depmap.org/portal/cell_line/NCIH292_LUNG,
+41,HS578BST,breast,,,https://web.expasy.org/cellosaurus/CVCL_0807,CVCL_0807
+42,HS888LU,lung,,,https://web.expasy.org/cellosaurus/CVCL_0977,CVCL_0977
+43,HSTS,,,,CTRP collaborator,
+44,KRIJ,,,,CTRP collaborator,
+45,PSTS,,,,CTRP collaborator,
+46,TM8716,,,,CTRP collaborator,
+47,TTTHYROID,thyroid,TT_THYROID,ACH-001321,"https://depmap.org/portal/cell_line/TT_THYROID, https://web.expasy.org/cellosaurus/CVCL_1774",CVCL_1774
+48,BOKU,cervix,, ACH-001451,https://cellmodelpassports.sanger.ac.uk/passports/SIDM00073,CVCL_1089
+49,Ca922,upper_aerodigestive_tract,CA922_UPPER_AERODIGESTIVE_TRACT,ACH-002043,https://depmap.org/portal/cell_line/CA922_UPPER_AERODIGESTIVE_TRACT,CVCL_1102
+50,Caov4,ovary,CAOV4_OVARY,ACH-000103,https://depmap.org/portal/cell_line/CAOV4_OVARY,
+51,CaR1,large_intestine,CAR1_LARGE_INTESTINE,ACH-002345,https://depmap.org/portal/cell_line/CAR1_LARGE_INTESTINE,
+52,CaSki,cervix,CASKI_CERVIX,ACH-001336,https://depmap.org/portal/cell_line/CASKI_CERVIX,CVCL_1100
+53,DoTc24510,cervix,DOTC24510_CERVIX,ACH-001341,https://www.atcc.org/products/all/CRL-7920.aspx,CVCL_1181
+54,ECC4,large_intestine,,,https://cellmodelpassports.sanger.ac.uk/passports/SIDM00069,
+55,GP5d,large_intestine,GP5D_LARGE_INTESTINE,ACH-001345,https://depmap.org/portal/cell_line/GP5D_LARGE_INTESTINE,
+56,JiyoyeP2003,haematopoietic_and_lymphoid_tissue,,,https://cansar.icr.ac.uk/cansar/cell-lines/JiyoyeP-2003/,
+57,JRT3T35,haematopoietic_and_lymphoid_tissue,,,https://web.expasy.org/cellosaurus/CVCL_1316,CVCL_1316
+58,K052,haematopoietic_and_lymphoid_tissue,KO52_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE,ACH-000498,https://web.expasy.org/cellosaurus/CVCL_1321,CVCL_1321
+59,LC2ad,lung,LC2AD_LUNG,ACH-002157,https://web.expasy.org/cellosaurus/CVCL_1373,CVCL_1373
+60,MFHino,soft_tissue,MFHINO_SOFT_TISSUE,ACH-002271,https://depmap.org/portal/cell_line/MFHINO_SOFT_TISSUE,
+61,MoT,haematopoietic_and_lymphoid_tissue,MOT_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE,ACH-002339,https://depmap.org/portal/cell_line/MOT_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE,
+62,MRKnu1,breast,MRKNU1_BREAST,ACH-002163,https://depmap.org/portal/cell_line/MRKNU1_BREAST,
+63,MZ7mel,skin,MZ7MEL_SKIN,ACH-002166,https://depmap.org/portal/cell_line/MZ7MEL_SKIN,
+64,NBsusSR,autonomic_ganglia,NBSUSSR_AUTONOMIC_GANGLIA,ACH-002340,https://depmap.org/portal/cell_line/NBSUSSR_AUTONOMIC_GANGLIA,
+65,NCIH1522,lung,,,https://www.atcc.org/products/all/CRL-5874_FL.aspx,
+66,NCIH2107,lung,,,https://www.atcc.org/products/all/CRL-5983_FL.aspx,
+67,NCIH719,lung,,,https://www.atcc.org/products/all/CRL-5837.aspx,
+68,NCISNU1,stomach,,,http://crdd.osdd.net/raghava/apocand/summary.php?id=TNFSF10,
+69,NCISNU16,stomach,,,http://clincancerres.aacrjournals.org/highwire/filestream/131878/field_highwire_adjunct_files/2/121082_1_supp_2383781_n2g7bd.xlsx,
+70,NCISNU5,stomach,,,http://clincancerres.aacrjournals.org/highwire/filestream/131878/field_highwire_adjunct_files/2/121082_1_supp_2383781_n2g7bd.xlsx,
+71,no10,central_nervous_system,NO10_CENTRAL_NERVOUS_SYSTEM,ACH-001605,https://depmap.org/portal/cell_line/NO10_CENTRAL_NERVOUS_SYSTEM,
+72,no11,central_nervous_system,NO11_CENTRAL_NERVOUS_SYSTEM,ACH-001606,https://depmap.org/portal/cell_line/NO11_CENTRAL_NERVOUS_SYSTEM,
+73,NTERASclD1,testis,,,https://cancer.sanger.ac.uk/cosmic/sample/overview?id=1995598,
+75,Ramos2G64C10,haematopoietic_and_lymphoid_tissue,RAMOS2G64C10_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE,ACH-002300,https://web.expasy.org/cellosaurus/CVCL_1646,CVCL_1646
+76,SiHa,cervix,SIHA_CERVIX,ACH-000556,https://depmap.org/portal/cell_line/SIHA_CERVIX,
+77,SKGIIIa,cervix,SKGIIIA_CERVIX,ACH-002020,https://depmap.org/portal/cell_line/SKGIIIA_CERVIX,
+78,TI73,bone,T173_BONE,,https://web.expasy.org/cellosaurus/CVCL_3605,CVCL_3605
+80,U251,central_nervous_system,,,https://cancer.sanger.ac.uk/cosmic/sample/overview?id=1998487,
