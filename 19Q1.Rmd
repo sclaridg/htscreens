@@ -327,7 +327,7 @@ ccl_histologies <- select(ccl_info, source_ccl_name, source_histology, CCLE_ccl_
 colnames(ccl_histologies)[colnames(ccl_histologies) == "source_ccl_name"] <- "Cell_line" 
 colnames(ccl_histologies)[colnames(ccl_histologies) == "source_histology"] <- "Histology" 
 
-# Accout for cell line aliases and missing histologies
+# Account for cell line aliases and missing histologies
 auc_unmatched_na_histologies <- read.delim("./data_munging/pozdeyev2016/auc_unmatched_na_histologies.csv", sep = ",", row.names = 1)
 auc_unmatched_na_histologies$accession_id <- NULL
 auc_unmatched_na_histologies$Notes <- NULL
@@ -415,20 +415,32 @@ ggsave("./gcn_denise/pozdeyev_matched/pozdeyev_aucic50_per_db_matched.png", auci
 ```{r}
 ccle_poz <- read.delim("./data_munging/pozdeyev2016/CCLE_drug_response_metrics.csv.gz", sep = ",")
 ccle_poz <- merge(ccl_histologies, ccle_poz, by = "Cell_line", all.y = TRUE)
+ccle_poz$InCCLE <- 1
+ccle_poz$InCTRP <- 0
+ccle_poz$InGDSC <- 0
+
 # ccle_test <- merge(select(ccle_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CCLE"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 ctrp_poz <- read.delim("./../htscreens_giant_files/pozdeyev2016/CTRP_drug_response_metrics.csv.gz", sep = ",")
 ctrp_poz <- merge(ccl_histologies, ctrp_poz, by = "Cell_line", all.y = TRUE)
+ctrp_poz$InCCLE <- 0
+ctrp_poz$InCTRP <- 1
+ctrp_poz$InGDSC <- 0
 # ctrp_test <- merge(select(ctrp_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CTRP"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 gdsc_poz <- read.delim("./data_munging/pozdeyev2016/GDSC_drug_response_metrics.csv.gz", sep = ",")
 gdsc_poz <- merge(ccl_histologies, gdsc_poz, by = "Cell_line", all.y = TRUE)
+gdsc_poz$InCCLE <- 0
+gdsc_poz$InCTRP <- 0
+gdsc_poz$InGDSC <- 1
 # gdsc_test <- merge(select(gdsc_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "GDSC"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 auc_unmatched <- bind_rows(ccle_poz, ctrp_poz, gdsc_poz)
-auc_unmatched$AUC_EC50 <- as.numeric(as.character(auc_unmatched$AUC_EC50))
+# auc_unmatched$AUC_EC50 <- as.numeric(as.character(auc_unmatched$AUC_EC50))
 auc_unmatched$AUC_IC50 <- as.numeric(as.character(auc_unmatched$AUC_IC50))
-auc_unmatched$sample_ID <- with(auc_unmatched, paste(Database, Cell_line, Histology, sep = "_"))
+# auc_unmatched$sample_ID <- with(auc_unmatched, paste(Database, Cell_line, Histology, sep = "_"))
+auc_unmatched$Database_Drug_name <- with(auc_unmatched, paste(Database, Drug_name, sep = "_"))
+
 num_auc_per_db_unmatched <- auc_unmatched %>% count(Database)
 
 # Identify cell lines without histology indications. Write to file to edit for merging back to ccl_histologies file
@@ -437,10 +449,16 @@ num_auc_per_db_unmatched <- auc_unmatched %>% count(Database)
 # write.csv(auc_unmatched_na_hists, "./data_munging/pozdeyev2016/auc_unmatched_na_histologies.csv")
 
 # Create merged dataset with sample_ids in the rows and drugs across the columns
-auc_unmatched_wide <- dcast(auc_unmatched, Database + Cell_line + Histology + sample_ID + CCLE_ccl_name + Broad_ID ~ Drug_name, value.var = "AUC_IC50", fun.aggregate = mean, fill = 1000000)
-auc_unmatched_wide[, 7:ncol(auc_unmatched_wide)] <- auc_unmatched_wide[, 7:ncol(auc_unmatched_wide)] %>% replace_with_na_all(condition = ~.x == 1000000)
-# write.csv.gz(auc_unmatched_wide, file = "./data_munging/pozdeyev2016/merged_auc_v20190319.2.csv.gz", row.names = FALSE, na = "NA")
+auc_unmatched_wide <- dcast(auc_unmatched, Cell_line + Histology + CCLE_ccl_name + Broad_ID + InCCLE + InCTRP + InGDSC ~ Database_Drug_name, value.var = "AUC_IC50", fun.aggregate = mean, fill = 1000000)
+auc_unmatched_wide[, 8:ncol(auc_unmatched_wide)] <- auc_unmatched_wide[, 8:ncol(auc_unmatched_wide)] %>% replace_with_na_all(condition = ~.x == 1000000)
+# auc_unmatched_wide <- aggregate(. ~ colnames(auc_unmatched_wide)[c(1:4)], data = auc_unmatched_wide, FUN = na.omit, na.action = "na.pass")
+# write.csv.gz(auc_unmatched_wide, file = "./data_munging/pozdeyev2016/merged_auc_vCHANGEDATE.3.csv.gz", row.names = FALSE, na = "NA")
 ```
+
+```{r}
+
+```
+
 
 Data source:
 - Pozdeyev, N., Yoo, M., Mackie, R., Schweppe, R. E., Tan, A. C., & Haugen, B. R. (2016). Integrating heterogeneous drug sensitivity data from cancer pharmacogenomic studies. Oncotarget, 7(32), 51619–51625. https://doi.org/10.18632/oncotarget.10010
@@ -458,8 +476,8 @@ Column descriptions in merged_auc_v20190319.1.csv.gz:
     - NA values indictate that compound wasn't screened in the respective CCL in the respective source dataset
     - Values are in AUC_IC50, the area under rhe dose response curve calculated from IC50 model
 
-Plots:
-```{r}
+Exploratory plots:
+```{r, eval=FALSE}
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_all_ccl_unmatched_pozdeyev <- venn.diagram(list("CCLE" = unique(ccle_poz$Cell_line), "CTRP" = unique(ctrp_poz$Cell_line), "GDSC" = unique(gdsc_poz$Cell_line)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
 # png("./gcn_denise/pozdeyev_unmatched/pozdeyev_venn_all_ccl_unmatched.png", res = 500, units = "in", width = 6, height = 6)
