@@ -415,31 +415,31 @@ ggsave("./gcn_denise/pozdeyev_matched/pozdeyev_aucic50_per_db_matched.png", auci
 ```{r}
 ccle_poz <- read.delim("./data_munging/pozdeyev2016/CCLE_drug_response_metrics.csv.gz", sep = ",")
 ccle_poz <- merge(ccl_histologies, ccle_poz, by = "Cell_line", all.y = TRUE)
-ccle_poz$InCCLE <- 1
-ccle_poz$InCTRP <- 0
-ccle_poz$InGDSC <- 0
+ccle_poz$InCCLE <- "1"
+ccle_poz$InCTRP <- ""
+ccle_poz$InGDSC <- ""
 
 # ccle_test <- merge(select(ccle_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CCLE"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 ctrp_poz <- read.delim("./../htscreens_giant_files/pozdeyev2016/CTRP_drug_response_metrics.csv.gz", sep = ",")
 ctrp_poz <- merge(ccl_histologies, ctrp_poz, by = "Cell_line", all.y = TRUE)
-ctrp_poz$InCCLE <- 0
-ctrp_poz$InCTRP <- 1
-ctrp_poz$InGDSC <- 0
+ctrp_poz$InCCLE <- ""
+ctrp_poz$InCTRP <- "1"
+ctrp_poz$InGDSC <- ""
 # ctrp_test <- merge(select(ctrp_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CTRP"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 gdsc_poz <- read.delim("./data_munging/pozdeyev2016/GDSC_drug_response_metrics.csv.gz", sep = ",")
 gdsc_poz <- merge(ccl_histologies, gdsc_poz, by = "Cell_line", all.y = TRUE)
-gdsc_poz$InCCLE <- 0
-gdsc_poz$InCTRP <- 0
-gdsc_poz$InGDSC <- 1
+gdsc_poz$InCCLE <- ""
+gdsc_poz$InCTRP <- ""
+gdsc_poz$InGDSC <- "1"
 # gdsc_test <- merge(select(gdsc_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "GDSC"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 auc_unmatched <- bind_rows(ccle_poz, ctrp_poz, gdsc_poz)
 # auc_unmatched$AUC_EC50 <- as.numeric(as.character(auc_unmatched$AUC_EC50))
 auc_unmatched$AUC_IC50 <- as.numeric(as.character(auc_unmatched$AUC_IC50))
 # auc_unmatched$sample_ID <- with(auc_unmatched, paste(Database, Cell_line, Histology, sep = "_"))
-auc_unmatched$Database_Drug_name <- with(auc_unmatched, paste(Database, Drug_name, sep = "_"))
+auc_unmatched$Drug_name_Database <- with(auc_unmatched, paste(Drug_name, Database, sep = "_"))
 
 num_auc_per_db_unmatched <- auc_unmatched %>% count(Database)
 
@@ -449,14 +449,32 @@ num_auc_per_db_unmatched <- auc_unmatched %>% count(Database)
 # write.csv(auc_unmatched_na_hists, "./data_munging/pozdeyev2016/auc_unmatched_na_histologies.csv")
 
 # Create merged dataset with sample_ids in the rows and drugs across the columns
-auc_unmatched_wide <- dcast(auc_unmatched, Cell_line + Histology + CCLE_ccl_name + Broad_ID + InCCLE + InCTRP + InGDSC ~ Database_Drug_name, value.var = "AUC_IC50", fun.aggregate = mean, fill = 1000000)
-auc_unmatched_wide[, 8:ncol(auc_unmatched_wide)] <- auc_unmatched_wide[, 8:ncol(auc_unmatched_wide)] %>% replace_with_na_all(condition = ~.x == 1000000)
-# auc_unmatched_wide <- aggregate(. ~ colnames(auc_unmatched_wide)[c(1:4)], data = auc_unmatched_wide, FUN = na.omit, na.action = "na.pass")
+auc_unmatched_wide <- dcast(auc_unmatched, Cell_line + Histology + CCLE_ccl_name + Broad_ID + InCCLE + InCTRP + InGDSC ~ Drug_name_Database, value.var = "AUC_IC50", fun.aggregate = mean, fill = 1000000)
+auc_unmatched_wide[auc_unmatched_wide == 1000000] <- ""
+auc_unmatched_wide <- auc_unmatched_wide %>% group_by(Cell_line, Histology, CCLE_ccl_name, Broad_ID) %>% summarise_all(funs(trimws(paste(., collapse = ''))))
+auc_unmatched_wide$InCCLE[auc_unmatched_wide == ""] <- 0
+auc_unmatched_wide$InCTRP[auc_unmatched_wide == ""] <- 0
+auc_unmatched_wide$InGDSC[auc_unmatched_wide == ""] <- 0
+auc_unmatched_wide[auc_unmatched_wide == ""] <- NA
+
 # write.csv.gz(auc_unmatched_wide, file = "./data_munging/pozdeyev2016/merged_auc_vCHANGEDATE.3.csv.gz", row.names = FALSE, na = "NA")
 ```
 
 ```{r}
-
+# test <- auc_unmatched_wide_test$InCCLE
+# rm_numerics <- function(x) {
+#   col_new <- c()
+#   for(i in 1:length(x))
+#     print(i)
+#     x_unlist <- unlist(x[i])
+#     print(x_unlist)
+#     x_new <- ifelse(is.na(x_unlist[1]), 1000000, x_unlist[1])
+#     print(x_new)
+#     col_new <- c(col_new, x_new)
+#     print(col_new)
+#   return(col_new)
+# }
+# test2 <- rm_numerics(test)
 ```
 
 
