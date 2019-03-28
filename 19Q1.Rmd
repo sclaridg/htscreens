@@ -328,14 +328,21 @@ auc_all_ccls$InGDSC <- with(auc_all_ccls, ifelse(WasDrugScreened == 0, 0, InGDSC
 auc_all_ccls[, -c(1:4)] <- apply(auc_all_ccls[, -c(1:4)], MARGIN = 2, FUN = as.numeric)
 auc_all_ccls <- subset(auc_all_ccls, !(WasDrugScreened == 0 & WasCRISPRScreened == 0 & HasMutationData == 0 & HasGeneExpressionData == 0 & HasCopyNumberData == 0))
 # write.csv.gz(auc_all_ccls, file = "./data_munging/pozdeyev2016/merged_auc_v20190327.3.csv.gz", row.names = FALSE, na = "NA")
-```
 
-```{r}
 # test <- as.data.frame(table(auc_all_ccls$Cell_line))
 # test <- filter(auc_all_ccls, Cell_line %in% c("KMH2", "MS1", "TT"))[, 1:12]
 
-length(unique(sapply(strsplit(as.character(colnames(auc_all_ccls)[13:length(colnames(auc_all_ccls))]), split = "_"), function(x) x[1])))
+# length(unique(sapply(strsplit(as.character(colnames(auc_all_ccls)[13:length(colnames(auc_all_ccls))]), split = "_"), function(x) x[1])))
 ```
+
+### Compar to TCGA
+
+```{r}
+cn_seg <- read.delim("./data_munging/19Q1/copy_number_20190328.csv.gz", sep = ",")
+cn_seg <- merge(ccl_histologies, cn_seg, by = "Broad_ID", all.y = TRUE)
+cn_seg_lung <- filter(cn_seg, Histology == "lung")
+```
+
 
 ### README
 
