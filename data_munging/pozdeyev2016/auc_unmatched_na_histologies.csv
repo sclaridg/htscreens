@@ -75,5 +75,5 @@
 75,Ramos2G64C10,haematopoietic_and_lymphoid_tissue,RAMOS2G64C10_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE,ACH-002300,https://web.expasy.org/cellosaurus/CVCL_1646,CVCL_1646
 76,SiHa,cervix,SIHA_CERVIX,ACH-000556,https://depmap.org/portal/cell_line/SIHA_CERVIX,
 77,SKGIIIa,cervix,SKGIIIA_CERVIX,ACH-002020,https://depmap.org/portal/cell_line/SKGIIIA_CERVIX,
-78,TI73,bone,T173_BONE,,https://web.expasy.org/cellosaurus/CVCL_3605,CVCL_3605
+78,TI73,fibroblast,T173_BONE,ACH-000529,https://web.expasy.org/cellosaurus/CVCL_3605,CVCL_3605
 80,U251,central_nervous_system,,,https://cancer.sanger.ac.uk/cosmic/sample/overview?id=1998487,
