@@ -100,9 +100,9 @@ ccl_info$Primary.Disease <- as.factor(tolower(ccl_info$Primary.Disease))
 colnames(ccl_info)[colnames(ccl_info) == "CCLE_Name"] <- "CCLE_ccl_name"
 colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
 
-# Sample info from figshare
-crispr_meta <- read.delim("./data_munging/19Q1/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
+tcga_hist_converter <- read.delim("./data_munging/TCGA/ge_cancer_map_20190403.csv", sep = ",")
+tcga_hist_converter$Cell_line <- toupper(gsub("-", "", tcga_hist_converter$Cell_line))
+tcga_hist_converter %>% count(TCGA_classification)
 ```
 
 ## Omics
@@ -163,6 +163,10 @@ ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
 ## CRISPR
 
 ```{r, eval=FALSE}
+# Sample info from figshare
+crispr_meta <- read.delim("./data_munging/19Q1/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
+
 crispr <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 ```
 
@@ -417,13 +421,16 @@ Quality check: cluster TCGA samples and cell lines—verify that same tumor type
 Calculate Pearson correlations between data sets and create a heatmap (also look at Barretina et al. supplement for PCA and mutation load correlations)
 
 ```{r, eval=FALSE}
-cn_seg <- read.delim("./data_munging/19Q1/copy_number_20190328.csv.gz", sep = ",")
-tcga_pancan <- read.delim("~/Desktop/GDC-PANCAN.masked_cnv.tsv.gz", sep = "\t")
+# Seg data is only for cell lines in teh CRISPR screen
+cn_seg <- read.delim("./data_munging/19Q1/depmap_19Q1_cn_seg_20190403.csv", sep = ",")
+cn_seg <- merge(select(ccl_histologies, Histology, Broad_ID), cn_seg, by = "Broad_ID", all.y = TRUE)
+
+tcga_seg <- read.delim("./data_munging/TCGA/GDC-PANCAN.masked_cnv.ucscxena_seg_20190403.tsv.gz", sep = "\t")
 
 ggplot(cn_seg, aes(x = log2(Segment_Mean/2))) + 
   geom_density()
 
-ggplot(tcga_pancan, aes(x = value)) + 
+ggplot(tcga_seg, aes(x = value)) + 
   geom_density()
 ```
 
