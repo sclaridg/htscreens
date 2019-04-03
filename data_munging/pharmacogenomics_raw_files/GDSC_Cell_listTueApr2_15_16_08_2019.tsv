@@ -1,4 +1,4 @@
-COSMIC_ID	Name	COSMIC_ID	Tissue	Tissue sub-type	Count
+COSMIC_ID	Cell_line	Cell_model_passport_ID	COSMIC_ID	TCGA_classification	Tissue	Tissue_subtype	Count
 "1287381"	"201T"	"SIDM00055"	"1287381"	"LUAD"	"lung"	"lung_NSCLC_adenocarcinoma"	"1065"
 "924100"	"22RV1"	"SIDM00499"	"924100"	"PRAD"	"urogenital_system"	"prostate"	"1065"
 "910924"	"23132-87"	"SIDM00980"	"910924"	"STAD"	"digestive_system"	"stomach"	"1065"
