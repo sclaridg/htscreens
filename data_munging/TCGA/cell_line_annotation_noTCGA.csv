@@ -1,0 +1,455 @@
+"","DepMap_ID","CCL_name","COSMIC_ID","TCGA_combine","TCGA_manual","primary_DepMap","subtype_DepMap","primary_site_CTRP","primary_hist_CTRP","subtype_CTRP","tissue1_GDSC","tissue2_GDSC","TCGA_CCLE","TCGA_GDSC"
+"38","ACH-000209","SNU1079",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"258","ACH-001494","EGI1",906853,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma",NA,NA,NA,"digestive_system","biliary_tract",NA,NA
+"270","ACH-001538","KKU213",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"47","ACH-000268","SNU245",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, extrahepatic","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"67","ACH-000461","SNU1196",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, extrahepatic","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"269","ACH-001536","KKU100",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, extrahepatic",NA,NA,NA,NA,NA,NA,NA
+"301","ACH-001673","TFK1",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, extrahepatic",NA,NA,NA,NA,NA,NA,NA
+"30","ACH-000182","SNU869",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, extrahepatic, ampullary","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"56","ACH-000377","SNU478",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, extrahepatic, ampullary","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"129","ACH-000976","HUCCT1",907069,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, intrahepatic","biliary_tract","carcinoma",NA,"digestive_system","biliary_tract",NA,NA
+"113","ACH-000808","HUH28",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, intrahepatic","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"367","ACH-002237","ETK1",906861,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, intrahepatic",NA,NA,NA,"digestive_system","biliary_tract",NA,NA
+"318","ACH-001842","ICC2",NA,NA,NA,"Bile Duct Cancer","Cholangiocarcinoma, intrahepatic",NA,NA,NA,NA,NA,NA,NA
+"235","ACH-001411","UMUC5",NA,NA,NA,"Bladder Cancer","Squamous Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"231","ACH-001407","UMUC13",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"232","ACH-001408","UMUC14",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"233","ACH-001409","UMUC16",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"234","ACH-001410","UMUC4",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"236","ACH-001412","UMUC10",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"237","ACH-001413","UMUC11",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"238","ACH-001414","UMUC6",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"239","ACH-001415","UMUC7",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"240","ACH-001416","UMUC9",NA,NA,NA,"Bladder Cancer","Transitional Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"334","ACH-002092","CHSA0011",1290767,NA,NA,"Bone Cancer","Chondrosarcoma",NA,NA,NA,"bone","chondrosarcoma",NA,NA
+"335","ACH-002093","CHSA0108",1290768,NA,NA,"Bone Cancer","Chondrosarcoma",NA,NA,NA,"bone","chondrosarcoma",NA,NA
+"336","ACH-002094","CHSA8926",1303912,NA,NA,"Bone Cancer","Chondrosarcoma",NA,NA,NA,"bone","chondrosarcoma",NA,NA
+"337","ACH-002099","CS1",1290795,NA,NA,"Bone Cancer","Chondrosarcoma",NA,NA,NA,"bone","bone_other",NA,NA
+"260","ACH-001519","HEMCSS",907290,NA,NA,"Bone Cancer","Chondrosarcoma, myeloid",NA,NA,NA,"bone","chondrosarcoma",NA,NA
+"205","ACH-001956","MUGCHOR1",NA,NA,NA,"Bone Cancer","Chordoma",NA,NA,NA,NA,NA,NA,NA
+"206","ACH-001957","UMCHOR1",NA,NA,NA,"Bone Cancer","Chordoma",NA,NA,NA,NA,NA,NA,NA
+"326","ACH-002335","UCH1",NA,NA,NA,"Bone Cancer","Chordoma",NA,NA,NA,NA,NA,NA,NA
+"41","ACH-000229","HS822T",NA,NA,NA,"Bone Cancer","Ewings Sarcoma","bone","Ewings_sarcoma_peripheral_primitive_neuroectodermal_tumor",NA,NA,NA,NA,NA
+"136","ACH-000499","EW8",NA,NA,NA,"Bone Cancer","Ewings Sarcoma","bone","Ewings_sarcoma_peripheral_primitive_neuroectodermal_tumor",NA,NA,NA,NA,NA
+"138","ACH-000279","EWS502",NA,NA,NA,"Bone Cancer","Ewings Sarcoma","bone","Ewings_sarcoma_peripheral_primitive_neuroectodermal_tumor",NA,NA,NA,NA,NA
+"246","ACH-001205","TC32",NA,NA,NA,"Bone Cancer","Ewings Sarcoma","bone","Ewings_sarcoma_peripheral_primitive_neuroectodermal_tumor",NA,NA,NA,NA,NA
+"186","ACH-001193","SKPNDW",909731,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"339","ACH-002103","ES1",949158,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"340","ACH-002104","ES3",684055,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"341","ACH-002105","ES4",949156,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"342","ACH-002106","ES5",684057,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"343","ACH-002107","ES6",949157,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"344","ACH-002108","ES7",684059,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"345","ACH-002109","ES8",949155,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"346","ACH-002110","EW1",949163,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"347","ACH-002111","EW11",684062,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"348","ACH-002112","EW12",949162,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"349","ACH-002113","EW13",949166,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"350","ACH-002114","EW16",949165,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"351","ACH-002115","EW18",949164,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"352","ACH-002116","EW22",949167,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"353","ACH-002117","EW24",949168,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"354","ACH-002118","EW3",949161,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"355","ACH-002119","EW7",949160,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"bone","ewings_sarcoma",NA,NA
+"361","ACH-002194","RH1",971773,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,"soft_tissue","rhabdomyosarcoma",NA,NA
+"8","ACH-001022","CBAGPN",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"39","ACH-001029","CHLA10",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"49","ACH-001030","CHLA218",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"50","ACH-001282","CHLA258",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"57","ACH-001032","CHLA32",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"60","ACH-001033","CHLA57",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"61","ACH-001034","CHLA9",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"69","ACH-001038","COGE352",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"70","ACH-001035","CHLA99",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"122","ACH-001430","TC138",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"140","ACH-001431","TC205",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"163","ACH-001283","TC106",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"329","ACH-001066","EWS834",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"331","ACH-001206","TCC466",NA,NA,NA,"Bone Cancer","Ewings Sarcoma",NA,NA,NA,NA,NA,NA,NA
+"75","ACH-000526","HS821T",NA,NA,NA,"Bone Cancer","Giant Cell Sarcoma","bone","giant_cell_tumor",NA,NA,NA,NA,NA
+"32","ACH-000185","HS737T",NA,NA,NA,"Bone Cancer","Giant Cell Tumor","bone",NA,"giant_cell_tumor",NA,NA,NA,NA
+"25","ACH-000154","HS888T",NA,NA,NA,"Bone Cancer","Osteosarcoma","bone","osteosarcoma",NA,NA,NA,NA,NA
+"132","ACH-001001","143B",NA,NA,NA,"Bone Cancer","Osteosarcoma","bone","osteosarcoma",NA,NA,NA,NA,NA
+"265","ACH-001526","HUO9",907072,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,"bone","osteosarcoma",NA,NA
+"306","ACH-001715","CAL72",906827,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,"bone","osteosarcoma",NA,NA
+"356","ACH-002142","HUO3N1",909977,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,"bone","osteosarcoma",NA,NA
+"360","ACH-002178","NY",910849,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,"bone","osteosarcoma",NA,NA
+"317","ACH-001814","OS252",NA,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,NA,NA,NA,NA
+"324","ACH-002067","NOS1",NA,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,NA,NA,NA,NA
+"454","ACH-002396","SARC9371",NA,NA,NA,"Bone Cancer","Osteosarcoma",NA,NA,NA,NA,NA,NA,NA
+"4","ACH-000027","GOS3",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma",NA,NA,NA,NA
+"142","ACH-000128","LN319",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_III",NA,NA,NA,NA
+"3","ACH-000036","U343",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"18","ACH-000208","U178",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"19","ACH-000215","LN382",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"37","ACH-000591","LN235",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"40","ACH-000673","LN443",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"53","ACH-000328","LN215",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"66","ACH-000455","LN428",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"91","ACH-000634","LN340",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"149","ACH-000887","SF172",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"51","ACH-000283","A1207",NA,NA,NA,"Brain Cancer","Glioblastoma","central_nervous_system","glioma",NA,NA,NA,NA,NA
+"210","ACH-001329","ANGMCSS",NA,NA,NA,"Brain Cancer","Glioblastoma",NA,NA,NA,NA,NA,NA,NA
+"293","ACH-001611","NP8",NA,NA,NA,"Brain Cancer","Glioblastoma",NA,NA,NA,NA,NA,NA,NA
+"84","ACH-000592","TM31",NA,NA,NA,"Brain Cancer","Glioma","central_nervous_system","glioma","astrocytoma",NA,NA,NA,NA
+"131","ACH-001000","1321N1",NA,NA,NA,"Brain Cancer","Glioma","central_nervous_system","glioma","astrocytoma",NA,NA,NA,NA
+"191","ACH-001214","U138MG",NA,NA,NA,"Brain Cancer","Glioma","central_nervous_system","glioma","astrocytoma",NA,NA,NA,NA
+"192","ACH-000676","LN464",NA,NA,NA,"Brain Cancer","Glioma","central_nervous_system","glioma","astrocytoma_Grade_IV",NA,NA,NA,NA
+"292","ACH-001610","NP5",NA,NA,NA,"Brain Cancer","Glioma",NA,NA,NA,NA,NA,NA,NA
+"295","ACH-001624","ONDA9",NA,NA,NA,"Brain Cancer","Glioma",NA,NA,NA,NA,NA,NA,NA
+"83","ACH-001053","D425",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"87","ACH-001054","D458",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"108","ACH-001232","UW228",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"141","ACH-001052","D384",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"144","ACH-001055","D556",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"184","ACH-001201","SUMB002",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"245","ACH-001173","R262",NA,NA,NA,"Brain Cancer","Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"54","ACH-001067","F5",NA,NA,NA,"Brain Cancer","Meningioma","central_nervous_system","meningioma",NA,NA,NA,NA,NA
+"55","ACH-000025","CH157MN",NA,NA,NA,"Brain Cancer","Meningioma","central_nervous_system","meningioma",NA,NA,NA,NA,NA
+"90","ACH-000629","IOMMLEE",NA,NA,NA,"Brain Cancer","Meningioma","central_nervous_system","meningioma",NA,NA,NA,NA,NA
+"112","ACH-000807","SNU738",NA,NA,NA,"Brain Cancer","Oligodendroglioma, anaplastic","central_nervous_system","glioma","oligodendroglioma",NA,NA,NA,NA
+"300","ACH-001670","TASK1",NA,NA,NA,"Brain Cancer","Primitive Neuroectodermal Tumor (PNET) Medulloblastoma",NA,NA,NA,NA,NA,NA,NA
+"243","ACH-001397","SUM225CWN",NA,NA,NA,"Breast Cancer","Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"227","ACH-001390","SUM149PT",NA,NA,NA,"Breast Cancer","Breast Ductal Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"299","ACH-001389","SUM1315MO2",NA,NA,NA,"Breast Cancer","Breast Ductal Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"303","ACH-001514","HCC1008",NA,NA,NA,"Breast Cancer","Breast Ductal Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"20","ACH-000134","HS274T",NA,NA,NA,"Breast Cancer","Carcinoma","breast","carcinoma",NA,NA,NA,NA,NA
+"31","ACH-000184","HS343T",NA,NA,NA,"Breast Cancer","Carcinoma","breast","carcinoma",NA,NA,NA,NA,NA
+"42","ACH-000230","HS742T",NA,NA,NA,"Breast Cancer","Carcinoma","breast","carcinoma",NA,NA,NA,NA,NA
+"59","ACH-000413","HS739T",NA,NA,NA,"Breast Cancer","Carcinoma","breast","carcinoma",NA,NA,NA,NA,NA
+"80","ACH-000540","HS606T",NA,NA,NA,"Breast Cancer","Carcinoma","breast","carcinoma",NA,NA,NA,NA,NA
+"7","ACH-001393","SUM190PT",NA,NA,NA,"Breast Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"16","ACH-001395","SUM44PE",NA,NA,NA,"Breast Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"99","ACH-001394","SUM229PE",NA,NA,NA,"Breast Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"105","ACH-001396","SUM52PE",NA,NA,NA,"Breast Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"259","ACH-001388","SUM102PT",NA,NA,NA,"Breast Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"228","ACH-001391","SUM159PT",NA,NA,NA,"Breast Cancer","Carcinoma, anaplastic",NA,NA,NA,NA,NA,NA,NA
+"242","ACH-001392","SUM185PE",NA,NA,NA,"Breast Cancer","Carcinoma, anaplastic",NA,NA,NA,NA,NA,NA,NA
+"387","ACH-002319","184A1",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"388","ACH-002320","600MPE",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"390","ACH-002322","HCC2185",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"391","ACH-002323","HCC2688",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"392","ACH-002324","HCC3153",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"393","ACH-002325","LY2",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"394","ACH-002326","MACLS2",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"395","ACH-002327","MCF12A",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"396","ACH-002328","MX1",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"397","ACH-002329","SKBR5",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"398","ACH-002330","SKBR7",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"399","ACH-002331","ZR75B",NA,NA,NA,"Breast Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"363","ACH-002201","TCYIK",946357,NA,NA,"Cervical Cancer","Small Cell Carcinoma",NA,NA,NA,"urogenital_system","cervix",NA,NA
+"249","ACH-001442","A388",910697,NA,NA,"Cervical Cancer","Squmous Cell Carcinoma",NA,NA,NA,"skin","skin_other",NA,NA
+"229","ACH-001400","SW954",924247,NA,NA,"Cervical Cancer","Squmous Cell Carcinoma",NA,NA,NA,"urogenital_system","urogenital_system_other",NA,NA
+"252","ACH-001454","C10",NA,NA,NA,"Colon/Colorectal Cancer","Colon Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"253","ACH-001456","C125PM",NA,NA,NA,"Colon/Colorectal Cancer","Colon Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"254","ACH-001458","C75",NA,NA,NA,"Colon/Colorectal Cancer","Colon Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"255","ACH-001459","C80",NA,NA,NA,"Colon/Colorectal Cancer","Colon Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"256","ACH-001460","C84",NA,NA,NA,"Colon/Colorectal Cancer","Colon Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"257","ACH-001461","C99",NA,NA,NA,"Colon/Colorectal Cancer","Colon Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"79","ACH-000538","HUTU80",907073,NA,NA,"Colon/Colorectal Cancer","Duodenum Adenocarcinoma","small_intestine","carcinoma","adenocarcinoma","digestive_system","digestive_system_other",NA,NA
+"35","ACH-000199","HS255T",NA,NA,NA,"Colon/Colorectal Cancer","Unknown","large_intestine","carcinoma","adenocarcinoma",NA,NA,NA,NA
+"290","ACH-001578","NCCIT",908441,NA,NA,"Embryonal Cancer","Carcinoma",NA,NA,NA,"urogenital_system","testis",NA,NA
+"379","ACH-002291","NTERA2CLD1",908454,NA,NA,"Embryonal Cancer","Carcinoma",NA,NA,NA,"urogenital_system","testis",NA,NA
+"377","ACH-002288","NEC8",910942,NA,NA,"Embryonal Cancer","Testicular Carcinoma",NA,NA,NA,"urogenital_system","testis",NA,NA
+"266","ACH-001529","JAR",907175,NA,NA,"Endometrial/Uterine Cancer","Choriocarcinoma",NA,NA,NA,"urogenital_system","urogenital_system_other",NA,NA
+"267","ACH-001530","JEG3",907176,NA,NA,"Endometrial/Uterine Cancer","Choriocarcinoma",NA,NA,NA,"urogenital_system","urogenital_system_other",NA,NA
+"298","ACH-001655","SKN",1240215,NA,NA,"Endometrial/Uterine Cancer","Squamous Cell Carcinoma",NA,NA,NA,"urogenital_system","uterus",NA,NA
+"203","ACH-001295","Y79",NA,NA,NA,"Eye Cancer","Retinoblastoma",NA,NA,NA,NA,NA,NA,NA
+"248","ACH-001441","921",NA,NA,NA,"Eye Cancer","Uveal Melanoma",NA,NA,NA,NA,NA,NA,NA
+"275","ACH-001554","MEL202",NA,NA,NA,"Eye Cancer","Uveal Melanoma",NA,NA,NA,NA,NA,NA,NA
+"322","ACH-002015","MEL285",NA,NA,NA,"Eye Cancer","Uveal Melanoma",NA,NA,NA,NA,NA,NA,NA
+"323","ACH-002017","OMM1",NA,NA,NA,"Eye Cancer","Uveal Melanoma",NA,NA,NA,NA,NA,NA,NA
+"12","ACH-000071","HS706T",NA,NA,NA,"fibroblast","giant_cell_tumor","bone","giant_cell_tumor",NA,NA,NA,NA,NA
+"14","ACH-000083","HS281T",NA,NA,NA,"Fibroblast","Unknown","breast","carcinoma",NA,NA,NA,NA,NA
+"187","ACH-001207","TIG3TD",NA,NA,NA,"Fibroblast","Unknown","lung",NA,"immortalized_embryonic_fibroblast",NA,NA,NA,NA
+"134","ACH-001018","BJHTERT",NA,NA,NA,"Fibroblast","Unknown","skin",NA,"immortalized_fibroblast",NA,NA,NA,NA
+"15","ACH-000088","HS172T",NA,NA,NA,"Fibroblast","Unknown","urinary_tract","carcinoma",NA,NA,NA,NA,NA
+"315","ACH-001767","CCLFPEDS0018T",NA,NA,NA,"Fibroblast",NA,NA,NA,NA,NA,NA,NA,NA
+"21","ACH-000141","SNU308",NA,NA,NA,"Gallbladder Cancer","Adenocarcinoma","biliary_tract","carcinoma",NA,NA,NA,NA,NA
+"385","ACH-002312","TGBC24TKB",910695,NA,NA,"Gallbladder Cancer","Carcinoma",NA,NA,NA,"digestive_system","biliary_tract",NA,NA
+"291","ACH-001607","NOZ",NA,NA,NA,"Gallbladder Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"319","ACH-001861","TGBC1TKB",NA,NA,NA,"Gallbladder Cancer","Cholangiocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"133","ACH-001015","AZ521",NA,NA,NA,"Gastric Cancer","Duodenal Adenocarcinoma","stomach","carcinoma",NA,NA,NA,NA,NA
+"261","ACH-001521","HKA1",NA,NA,NA,"Head and Neck Cancer","Keratoacanthoma",NA,NA,NA,NA,NA,NA,NA
+"213","ACH-001346","H103",NA,NA,NA,"Head and Neck Cancer","Squamous Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"107","ACH-001228","UPCISCC152",NA,NA,NA,"Head and Neck Cancer","Squamous Cell Carcinoma, oral",NA,NA,NA,NA,NA,NA,NA
+"52","ACH-000284","HS840T",NA,NA,NA,"Head and Neck Cancer","Unknown","upper_aerodigestive_tract",NA,"papilloma",NA,NA,NA,NA
+"78","ACH-001357","MCF10A",NA,NA,NA,"Immortalized","Fibrocystic Disease",NA,NA,NA,NA,NA,NA,NA
+"175","ACH-001163","CCLFPEDS0001T",NA,NA,NA,"Kidney Cancer","Renal Medullary Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"207","ACH-001310","HA1E",NA,NA,NA,"Kidney Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"364","ACH-002211","BALL1",910705,NA,NA,"Leukemia","Acute Lymphoblastic Leukemia (ALL), B-cell",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"376","ACH-002275","MN60",908143,NA,NA,"Leukemia","Acute Lymphoblastic Leukemia (ALL), B-cell",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"382","ACH-002308","SUPB8",910209,NA,NA,"Leukemia","Acute Lymphoblastic Leukemia (ALL), B-cell",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"127","ACH-000122","SUPT11",NA,NA,NA,"Leukemia","Acute Lymphoblastic Leukemia (ALL), T-cell","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","peripheral_T_cell_lymphoma_unspecified",NA,NA,NA,NA
+"198","ACH-001737","HSB2",NA,NA,NA,"Leukemia","Acute Lymphoblastic Leukemia (ALL), T-cell",NA,NA,NA,NA,NA,NA,NA
+"34","ACH-000195","SET2",NA,NA,NA,"Leukemia","Acute Myelogenous Leukemia (AML)","haematopoietic_and_lymphoid_tissue","haematopoietic_neoplasm","essential_thrombocythaemia",NA,NA,NA,NA
+"307","ACH-001639","ROS50",1331025,NA,NA,"Leukemia","B-cell, unspecified",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"251","ACH-001452","BONNA12",906695,NA,NA,"Leukemia","Hairy Cell",NA,NA,NA,"leukemia","hairy_cell_leukaemia",NA,NA
+"369","ACH-002242","HC1",907044,NA,NA,"Leukemia","Hairy Cell",NA,NA,NA,"leukemia","hairy_cell_leukaemia",NA,NA
+"375","ACH-002274","MLMA",908142,NA,NA,"Leukemia","Hairy Cell",NA,NA,NA,"leukemia","hairy_cell_leukaemia",NA,NA
+"405","ACH-002339","MOT",NA,NA,NA,"Leukemia","Hairy Cell",NA,NA,NA,NA,NA,NA,NA
+"378","ACH-002289","NK92MI",1330981,NA,NA,"Leukemia","Natural Killer Cell Lymphoblastic Leukemia/Lymphoma",NA,NA,NA,"lymphoma","lymphoid_neoplasm other",NA,NA
+"202","ACH-001735","SEMK2",NA,NA,NA,"Leukemia","Unknown",NA,NA,NA,NA,NA,NA,NA
+"204","ACH-001736","HB1119",NA,NA,NA,"Leukemia","Unknown",NA,NA,NA,NA,NA,NA,NA
+"384","ACH-002310","SW872",909756,NA,NA,"Liposarcoma","Unknown",NA,NA,NA,"soft_tissue","soft_tissue_other",NA,NA
+"271","ACH-001540","KMLS1",NA,NA,NA,"Liposarcoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"453","ACH-002395","HUH6CLONE5",NA,NA,NA,"Liver Cancer","Hepatoblastoma",NA,NA,NA,NA,NA,NA,NA
+"241","ACH-001417","UMC11",909779,NA,NA,"Lung Cancer","Carcinoid",NA,NA,NA,"lung_NSCLC","lung_NSCLC_carcinoid",NA,NA
+"358","ACH-002174","NCIH720",687600,NA,NA,"Lung Cancer","Carcinoid",NA,NA,NA,"lung_NSCLC","lung_NSCLC_carcinoid",NA,NA
+"359","ACH-002177","NCIH835",753607,NA,NA,"Lung Cancer","Carcinoid",NA,NA,NA,"lung_NSCLC","lung_NSCLC_carcinoid",NA,NA
+"10","ACH-000064","SALE",NA,NA,NA,"Lung Cancer","Immortalized","lung",NA,"immortalized_epithelial",NA,NA,NA,NA
+"76","ACH-000531","RS5",NA,NA,NA,"Lung Cancer","Mesothelioma","pleura","mesothelioma",NA,NA,NA,NA,NA
+"103","ACH-000742","DM3",NA,NA,NA,"Lung Cancer","Mesothelioma","pleura","mesothelioma",NA,NA,NA,NA,NA
+"276","ACH-001555","MERO14",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"277","ACH-001556","MERO25",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"278","ACH-001557","MERO41",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"279","ACH-001558","MERO48A",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"280","ACH-001559","MERO82",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"281","ACH-001560","MERO83",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"282","ACH-001561","MERO84",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"283","ACH-001562","MERO95",NA,NA,NA,"Lung Cancer","Mesothelioma",NA,NA,NA,NA,NA,NA,NA
+"81","ACH-000575","HCC364",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma","lung","carcinoma","adenocarcinoma",NA,NA,NA,NA
+"154","ACH-001088","HLC1",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma","lung","carcinoma","adenocarcinoma",NA,NA,NA,NA
+"320","ACH-000029","HCC827GR5",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma","lung","carcinoma","adenocarcinoma",NA,NA,NA,NA
+"24","ACH-000150","HCC2935",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma","lung","carcinoma","non_small_cell_carcinoma",NA,NA,NA,NA
+"82","ACH-000578","HCC1171",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma","lung","carcinoma","non_small_cell_carcinoma",NA,NA,NA,NA
+"1","ACH-000010","NCIH2077",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"6","ACH-000033","NCIH1819",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"151","ACH-001071","GLC82",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"169","ACH-000143","HCC2429",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"170","ACH-001140","NCIH820",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"181","ACH-000339","HCC461",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"195","ACH-000872","HCC515",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"208","ACH-000975","HCC2450",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"403","ACH-002337","JHU028",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Adenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"109","ACH-000775","NCIH727",724855,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Bronchoalveolar Carcinoma","lung","carcinoid_endocrine_tumor",NA,"lung_NSCLC","lung_NSCLC_carcinoid",NA,NA
+"2","ACH-000015","NCIH1581",908471,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"62","ACH-000434","NCIH1915",1240184,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"68","ACH-000463","NCIH460",905943,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"85","ACH-000596","LCLC97TM1",946361,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"89","ACH-000627","LCLC103H",753586,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"93","ACH-000662","CORL23",687780,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"95","ACH-000672","IALM",910779,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"110","ACH-000789","NCIH810",925341,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"117","ACH-000853","NCIH661",687829,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"130","ACH-000980","NCIH1155",908467,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"65","ACH-000444","LU99",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma",NA,NA,NA,NA
+"114","ACH-000813","T3M10",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma",NA,NA,NA,NA
+"123","ACH-000891","HCC1438",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma",NA,NA,NA,NA
+"124","ACH-000901","HCC1359",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","large_cell_carcinoma",NA,NA,NA,NA
+"64","ACH-000438","LU65",724863,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","non_small_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"73","ACH-000510","NCIH1299",724831,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","non_small_cell_carcinoma","lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"125","ACH-000904","NCIH2106",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma","lung","carcinoma","non_small_cell_carcinoma",NA,NA,NA,NA
+"116","ACH-000825","HOP92",905973,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma",NA,NA,NA,"lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"357","ACH-002158","LU99A",907796,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Large Cell Carcinoma",NA,NA,NA,"lung_NSCLC","lung_NSCLC_large cell",NA,NA
+"152","ACH-001075","NCIH292",753604,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Mucoepidermoid Carcinoma",NA,NA,NA,"lung_NSCLC","lung_NSCLC_adenocarcinoma",NA,NA
+"328","ACH-000474","[MERGED",753604,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Mucoepidermoid Carcinoma",NA,NA,NA,"lung_NSCLC","lung_NSCLC_adenocarcinoma",NA,NA
+"98","ACH-000690","HCC2814",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Squamous Cell Carcinoma","lung","carcinoma","squamous_cell_carcinoma",NA,NA,NA,NA
+"153","ACH-001079","HCC1897",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Squamous Cell Carcinoma","lung","carcinoma","squamous_cell_carcinoma",NA,NA,NA,NA
+"162","ACH-001113","LC1SQSF",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Squamous Cell Carcinoma","lung","carcinoma","squamous_cell_carcinoma",NA,NA,NA,NA
+"193","ACH-001234","VMRCLCP",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Squamous Cell Carcinoma","lung","carcinoma","squamous_cell_carcinoma",NA,NA,NA,NA
+"321","ACH-000700","NCIH2882",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), Squamous Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"178","ACH-000251","NCIH2887",NA,NA,NA,"Lung Cancer","Non-Small Cell Lung Cancer (NSCLC), unspecified",NA,NA,NA,NA,NA,NA,NA
+"226","ACH-001386","SCLC22H",NA,NA,NA,"Lung Cancer","Small Cell Lung Cancer (SCLC)",NA,NA,NA,NA,NA,NA,NA
+"400","ACH-002333","HCC827GR",NA,NA,NA,"Lung Cancer","Unknown",NA,NA,NA,NA,NA,NA,NA
+"36","ACH-000206","C8166",NA,NA,NA,"Lymphoma","ATL",NA,NA,NA,NA,NA,NA,NA
+"33","ACH-000190","HDMYZ",907050,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"46","ACH-000267","HDLM2",924110,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"101","ACH-000702","L1236",1330935,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"104","ACH-000754","L428",907322,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"111","ACH-000806","L540",907323,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"115","ACH-000815","KMH2",909976,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"185","ACH-001203","SUPHD1",1331039,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma","lymphoma","Hodgkin_lymphoma",NA,NA
+"11","ACH-000069","HS611T",NA,NA,NA,"Lymphoma","B-cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma",NA,NA,NA,NA
+"9","ACH-000063","HS616T",NA,NA,NA,"Lymphoma","B-Cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma",NA,NA,NA,NA
+"17","ACH-000125","TO175T",NA,NA,NA,"Lymphoma","B-Cell, Hodgkins","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma",NA,NA,NA,NA
+"374","ACH-002272","MHHPREB1",908136,NA,NA,"Lymphoma","B-cell, Non-Hodgkins",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"148","ACH-001064","EB2",906846,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Burkitt_lymphoma","lymphoma","Burkitt_lymphoma",NA,NA
+"365","ACH-002232","DG75",906838,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts",NA,NA,NA,"lymphoma","Burkitt_lymphoma",NA,NA
+"366","ACH-002236","EB3",906847,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts",NA,NA,NA,"lymphoma","Burkitt_lymphoma",NA,NA
+"371","ACH-002252","JIYOYEP2003",907268,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts",NA,NA,NA,"lymphoma","Burkitt_lymphoma",NA,NA
+"380","ACH-002293","P32ISH",1330987,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts",NA,NA,NA,"lymphoma","Burkitt_lymphoma",NA,NA
+"381","ACH-002300","RAMOS2G64C10",910401,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts",NA,NA,NA,"lymphoma","Burkitt_lymphoma",NA,NA
+"250","ACH-001450","BLUE1",NA,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Burkitts",NA,NA,NA,NA,NA,NA,NA
+"452","ACH-002393","CROAP3",NA,NA,NA,"Lymphoma","B-cell, Non-Hodgkins, Primary Effusion",NA,NA,NA,NA,NA,NA,NA
+"294","ACH-001121","MEC2",NA,NA,NA,"Lymphoma","B-cell, unspecified","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","chronic_lymphocytic_leukaemia; small_lymphocytic_lymphoma",NA,NA,NA,NA
+"302","ACH-001680","U698M",909777,NA,NA,"Lymphoma","B-cell, unspecified",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"58","ACH-001709","WSUNHL",909785,NA,NA,"Lymphoma","B-cell, unspecified",NA,NA,NA,"lymphoma","lymphoid_neoplasm other",NA,NA
+"305","ACH-001677","U2904",NA,NA,NA,"Lymphoma","B-cell, unspecified",NA,NA,NA,NA,NA,NA,NA
+"372","ACH-002255","KARPAS231",1327774,NA,NA,"Lymphoma","Diffuse Large B-cell Lymphoma (DLBCL)",NA,NA,NA,"leukemia","B_cell_leukemia",NA,NA
+"327","ACH-002245","HS445",1322218,NA,NA,"Lymphoma","Hodgkins",NA,NA,NA,"lymphoma","Hodgkin_lymphoma",NA,NA
+"332","ACH-001665","SR",905965,NA,NA,"Lymphoma","Immunoblastic",NA,NA,NA,"lymphoma","lymphoid_neoplasm other",NA,NA
+"88","ACH-000612","HUT102",NA,NA,NA,"Lymphoma","T-cell","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Sezary_syndrome; mycosis_fungoides",NA,NA,NA,NA
+"96","ACH-001111","L82",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"97","ACH-001119","MAC2A",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"100","ACH-001134","MYLA",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"145","ACH-001057","DERL2",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"147","ACH-001060","DL40",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"150","ACH-001068","FEPD",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"157","ACH-001097","KARPAS384",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"168","ACH-001132","MTA",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"173","ACH-001147","OCILY12",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"174","ACH-001148","OCILY132",NA,NA,NA,"Lymphoma","T-cell",NA,NA,NA,NA,NA,NA,NA
+"5","ACH-000053","KARPAS299",907273,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Anaplastic Large Cell (ALCL)","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","anaplastic_large_cell_lymphoma","lymphoma","anaplastic_large_cell_lymphoma",NA,NA
+"22","ACH-000226","SUPM2",1331040,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Anaplastic Large Cell (ALCL)","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","anaplastic_large_cell_lymphoma","lymphoma","anaplastic_large_cell_lymphoma",NA,NA
+"94","ACH-000664","SUDHL1",909742,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Anaplastic Large Cell (ALCL)","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","anaplastic_large_cell_lymphoma","lymphoma","anaplastic_large_cell_lymphoma",NA,NA
+"45","ACH-000773","KIJK",NA,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Anaplastic Large Cell (ALCL)","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","anaplastic_large_cell_lymphoma",NA,NA,NA,NA
+"63","ACH-000338","SR786",NA,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Anaplastic Large Cell (ALCL)","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","anaplastic_large_cell_lymphoma",NA,NA,NA,NA
+"43","ACH-000233","DEL",906836,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Anaplastic Large Cell (ALCL)","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm",NA,"lymphoma","lymphoid_neoplasm other",NA,NA
+"13","ACH-000077","MJ",NA,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Cutaneous","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Sezary_syndrome; mycosis_fungoides",NA,NA,NA,NA
+"72","ACH-000509","HUT78",NA,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Cutaneous, Sezary Syndrome","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Sezary_syndrome; mycosis_fungoides",NA,NA,NA,NA
+"368","ACH-002240","H9",907043,NA,NA,"Lymphoma","T-cell, Non-Hodgkins, Cutaneous, Sezary Syndrome",NA,NA,NA,"lymphoma","lymphoid_neoplasm other",NA,NA
+"27","ACH-000165","HS751T",NA,NA,NA,"Lymphoma","Unknown","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma",NA,NA,NA,NA
+"155","ACH-001093","HS604T",NA,NA,NA,"Lymphoma","Unknown","haematopoietic_and_lymphoid_tissue","lymphoid_neoplasm","Hodgkin_lymphoma",NA,NA,NA,NA
+"106","ACH-001197","SMZ1",NA,NA,NA,"Lymphoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"159","ACH-001100","KHYG",NA,NA,NA,"Lymphoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"172","ACH-001143","NKL",NA,NA,NA,"Lymphoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"118","ACH-000854","OCIMY5",NA,NA,NA,"Myeloma","Multiple Myeloma",NA,NA,NA,NA,NA,NA,NA
+"143","ACH-000512","INA6",NA,NA,NA,"Myeloma","Multiple Myeloma",NA,NA,NA,NA,NA,NA,NA
+"182","ACH-000436","OCIMY7",NA,NA,NA,"Myeloma","Multiple Myeloma",NA,NA,NA,NA,NA,NA,NA
+"128","ACH-001300","CHLA15",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"137","ACH-001301","COGN278",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"139","ACH-001302","COGN305",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"215","ACH-001354","LAN2",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"217","ACH-001367","NMB",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"311","ACH-001303","NB1643",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"451","ACH-002389","ACN",NA,NA,NA,"Neuroblastoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"386","ACH-002316","WIL2NS",1331049,NA,NA,"Non-Cancerous","Hereditary Spherocytosis",NA,NA,NA,"lymphoma","lymphoid_neoplasm other",NA,NA
+"333","ACH-001827","184B5",NA,NA,NA,"Non-Cancerous","Unknown",NA,NA,NA,NA,NA,NA,NA
+"218","ACH-001369","OCIC5X",NA,NA,NA,"Ovarian Cancer","Adenocarcinoma, clear cell",NA,NA,NA,NA,NA,NA,NA
+"330","ACH-001092","HS571T",NA,NA,NA,"Ovarian Cancer","Carcinoma","ovary","carcinoma",NA,NA,NA,NA,NA
+"212","ACH-001340","COV413A",NA,NA,NA,"Ovarian Cancer","Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"230","ACH-001403","TO14",NA,NA,NA,"Ovarian Cancer","Cystadenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"296","ACH-001628","PEA1",NA,NA,NA,"Ovarian Cancer","Cystadenocarcinoma",NA,NA,NA,NA,NA,NA,NA
+"121","ACH-001278","BIN67",NA,NA,NA,"Ovarian Cancer","Small Cell Carcinoma of the Ovary Hypercalcemic Type (SCCOHT)",NA,NA,NA,NA,NA,NA,NA
+"199","ACH-001279","SCCOHT1",NA,NA,NA,"Ovarian Cancer","Small Cell Carcinoma of the Ovary Hypercalcemic Type (SCCOHT)",NA,NA,NA,NA,NA,NA,NA
+"214","ACH-001353","JOPACA1",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"219","ACH-001375","PACADD119",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"220","ACH-001376","PACADD135",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"221","ACH-001377","PACADD137",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"222","ACH-001378","PACADD159",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"223","ACH-001379","PACADD161",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"224","ACH-001380","PACADD165",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"225","ACH-001382","PACADD188",NA,NA,NA,"Pancreatic Cancer","Ductal Adenocarcinoma, exocrine",NA,NA,NA,NA,NA,NA,NA
+"171","ACH-001142","NHAHTDD",NA,NA,NA,"Primary Cells","Immortalized epithelial",NA,NA,NA,NA,NA,NA,NA
+"26","ACH-000160","BT12",NA,NA,NA,"Rhabdoid","Atypical Teratoid Rhabdoid Tumor (ATRT)",NA,NA,NA,NA,NA,NA,NA
+"71","ACH-001031","CHLA266",NA,NA,NA,"Rhabdoid","Atypical Teratoid Rhabdoid Tumor (ATRT)",NA,NA,NA,NA,NA,NA,NA
+"126","ACH-001289","COGAR359",NA,NA,NA,"Rhabdoid","Atypical Teratoid Rhabdoid Tumor (ATRT)",NA,NA,NA,NA,NA,NA,NA
+"135","ACH-001020","BT16",NA,NA,NA,"Rhabdoid","Atypical Teratoid Rhabdoid Tumor (ATRT)",NA,NA,NA,NA,NA,NA,NA
+"196","ACH-001028","CHLA06ATRT",NA,NA,NA,"Rhabdoid","Atypical Teratoid Rhabdoid Tumor (ATRT)",NA,NA,NA,NA,NA,NA,NA
+"28","ACH-000172","TM87",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"77","ACH-000533","NCIH2004RT",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"86","ACH-000597","TTC709",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"146","ACH-001059","DL",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"158","ACH-001099","KD",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"160","ACH-001109","KPMRTRY",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"167","ACH-001128","MON",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"183","ACH-001200","STM9101",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"188","ACH-001210","TTC1240",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"189","ACH-001211","TTC549",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"190","ACH-001212","TTC642",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"268","ACH-001532","JMURTK2",NA,NA,NA,"Rhabdoid","Malignant Rhabdoid Tumor",NA,NA,NA,NA,NA,NA,NA
+"304","ACH-001702","VAESBJ",688121,NA,NA,"Sarcoma","Epithelioid",NA,NA,NA,"soft_tissue","soft_tissue_other",NA,NA
+"247","ACH-001433","CCLFPEDS0008T",NA,NA,NA,"Sarcoma","Epithelioid",NA,NA,NA,NA,NA,NA,NA
+"370","ACH-002246","HS633T",1240149,NA,NA,"Sarcoma","Fibrosarcoma",NA,NA,NA,"soft_tissue","fibrosarcoma",NA,NA
+"383","ACH-002309","SW684",909754,NA,NA,"Sarcoma","Fibrosarcoma",NA,NA,NA,"soft_tissue","fibrosarcoma",NA,NA
+"23","ACH-000145","SKLMS1",909720,NA,NA,"Sarcoma","Leiomyosarcoma","soft_tissue","sarcoma",NA,"soft_tissue","soft_tissue_other",NA,NA
+"373","ACH-002271","MFHINO",925343,NA,NA,"Sarcoma","Malignant Fibrous Histiocytoma",NA,NA,NA,"soft_tissue","soft_tissue_other",NA,NA
+"244","ACH-001425","CCLFPEDS0004T",NA,NA,NA,"Sarcoma","MPNST",NA,NA,NA,NA,NA,NA,NA
+"180","ACH-001189","SJRH30",909716,NA,NA,"Sarcoma","Rhabdomyosarcoma","soft_tissue","rhabdomyosarcoma",NA,"soft_tissue","rhabdomyosarcoma",NA,NA
+"29","ACH-000175","TE159T",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma","soft_tissue","rhabdomyosarcoma",NA,NA,NA,NA,NA
+"92","ACH-001096","JR",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma",NA,NA,NA,NA,NA,NA,NA
+"308","ACH-001184","SCMCRM2",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma",NA,NA,NA,NA,NA,NA,NA
+"74","ACH-001050","CW9019",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"197","ACH-001740","RH28",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"201","ACH-001745","RHJT",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"309","ACH-001741","RMS13",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"310","ACH-001743","RC2",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"314","ACH-001765","RH4",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"316","ACH-001790","RH18DM",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, alveolar",NA,NA,NA,NA,NA,NA,NA
+"102","ACH-001196","SMSCTR",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, embryonal",NA,NA,NA,NA,NA,NA,NA
+"312","ACH-001750","TTC442",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, embryonal",NA,NA,NA,NA,NA,NA,NA
+"313","ACH-001751","RH36",NA,NA,NA,"Sarcoma","Rhabdomyosarcoma, embryonal",NA,NA,NA,NA,NA,NA,NA
+"119","ACH-001274","SW982",909759,NA,NA,"Sarcoma","Synovial",NA,NA,NA,"soft_tissue","soft_tissue_other",NA,NA
+"120","ACH-001275","SYO1",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"156","ACH-001270","127399",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"161","ACH-001280","SCS214",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"166","ACH-001322","CME1",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"194","ACH-001272","FUJI",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"200","ACH-001277","YAMATO",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"325","ACH-002085","HSSYII",NA,NA,NA,"Sarcoma","Synovial",NA,NA,NA,NA,NA,NA,NA
+"176","ACH-001164","CCLFPEDS0003T",NA,NA,NA,"Sarcoma","Unknown",NA,NA,NA,NA,NA,NA,NA
+"401","ACH-002334","SS1A",NA,NA,NA,"Sarcoma",NA,NA,NA,NA,NA,NA,NA,NA
+"362","ACH-002200","SW962",909758,NA,NA,"Skin Cancer","Carcinoma, vulvar",NA,NA,NA,"urogenital_system","urogenital_system_other",NA,NA
+"44","ACH-000240","HS600T",NA,NA,NA,"Skin Cancer","Melanoma","skin","malignant_melanoma",NA,NA,NA,NA,NA
+"48","ACH-000275","HS834T",NA,NA,NA,"Skin Cancer","Melanoma","skin","malignant_melanoma",NA,NA,NA,NA,NA
+"211","ACH-001339","COLO794",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"262","ACH-001522","HMY1",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"285","ACH-001566","MM370",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"286","ACH-001567","MM383",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"287","ACH-001568","MM386",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"288","ACH-001569","MM415",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"289","ACH-001570","MM426",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"297","ACH-001645","SEKI",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"404","ACH-002338","M980513",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"448","ACH-002386","M00921",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"449","ACH-002387","M1203273",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"450","ACH-002388","MET2B",NA,NA,NA,"Skin Cancer","Melanoma",NA,NA,NA,NA,NA,NA,NA
+"284","ACH-001563","MM127",NA,NA,NA,"Skin Cancer","Melanoma, amelanotic",NA,NA,NA,NA,NA,NA,NA
+"164","ACH-001122","MKL1",NA,NA,NA,"Skin Cancer","Merkel Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"165","ACH-001123","MKL2",NA,NA,NA,"Skin Cancer","Merkel Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"177","ACH-001170","PETA",NA,NA,NA,"Skin Cancer","Merkel Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"272","ACH-001550","MCC13",NA,NA,NA,"Skin Cancer","Merkel Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"273","ACH-001551","MCC142",NA,NA,NA,"Skin Cancer","Merkel Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"274","ACH-001552","MCC26",NA,NA,NA,"Skin Cancer","Merkel Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"209","ACH-001328","A431",910925,NA,NA,"Skin Cancer","Squamous Cell Carcinoma",NA,NA,NA,"skin","skin_other",NA,NA
+"338","ACH-002100","DJM1",906841,NA,NA,"Skin Cancer","Squamous Cell Carcinoma",NA,NA,NA,"skin","skin_other",NA,NA
+"263","ACH-001523","HSC1",NA,NA,NA,"Skin Cancer","Squamous Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"264","ACH-001524","HSC5",NA,NA,NA,"Skin Cancer","Squamous Cell Carcinoma",NA,NA,NA,NA,NA,NA,NA
+"216","ACH-001356","MB1",NA,NA,NA,"Thyroid Cancer","Carcinoma, anaplastic",NA,NA,NA,NA,NA,NA,NA
+"436","ACH-002373","HCC1187",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"437","ACH-002374","HCC1599",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"438","ACH-002375","HCC1937",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"440","ACH-002377","HCC38",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"441","ACH-002378","HCC1143",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"444","ACH-002381","HCC2157",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"445","ACH-002382","HCC1395",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"446","ACH-002383","HCC2218",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"447","ACH-002384","HCC1954",NA,NA,NA,"unknown",NA,"breast","carcinoma","ductal_carcinoma",NA,NA,NA,NA
+"439","ACH-002376","LS1034",NA,NA,NA,"unknown",NA,"large_intestine","carcinoma","adenocarcinoma",NA,NA,NA,NA
+"443","ACH-002380","COLO829",NA,NA,NA,"unknown",NA,"skin","malignant_melanoma",NA,NA,NA,NA,NA
+"442","ACH-002379","J82",NA,NA,NA,"unknown",NA,"urinary_tract","carcinoma","transitional_cell_carcinoma",NA,NA,NA,NA
+"406","ACH-002342","BB30PBL",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"407","ACH-002343","BB49EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"408","ACH-002344","BB65EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"409","ACH-002346","CP50EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"410","ACH-002347","CP66EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"411","ACH-002348","DIPG007",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"412","ACH-002349","GBM001",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"413","ACH-002350","HA7EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"414","ACH-002351","L542",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"415","ACH-002352","LB1047EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"416","ACH-002353","LB2241EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"417","ACH-002354","LB2518EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"418","ACH-002355","LB373EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"419","ACH-002356","LB647PBL",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"420","ACH-002357","LB771PBL",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"421","ACH-002358","LB831EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"422","ACH-002359","LB996EBV",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"423","ACH-002360","MZ1B",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"424","ACH-002361","MZ7B",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"425","ACH-002362","NCIBL128",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"426","ACH-002363","NCIBL1395",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"427","ACH-002364","NCIBL1437",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"428","ACH-002365","NCIBL1770",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"429","ACH-002366","NCIBL2009",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"430","ACH-002367","NCIBL2052",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"431","ACH-002368","NCIBL2087",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"432","ACH-002369","NCIBL209",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"433","ACH-002370","NCIBL2122",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"434","ACH-002371","NCIBL2126",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"435","ACH-002372","NCIBL2171",NA,NA,NA,"unknown",NA,NA,NA,NA,NA,NA,NA,NA
+"389","ACH-002321","HBL100",NA,NA,NA,"Unknown","Unknown",NA,NA,NA,NA,NA,NA,NA
+"402","ACH-002336","HCET",NA,NA,NA,"Unknown","Unknown",NA,NA,NA,NA,NA,NA,NA
+"179","ACH-001182","RPMI6666",909701,NA,NA,"Unknown",NA,NA,NA,NA,"lymphoma","Hodgkin_lymphoma",NA,NA

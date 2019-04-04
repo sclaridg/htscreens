@@ -50,9 +50,11 @@ library(ggrepel)
 library(ggsignif)
 library(kableExtra)
 library(naniar)
+library(openxlsx)
 library(reshape2)
 library(tidyverse)
 library(VennDiagram)
+
 theme_set(theme_light())
 ```
 
@@ -80,30 +82,44 @@ ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv",
 lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
 ```
 
-## DepMap cell line metadata
+## Cell line metadata
 
-19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
+DepMap 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
 ```{r}
 ccl_info <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 ccl_info$source <- "CCLE"
-ccl_info$source_ccl_name <- strsplit(as.character(ccl_info$CCLE_Name), split = "_")
-ccl_info$source_ccl_name <- as.character(lapply(ccl_info$source_ccl_name, function(x) ifelse("[MERGED" %in% x || "NORMAL" %in% x, NA, x[1])))
-ccl_info$source_ccl_name[ccl_info$source_ccl_name == "NA"] <- NA
+ccl_info$Cell_line <- strsplit(as.character(ccl_info$CCLE_Name), split = "_")
+ccl_info$Cell_line <- as.character(lapply(ccl_info$Cell_line, function(x) ifelse("[MERGED" %in% x || "NORMAL" %in% x, NA, x[1])))
+ccl_info$Cell_line[ccl_info$Cell_line == "NA"] <- NA
 ccl_info$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_info$CCLE_Name, ignore.case = TRUE))
-ccl_info$source_histology <- ifelse(ccl_info$CCLE_Name == ccl_info$source_ccl_name, NA, ccl_info$source_histology)
-ccl_info$sample_ID <- with(ccl_info, paste(source, source_ccl_name, source_histology, sep = "_"))
+ccl_info$source_histology <- ifelse(ccl_info$CCLE_Name == ccl_info$CCLE_Name, NA, ccl_info$source_histology)
+
 # This CCL had a histology of "primary": Looking at the DepMap reference, this is an immortalize epithelial line from the CNS (https://depmap.org/portal/cell_line/NHAHTDD_PRIMARY), so I chanegd the histology accordingly
-ccl_info$source_histology[ccl_info$source_ccl_name == "NHAHTDD"] <- "central_nervous_system"
+ccl_info$source_histology[ccl_info$Cell_line == "NHAHTDD"] <- "central_nervous_system"
 # Convert Primary.Disease entries to all lower case to fix factorization issue
 ccl_info$Primary.Disease <- as.factor(tolower(ccl_info$Primary.Disease))
 # Harmonize ID column name and rename CCLE_Name column to fit with dataframe style
 colnames(ccl_info)[colnames(ccl_info) == "CCLE_Name"] <- "CCLE_ccl_name"
 colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
-
-tcga_hist_converter <- read.delim("./data_munging/TCGA/ge_cancer_map_20190403.csv", sep = ",")
-tcga_hist_converter$Cell_line <- toupper(gsub("-", "", tcga_hist_converter$Cell_line))
-tcga_hist_converter %>% count(TCGA_classification)
 ```
+
+Adding TCGA labels:
+```{r, eval=FALSE}
+tcga_hist_converter <- read.xlsx("./data_munging/TCGA/cell_line_annotation.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE)
+tcga_hist_converter <- add_column(.data = tcga_hist_converter, TCGA_manual = NA, .after = "TCGA_combine")
+tcga_hist_converter <- tcga_hist_converter[with(tcga_hist_converter, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
+
+# For manual curation of TCGA labels
+# ccls_for_manual_tcga_curation <- filter(tcga_hist_converter, is.na(TCGA_combine))
+# ccls_for_manual_tcga_curation <- ccls_for_manual_tcga_curation[with(ccls_for_manual_tcga_curation, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
+# write.csv(ccls_for_manual_tcga_curation, "./data_munging/TCGA/cell_line_annotation_noTCGA.csv")
+tcga_hist_converter <- filter(tcga_hist_converter, !is.na(TCGA_combine))
+ccls_curated <- read.delim("./data_munging/TCGA/cell_line_annotation_noTCGA_curated.csv", sep = ",", row.names = 1)
+tcga_histsconverter <- bind_rows(tcga_hist_converter, ccls_curated)
+tcga_hist_converter$TCGA_combine <- with(tcga_hist_converter, ifelse(is.na(TCGA_combine), as.character(TCGA_manual), TCGA_combine))
+# write.csv(tcga_hist_converter, "./data_munging/TCGA/cell_line_annotation_curated_sally_20190404.csv")
+```
+
 
 ## Omics
 
@@ -176,8 +192,7 @@ crispr <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz"
 --------------------------------------------------------------------------------
 
 ```{r}
-ccl_histologies <- select(ccl_info, source_ccl_name, source_histology, CCLE_ccl_name, Broad_ID) %>% drop_na(source_ccl_name)
-colnames(ccl_histologies)[colnames(ccl_histologies) == "source_ccl_name"] <- "Cell_line" 
+ccl_histologies <- select(ccl_info, Cell_line, source_histology, CCLE_ccl_name, Broad_ID) %>% drop_na(Cell_line)
 colnames(ccl_histologies)[colnames(ccl_histologies) == "source_histology"] <- "Histology" 
 
 # Account for cell line aliases and missing histologies
@@ -547,6 +562,8 @@ Column descriptions for `pgx_all_auc`:
     - NA values indictate that compound wasn't screened in the respective CCL in the respective source dataset
 
 ```{r, eval=FALSE}
+ccl_info$sample_ID <- with(ccl_info, paste(source, source_ccl_name, source_histology, sep = "_"))
+
 ccle <- read.delim("./data_munging/pharmacogenomics_raw_files/CCLE_NP24.2009_Drug_data_2015.02.24_20190307.csv", sep = ",", header  = TRUE, check.names = FALSE)
 ctrp <- read.delim("./data_munging/pharmacogenomics_raw_files/CTRP_v20.data.curves_post_qc.txt.gz", sep = "\t", header  = TRUE, check.names = FALSE)
 gdsc <- read.delim("./data_munging/pharmacogenomics_raw_files/GDSC_v17.3_fitted_dose_response_20190306.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
