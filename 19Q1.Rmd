@@ -65,50 +65,32 @@ And changes to the data processing pipelines (the following is taken verbatim fr
 - **Mutation**: In this release, we additionally process DepMap WES samples through the CGA mutation calling pipeline adapted for cell lines and available on FireCloud. We have added a column for the allele counts from this pipeline run (CGA_WES_AC). Previously, the WES_AC column was generated from running the Van Allen mutation calling pipeline for SNPs + Mutect2 for INDELs. This column is now named VA_WES_AC.
 - **Copy Number**: We have moved to using the newest version of the GATK pipeline.
 
-## D. Charytonowicz cell line converter
+## Cell line metadata
+
+**D. Charytonowicz cell line converter**
 
 This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
+
+**Might not need this anymore due to increased care taken by DepMap to harmonize disease names**
 ```{r}
-ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
+# ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+# lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
 ```
 
-## Cell line metadata
+**DepMap metadata**
 
 DepMap 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
 ```{r}
-ccl_info <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-ccl_info$source <- "CCLE"
-ccl_info$Cell_line <- strsplit(as.character(ccl_info$CCLE_Name), split = "_")
-ccl_info$Cell_line <- as.character(lapply(ccl_info$Cell_line, function(x) ifelse("[MERGED" %in% x || "NORMAL" %in% x, NA, x[1])))
-ccl_info$Cell_line[ccl_info$Cell_line == "NA"] <- NA
-ccl_info$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_info$CCLE_Name, ignore.case = TRUE))
-ccl_info$source_histology <- ifelse(ccl_info$CCLE_Name == ccl_info$CCLE_Name, NA, ccl_info$source_histology)
-
-# This CCL had a histology of "primary": Looking at the DepMap reference, this is an immortalize epithelial line from the CNS (https://depmap.org/portal/cell_line/NHAHTDD_PRIMARY), so I chanegd the histology accordingly
-ccl_info$source_histology[ccl_info$Cell_line == "NHAHTDD"] <- "central_nervous_system"
+ccl_meta <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+ccl_meta$Primary.Disease <- tolower(ccl_meta$Primary.Disease)
+ccl_meta <- subset(ccl_meta, Primary.Disease != "unknown" & Primary.Disease != "primary cells" & !grepl("MERGED", CCLE_Name, fixed = TRUE))
+ccl_meta$Cell_line <- as.character(lapply(ccl_meta$CCLE_Name, function(x) strsplit(as.character(x), split = "_")[[1]][1]))
+ccl_meta$histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_Name, ignore.case = TRUE))
 # Convert Primary.Disease entries to all lower case to fix factorization issue
-ccl_info$Primary.Disease <- as.factor(tolower(ccl_info$Primary.Disease))
+ccl_meta$Primary.Disease <- as.factor(tolower(ccl_meta$Primary.Disease))
 # Harmonize ID column name and rename CCLE_Name column to fit with dataframe style
-colnames(ccl_info)[colnames(ccl_info) == "CCLE_Name"] <- "CCLE_ccl_name"
-colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
-```
-
-Adding TCGA labels:
-```{r, eval=FALSE}
-tcga_hist_converter <- read.xlsx("./data_munging/TCGA/cell_line_annotation.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE)
-tcga_hist_converter <- add_column(.data = tcga_hist_converter, TCGA_manual = NA, .after = "TCGA_combine")
-tcga_hist_converter <- tcga_hist_converter[with(tcga_hist_converter, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
-
-# For manual curation of TCGA labels
-# ccls_for_manual_tcga_curation <- filter(tcga_hist_converter, is.na(TCGA_combine))
-# ccls_for_manual_tcga_curation <- ccls_for_manual_tcga_curation[with(ccls_for_manual_tcga_curation, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
-# write.csv(ccls_for_manual_tcga_curation, "./data_munging/TCGA/cell_line_annotation_noTCGA.csv")
-tcga_hist_converter <- filter(tcga_hist_converter, !is.na(TCGA_combine))
-ccls_curated <- read.delim("./data_munging/TCGA/cell_line_annotation_noTCGA_curated.csv", sep = ",", row.names = 1)
-tcga_histsconverter <- bind_rows(tcga_hist_converter, ccls_curated)
-tcga_hist_converter$TCGA_combine <- with(tcga_hist_converter, ifelse(is.na(TCGA_combine), as.character(TCGA_manual), TCGA_combine))
-# write.csv(tcga_hist_converter, "./data_munging/TCGA/cell_line_annotation_curated_sally_20190404.csv")
+colnames(ccl_meta)[colnames(ccl_meta) == "CCLE_Name"] <- "CCLE_ccl_name"
+colnames(ccl_meta)[colnames(ccl_meta) == "DepMap_ID"] <- "Broad_ID"
 ```
 
 ## G2P
@@ -190,10 +172,6 @@ ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.
 colnames(ge_19Q1) <- gsub(" .*", "", colnames(ge_19Q1))
 colnames(ge_19Q1)[1] <- "Broad_ID"
 
-# For Denise's GCN
-pgx_ccle_ge <- merge(select(ccl_info, source, source_ccl_name, source_histology, sample_ID, CCLE_ccl_name, Broad_ID), ge_19Q1, by = "Broad_ID", all = TRUE)
-saveRDS(pgx_ccle_ge, "./data_munging/19Q1/pgx_ccle_ge.rds", compress = "xz")
-
 # Melt
 ge_melt_19Q1 <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
 # ge_melt_19Q1 <- unique(ge_melt_19Q1_all)
@@ -224,8 +202,7 @@ drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv",
 colnames(drug_meta) <- c("CID", "Drug")
 drug_meta$Drug <- tolower(drug_meta$Drug)
 maf_df_g2p <- filter(maf_df, Hugo_Symbol %in% g2p_genes)
-ge_filt_18Q3 <- filter(ge_melt_18Q3, Hugo_Symbol %in% g2p_genes)
-# ge_filt_19Q1 <- filter(ge_melt_19Q1, Hugo_Symbol %in% g2p_genes)
+ge_filt <- filter(ge_melt, Hugo_Symbol %in% g2p_genes)
 cn_filt <- filter(cn_melt, Hugo_Symbol %in% g2p_genes)
 
 # CCLE
@@ -392,14 +369,6 @@ for(drug in g2p_drugs) {
 
 ## CRISPR
 
-### DepMap dependency probabilities
-
-```{r, eval=FALSE}
-dep <- read.delim("./data_munging/19Q1/gene_dependency_19Q1_20181115.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
-# Remove Entrez gene IDs from colnames
-colnames(dep) <- gsub(" .*", "", colnames(dep))
-```
-
 ### Merge CRISPR data and annotations
 
 ```{r, eval=FALSE}
@@ -412,12 +381,8 @@ Merge annotation data:
 ```{r, eval=FALSE}
 # Melt CRISPR dataset for merging
 crispr_melt <- melt(crispr, id.vars = "DepMap_ID", measure.vars = colnames(crispr)[2:ncol(crispr)], variable.name = "Hugo_Symbol", value.name = "Score")
-# Melt dependency probabilities dataset for merging
-dep_melt <- melt(dep, id.vars = "DepMap_ID", measure.vars = colnames(dep)[2:ncol(dep)], variable.name = "Hugo_Symbol", value.name = "Dep_Prob")
-# Merge dependency probabilities
-crispr_melt <- merge(crispr_melt, dep_melt, by = c("DepMap_ID", "Hugo_Symbol"), all.x = TRUE)
 # Merge cell line metadata
-crispr_melt <- merge(crispr_melt, ccl_info, by = "DepMap_ID", all.x = TRUE)
+crispr_melt <- merge(crispr_melt, ccl_meta, by = "DepMap_ID", all.x = TRUE)
 crispr_melt <- merge(crispr_melt, crispr_meta, by = c("CCLE_Name", "DepMap_ID"), all.x = TRUE)
 
 # Merge mutation annotations
