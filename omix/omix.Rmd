@@ -29,6 +29,8 @@ Annotation files for mutation status, copy number, and gene expression of the CC
 
 ```{r setup, include=FALSE}
 set.seed(1234)
+setwd("/Users/claris01/Box\ Sync/SallyProjects/htscreens/omix")
+
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # num_cores <- parallel::detectCores()
 options(mc.cores = parallel::detectCores(), expressions = 5e5)
@@ -74,60 +76,47 @@ And changes to the data processing pipelines (the following is taken verbatim fr
 - **Mutation**: In this release, we additionally process DepMap WES samples through the CGA mutation calling pipeline adapted for cell lines and available on FireCloud. We have added a column for the allele counts from this pipeline run (CGA_WES_AC). Previously, the WES_AC column was generated from running the Van Allen mutation calling pipeline for SNPs + Mutect2 for INDELs. This column is now named VA_WES_AC.
 - **Copy Number**: We have moved to using the newest version of the GATK pipeline.
 
-## D. Charytonowicz cell line converter
-
-This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
-```{r}
-ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
-```
-
 ## Cell line metadata
 
 DepMap 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
 ```{r}
-ccl_info <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-ccl_info$source <- "CCLE"
-ccl_info$Cell_line <- strsplit(as.character(ccl_info$CCLE_Name), split = "_")
-ccl_info$Cell_line <- as.character(lapply(ccl_info$Cell_line, function(x) ifelse("[MERGED" %in% x || "NORMAL" %in% x, NA, x[1])))
-ccl_info$Cell_line[ccl_info$Cell_line == "NA"] <- NA
-ccl_info$source_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_info$CCLE_Name, ignore.case = TRUE))
-ccl_info$source_histology <- ifelse(ccl_info$CCLE_Name == ccl_info$CCLE_Name, NA, ccl_info$source_histology)
+ccl_info <- read.delim("./data/DepMap/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 
-# This CCL had a histology of "primary": Looking at the DepMap reference, this is an immortalize epithelial line from the CNS (https://depmap.org/portal/cell_line/NHAHTDD_PRIMARY), so I chanegd the histology accordingly
-ccl_info$source_histology[ccl_info$Cell_line == "NHAHTDD"] <- "central_nervous_system"
+ccl_info <- subset(ccl_info, Primary.Disease != "unknown" & Primary.Disease != "primary cells" & !grepl("MERGED", CCLE_Name, fixed = TRUE))
+ccl_info$Cell_line <- as.character(lapply(ccl_info$CCLE_Name, function(x) strsplit(as.character(x), split = "_")[[1]][1]))
+ccl_info$Histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_info$CCLE_Name, ignore.case = TRUE))
+
 # Convert Primary.Disease entries to all lower case to fix factorization issue
 ccl_info$Primary.Disease <- as.factor(tolower(ccl_info$Primary.Disease))
-# Harmonize ID column name and rename CCLE_Name column to fit with dataframe style
-colnames(ccl_info)[colnames(ccl_info) == "CCLE_Name"] <- "CCLE_ccl_name"
+
+# Harmonize ID column name
 colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
+
+# Remove two rows that contain cell lines with two different histologies
+# The histologies that are kept are verified through matching in Cellosaurus and Cell Model Passports
+# KMH2, haematopoietic_and_lymphoid: https://web.expasy.org/cellosaurus/CVCL_1330, https://cellmodelpassports.sanger.ac.uk/passports/SIDM01018
+# MS1, lung: https://web.expasy.org/cellosaurus/CVCL_1429, https://cellmodelpassports.sanger.ac.uk/passports/SIDM00245
+ccl_info <- subset(ccl_info, CCLE_Name != "KMH2_THYROID" & CCLE_Name != "MS1_SKIN")
 ```
 
 Adding TCGA labels:
-```{r, eval=FALSE}
-tcga_hist_converter <- read.xlsx("./data_munging/TCGA/cell_line_annotation.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE)
-tcga_hist_converter <- add_column(.data = tcga_hist_converter, TCGA_manual = NA, .after = "TCGA_combine")
-tcga_hist_converter <- tcga_hist_converter[with(tcga_hist_converter, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
+```{r}
+tcga_hist_converter <- read.xlsx("./data/TCGA/Histology_DepMap_Xena_04052019.xlsx", sheet = 3, startRow = 1, colNames = TRUE, rowNames = FALSE)
+tcga_hist_converter$data_source <- NULL
 
-# For manual curation of TCGA labels
-# ccls_for_manual_tcga_curation <- filter(tcga_hist_converter, is.na(TCGA_combine))
-# ccls_for_manual_tcga_curation <- ccls_for_manual_tcga_curation[with(ccls_for_manual_tcga_curation, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
-# write.csv(ccls_for_manual_tcga_curation, "./data_munging/TCGA/cell_line_annotation_noTCGA.csv")
-tcga_hist_converter <- filter(tcga_hist_converter, !is.na(TCGA_combine))
-ccls_curated <- read.delim("./data_munging/TCGA/cell_line_annotation_noTCGA_curated.csv", sep = ",", row.names = 1)
-tcga_histsconverter <- bind_rows(tcga_hist_converter, ccls_curated)
-tcga_hist_converter$TCGA_combine <- with(tcga_hist_converter, ifelse(is.na(TCGA_combine), as.character(TCGA_manual), TCGA_combine))
-# write.csv(tcga_hist_converter, "./data_munging/TCGA/cell_line_annotation_curated_sally_20190404.csv")
+tcga_hist_converter_depmap <- filter(tcga_hist_converter, grepl("^ACH", sample_ID))
+tcga_hist_converter_tcga <- filter(tcga_hist_converter, grepl("^TCGA", sample_ID))
+colnames(tcga_hist_converter_depmap) <- c("Broad_ID", "TCGA_classification")
+colnames(tcga_hist_converter_tcga) <- c("sample", "TCGA_classification")
+
+ccl_info <- merge(ccl_info, tcga_hist_converter_depmap, by = "Broad_ID", all.x = TRUE)
 ```
-
-
-## Omics
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
 Mutation calls (coding region, germline filtered):
 ```{r, eval=FALSE}
-maf_raw <- read.delim("./data_munging/19Q1/depmap_19Q1_mutation_calls_20190305.csv.gz", header = TRUE, sep = ",", row.names = 1)
+maf_raw <- read.delim("./../data_munging/19Q1/depmap_19Q1_mutation_calls_20190305.csv.gz", header = TRUE, sep = ",", row.names = 1)
 # Harmonize ID column name
 colnames(maf_raw)[colnames(maf_raw) == "DepMap_ID"] <- "Broad_ID"
 # Select columns
@@ -138,70 +127,69 @@ maf_df <- maf_df[maf_df$Variant_Classification != "Silent",]
 # Add Mutation_Status column
 maf_df$Mutation_Status_Nonsilent <- "Mutant"
 
-saveRDS(maf_df, "./data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
+saveRDS(maf_df, "./../data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
 
 DepMap WES CN Data:
 ```{r, eval=FALSE}
-cn <- read.delim("./data_munging/19Q1/public_19Q1_gene_cn_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
+cn <- read.delim("./../data_munging/19Q1/public_19Q1_gene_cn_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(cn) <- gsub(" .*", "", colnames(cn))
 colnames(cn)[1] <- "Broad_ID"
 # Melt
 cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Hugo_Symbol", value.name = "CN")
-saveRDS(cn_melt, "./data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
+saveRDS(cn_melt, "./../data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```
 
 19Q1, CCLE RNAseq gene expression data (log2(TPM+1)):
 ```{r, eval=FALSE}
-ge_19Q1 <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+ge_19Q1 <- read.delim("./../../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(ge_19Q1) <- gsub(" .*", "", colnames(ge_19Q1))
 colnames(ge_19Q1)[1] <- "Broad_ID"
 
 # For Denise's GCN
-pgx_ccle_ge <- merge(select(ccl_info, source, source_ccl_name, source_histology, sample_ID, CCLE_ccl_name, Broad_ID), ge_19Q1, by = "Broad_ID", all = TRUE)
-saveRDS(pgx_ccle_ge, "./data_munging/19Q1/pgx_ccle_ge.rds", compress = "xz")
+# pgx_ccle_ge <- merge(select(ccl_info, source, source_ccl_name, source_histology, sample_ID, CCLE_ccl_name, Broad_ID), ge_19Q1, by = "Broad_ID", all = TRUE)
+# saveRDS(pgx_ccle_ge, "./data_munging/19Q1/pgx_ccle_ge.rds", compress = "xz")
 
 # Melt
 ge_melt_19Q1 <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
 # ge_melt_19Q1 <- unique(ge_melt_19Q1_all)
-saveRDS(ge_melt_19Q1, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
+saveRDS(ge_melt_19Q1, "./../data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
 
-Load Rds:
+Load omics RDS:
 ```{r}
-maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
-cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
-ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
+maf_df <- readRDS("./../data_munging/19Q1/maf_df_19Q1.rds")
+cn_melt <- readRDS("./../data_munging/19Q1/cn_melt_19Q1.rds")
+ge_melt <- readRDS("./../data_munging/19Q1/ge_melt_19Q1.rds")
 ```
 
 ## CRISPR
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 # Sample info from figshare
-crispr_meta <- read.delim("./data_munging/19Q1/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+crispr_meta <- read.delim("./data/DepMap/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
 
-crispr <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
+# crispr <- read.delim("./../data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 ```
 
 
-# Pozdeyev et al. (2016) summary
+# POZDEYEV ET AL (2016) SUMMARY
 
 --------------------------------------------------------------------------------
 
 ```{r}
-ccl_histologies <- select(ccl_info, Cell_line, source_histology, CCLE_ccl_name, Broad_ID) %>% drop_na(Cell_line)
-colnames(ccl_histologies)[colnames(ccl_histologies) == "source_histology"] <- "Histology" 
+ccl_histologies <- select(ccl_info, Cell_line, Histology, TCGA_classification, CCLE_Name, Broad_ID) %>% drop_na(Cell_line)
 
 # Account for cell line aliases and missing histologies
-auc_na_histologies <- read.delim("./data_munging/pozdeyev2016/auc_na_histologies.csv", sep = ",", row.names = 1)
-
+auc_na_histologies <- read.delim("./data/pozdeyev2016/auc_na_histologies.csv", sep = ",", row.names = 1)
 auc_na_histologies$accession_id <- NULL
 auc_na_histologies$Notes <- NULL
+
 auc_na_histologies$Histology <- ifelse(auc_na_histologies$Histology == "", NA, as.character(auc_na_histologies$Histology))
-auc_na_histologies$CCLE_ccl_name <- ifelse(auc_na_histologies$CCLE_ccl_name  == "", NA, as.character(auc_na_histologies$CCLE_ccl_name ))
+auc_na_histologies$CCLE_Name <- ifelse(auc_na_histologies$CCLE_Name  == "", NA, as.character(auc_na_histologies$CCLE_Name ))
 auc_na_histologies$Broad_ID <- ifelse(auc_na_histologies$Broad_ID == "", NA, as.character(auc_na_histologies$Broad_ID))
 
 ccl_histologies <- subset(ccl_histologies, !(Broad_ID %in% auc_na_histologies$Broad_ID))
@@ -217,14 +205,13 @@ For plotting:
 ## Data wrangling
 
 ```{r, eval=FALSE}
-ccle_poz <- read.delim("./data_munging/pozdeyev2016/CCLE_drug_response_metrics.csv.gz", sep = ",")
-
+ccle_poz <- read.delim("./data/pozdeyev2016/CCLE_drug_response_metrics.csv.gz", sep = ",")
 # ccle_test <- merge(select(ccle_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CCLE"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
-ctrp_poz <- read.delim("./../htscreens_giant_files/pozdeyev2016/CTRP_drug_response_metrics.csv.gz", sep = ",")
+ctrp_poz <- read.delim("./../../htscreens_giant_files/omix/pozdeyev2016/CTRP_drug_response_metrics.csv.gz", sep = ",")
 # ctrp_test <- merge(select(ctrp_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CTRP"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
-gdsc_poz <- read.delim("./data_munging/pozdeyev2016/GDSC_drug_response_metrics.csv.gz", sep = ",")
+gdsc_poz <- read.delim("./data/pozdeyev2016/GDSC_drug_response_metrics.csv.gz", sep = ",")
 # gdsc_test <- merge(select(gdsc_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "GDSC"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
 auc <- bind_rows(ccle_poz, ctrp_poz, gdsc_poz)
@@ -238,7 +225,7 @@ auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
 auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
 
 auc$WasDrugScreened <- 1
-ccls_not_drugscreened <- filter(ccl_histologies, Cell_line %in% setdiff(ccl_histologies$Cell_line, auc_wide$Cell_line))
+ccls_not_drugscreened <- filter(ccl_histologies, Cell_line %in% setdiff(ccl_histologies$Cell_line, auc$Cell_line))
 ccls_not_drugscreened$WasDrugScreened <- 0
 
 auc$AUC_IC50 <- as.numeric(as.character(auc$AUC_IC50))
@@ -249,13 +236,12 @@ num_auc_per_db <- auc %>% count(Database)
 
 # Identify cell lines without histology indications. Write to file to edit for merging back to ccl_histologies file
 # test <- filter(auc, is.na(Histology))[, 1:10]
-# auc_na_hists <- unique(filter(auc, is.na(Histology))$Cell_linet)
-# write.csv(auc_na_hists, "./data_munging/pozdeyev2016/auc_na_histologies.csv")
+# auc_na_hists <- unique(filter(auc, is.na(Histology))$Cell_line)
+# write.csv(auc_na_hists, "./data/pozdeyev2016/auc_na_histologies.csv")
 
 # Create merged dataset with sample_ids in the rows and drugs across the columns
-auc_wide <- dcast(auc, Cell_line + Histology + CCLE_ccl_name + Broad_ID + WasDrugScreened ~ Drug_name_Database, value.var = "AUC_IC50", fun.aggregate = mean, fill = 1000000)
+auc_wide <- dcast(auc, Cell_line + Histology + TCGA_classification + CCLE_Name + Broad_ID + WasDrugScreened ~ Drug_name_Database, value.var = "AUC_IC50", fun.aggregate = mean, fill = 1000000)
 auc_wide[auc_wide == 1000000] <- ""
-auc_wide <- auc_wide %>% group_by(Cell_line, Histology, CCLE_ccl_name, Broad_ID, WasDrugScreened) %>% summarise_all(funs(trimws(paste(., collapse = ""))))
 auc_wide[auc_wide == ""] <- NA
 
 auc_all <- bind_rows(auc_wide, ccls_not_drugscreened)
@@ -271,15 +257,14 @@ auc_all <- add_column(auc_all, HasMutationData = ifelse(auc_all$Broad_ID %in% un
 
 # auc_all[, -c(1:4)] <- apply(auc_all[, -c(1:4)], MARGIN = 2, FUN = as.numeric)
 auc_all <- subset(auc_all, !(WasDrugScreened == 0 & WasCRISPRScreened == 0 & HasMutationData == 0 & HasGeneExpressionData == 0 & HasCopyNumberData == 0))
-# write.csv.gz(auc_all, file = "./data_munging/pozdeyev2016/merged_auc_v20190402.4.csv.gz", row.names = FALSE, na = "NA")
+write.csv.gz(auc_all, file = "./data/pozdeyev2016/merged_auc_v20190408.5.csv.gz", row.names = FALSE, na = "NA")
 
 # test <- as.data.frame(table(auc_all$Cell_line))
 # test <- filter(auc_all, Cell_line %in% c("KMH2", "MS1", "TT"))[, 1:12]
 ```
 
-
 ```{r}
-auc_all <- read.delim("./data_munging/pozdeyev2016/merged_auc_v20190402.4.csv.gz", sep = ",", check.names = FALSE)
+auc_all <- read.delim("./data/pozdeyev2016/merged_auc_v20190408.5.csv.gz", sep = ",", check.names = FALSE)
 
 # Unique drugs across all datasets
 length(unique(sapply(strsplit(as.character(colnames(auc_all)[13:length(colnames(auc_all))]), split = "_"), function(x) x[1])))
@@ -309,26 +294,26 @@ gdsc_ccls <- filter(auc_all, InGDSC == 1)
 auc_all %>% count(Histology)
 ```
 
-## Plots
+## Exploratory plots
 
 ```{r, eval=FALSE}
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_pgx_crispr_overlap <- venn.diagram(list("CRISPR" = unique(crispr_ccls$Cell_line), "Drug Screen" = unique(pgx_ccls$Cell_line), "Unscreened" = unique(unscreened_ccls$Cell_line)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened via small-molecule and CRISPR", main.fontface = "bold", lty = rep("blank", 3), fill = c("mediumpurple1", "turquoise4", "slategray3"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/pozdeyev_unmatched/venn_pgx_crispr_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./pozdeyev_unmatched/venn_pgx_crispr_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_pgx_crispr_overlap)
 dev.off()
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_ccl_overlap <- venn.diagram(list("CCLE" = unique(ccle_ccls$Cell_line), "CTRP" = unique(ctrp_ccls$Cell_line), "GDSC" = unique(gdsc_ccls$Cell_line)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/pozdeyev_unmatched/venn_ccl_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./pozdeyev_unmatched/venn_ccl_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_ccl_overlap)
 dev.off()
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_omics_overlap <- venn.diagram(list("Gene Expression" = unique(ge_ccls$Cell_line), "Copy Number" = unique(cn_ccls$Cell_line), "Mutation" = unique(mut_ccls$Cell_line)), resolution = 5000, main = "Overlapping omic annotations in cancer cell lines (CCLs)", main.fontface = "bold", lty = rep("blank", 3), fill = c("yellow2", "orange", "tomato"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/pozdeyev_unmatched/venn_omics_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./pozdeyev_unmatched/venn_omics_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_omics_overlap)
 dev.off()
@@ -340,11 +325,11 @@ bar_ccl_per_hist <- ggplot(data = unique(select(auc_all, Cell_line, Histology)))
   labs(y = "Number of cell lines", title = "Number of unique cell lines per histology across all cell lines") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 bar_ccl_per_hist
-ggsave("./gcn_denise/pozdeyev_unmatched/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+ggsave("./pozdeyev_unmatched/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_drugs_overlap <- venn.diagram(list("CCLE" = unique(ccle_poz$Drug_name), "CTRP" = unique(ctrp_poz$Drug_name), "GDSC" = unique(gdsc_poz$Drug_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./gcn_denise/pozdeyev_unmatched/venn_drugs_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./pozdeyev_unmatched/venn_drugs_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_drugs_overlap)
 dev.off()
@@ -358,16 +343,16 @@ bar_ccl_per_hist_per_db <- ggplot(data = unique(select(auc, Database, Cell_line,
   labs(y = "Number of cell lines", title = "Number of unique cell lines per histology, grouped by database") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 bar_ccl_per_hist_per_db
-ggsave("./gcn_denise/pozdeyev_unmatched/barplot_ccl_per_histology_per_db.png", bar_ccl_per_hist_per_db, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+ggsave("./pozdeyev_unmatched/barplot_ccl_per_histology_per_db.png", bar_ccl_per_hist_per_db, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
 bar_ccl_per_hist <- ggplot(data = unique(select(auc_all, Cell_line, Histology))) +
   geom_bar(aes(x = Histology, fill = Histology), alpha = 0.7) +
   guides(fill = "none") +
-  scale_y_continuous(breaks = seq(0, 220, by = 20), labels = seq(0, 220, by = 20)) +
+  scale_y_continuous(breaks = seq(0, 375, by = 25), labels = seq(0, 375, by = 25)) +
   labs(y = "Number of cell lines", title = "Number of unique cell lines per histology across all annotated cell lines") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 bar_ccl_per_hist
-ggsave("./gcn_denise/pozdeyev_unmatched/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+ggsave("./pozdeyev_unmatched/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
 histo_aucic50_per_db <- ggplot(data = auc) +
   facet_wrap(~ Database, scales = "free_y") +
@@ -376,10 +361,10 @@ histo_aucic50_per_db <- ggplot(data = auc) +
   guides(fill = "none") +
   labs(x = "AUC IC50", y = "Frequency", title = "Distributions of AUC IC50 values for all drugs in each dataset (unmatched)")
 histo_aucic50_per_db
-ggsave("./gcn_denise/pozdeyev_unmatched/histogram_aucic50_per_db.png", histo_aucic50_per_db, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+ggsave("./pozdeyev_unmatched/histogram_aucic50_per_db.png", histo_aucic50_per_db, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
-## README
+## README text
 
 DATA SOURCE
 
@@ -393,7 +378,8 @@ For latest version of merged_auc dataframe:
 
 - Cell_line: the name of the cancer cell line (CCL), harmonized across datasets by Pozdeyev et al. (2016)
 - Histology: the general histology/tissue type of the CCL according to the CCLE annotations (see DepMap-2019q1-celllines_v2.csv file from the DepMap Data Portal)
-- CCLE_ccl_name: the cell line name using CCLE nomenclature, which is a concatenation of the cell line name with the CCLE-annotated histology in all caps, separated by underscores
+- TCGA_classification: curated TCGA labels derived from CCLE, GDSC, or manual assignment by Kaiqiao Li and Sally Claridge; note that some TCGA project labels have been combined into more general categories, e.g. COAD and READ are grouped into COADREAD
+- CCLE_Name: the cell line name using CCLE nomenclature, which is a concatenation of the cell line name with the CCLE-annotated histology in all caps, separated by underscores
 - Broad_ID: the custom identifiers (formatted as ACH-######) used by the Broad's Cancer Dependency Map project to ease cell line name harmonization efforts 
 - InCCLE: 1 means the cell line was screened in CCLE, 0 means it was not
 - InCTRP: 1 means the cell line was screened in CTRP, 0 means it was not
@@ -426,8 +412,13 @@ merged_auc_v20190402.4.csv.gz:
 - Fixed HasMutationData, HasCopyNumberData, and HasGeneExpression data columns
 - Reordered columns
 
+merged_auc_v20190408.5.csv.gz:
+- Removed duplicate cell line entries for KMH2 and MS1 that had incorrect histology entries
+- Added TCGA classifications for all cell lines possible (classifications were manually curated by Kaiqiao Li and Sally Claridge by combining CCLE and GDSC TCGA annotations and two-fold manual comparison)
+- Changed CCLE_ccl_name column to CCLE_Name
 
-# Compare to TCGA
+
+# COMPARE TO TCGA
 
 --------------------------------------------------------------------------------
 
@@ -436,17 +427,45 @@ Quality check: cluster TCGA samples and cell lines—verify that same tumor type
 Calculate Pearson correlations between data sets and create a heatmap (also look at Barretina et al. supplement for PCA and mutation load correlations)
 
 ```{r, eval=FALSE}
-# Seg data is only for cell lines in teh CRISPR screen
-cn_seg <- read.delim("./data_munging/19Q1/depmap_19Q1_cn_seg_20190403.csv", sep = ",")
-cn_seg <- merge(select(ccl_histologies, Histology, Broad_ID), cn_seg, by = "Broad_ID", all.y = TRUE)
+# DepMap gene expression
+ge_depmap <- read.delim("./../../htscreens_giant_files/omix/GE/GE_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(ge_depmap)[colnames(ge_depmap) == "cancer"] <- "TCGA_classification"
+# Mean center scale
+ge_depmap[, 4:ncol(ge_depmap)] <- apply(ge_depmap[, 4:ncol(ge_depmap)], MARGIN = 2, FUN = scale, center = TRUE, scale = TRUE)
+# Melt
+ge_depmap_melt <- melt(ge_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(ge_depmap)[4:length(colnames(ge_depmap))], variable.name = "Gene", value.name = "TPM_scaled")
+# Average scaled TPM per gene per TCGA classification
+ge_depmap_avg <- ge_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_TPM = mean(TPM_scaled))
+# Make wide
+ge_depmap_wide <- dcast(data = ge_depmap_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(ge_depmap_wide) <- ge_depmap_wide$Gene
+ge_depmap_wide$Gene <- NULL
+colnames(ge_depmap_wide) <- paste(colnames(ge_depmap_wide), "DepMap", sep = "_")
 
-tcga_seg <- read.delim("./data_munging/TCGA/GDC-PANCAN.masked_cnv.ucscxena_seg_20190403.tsv.gz", sep = "\t")
+# TCGA gene expression
+ge_tcga <- read.delim("./../../htscreens_giant_files/omix/GE/GE_Xena_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(ge_tcga)[colnames(ge_tcga) == "cancer"] <- "TCGA_classification"
+# Mean center scale
+ge_tcga[, 4:ncol(ge_tcga)] <- apply(ge_tcga[, 4:ncol(ge_tcga)], MARGIN = 2, FUN = scale, center = TRUE, scale = TRUE)
+# Melt
+ge_tcga_melt <- melt(ge_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(ge_tcga)[4:length(colnames(ge_tcga))], variable.name = "Gene", value.name = "TPM_scaled")
+# Average scaled TPM per gene per TCGA classification
+ge_tcga_avg <- ge_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_TPM = mean(TPM_scaled))
+# Make wide
+ge_tcga_wide <- dcast(data = ge_tcga_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(ge_tcga_wide) <- ge_tcga_wide$Gene
+ge_tcga_wide$Gene <- NULL
+colnames(ge_tcga_wide) <- paste(colnames(ge_tcga_wide), "TCGA", sep = "_")
 
-ggplot(cn_seg, aes(x = log2(Segment_Mean/2))) + 
-  geom_density()
+ge_wide <- bind_cols(ge_depmap_wide, ge_tcga_wide)
 
-ggplot(tcga_seg, aes(x = value)) + 
-  geom_density()
+ge_corr <- ge_wide %>% as.matrix %>% cor(method = "pearson") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+ge_corr <- filter(ge_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)))
+ge_corr_wide <- dcast(ge_corr, formula = var1 ~ var2, fun.aggregate = mean)
+# ge_wide_corr <- apply(ge_wide_corr, 2, function(x) gsub("_TCGA|_DepMap","", x))
+
+# ge4corr <- merge(ge_depmap_avg, ge_tcga_avg, by = c("TCGA_classification", "Gene"), all = TRUE)
+# ge_corr <- ge4corr %>% group_by(TCGA_classification) %>% summarize(corr = cor.test(y = Mean_TPM_TCGA, x = Mean_TPM_DepMap, method = "pearson", use = "complete.obs")$estimate)
 ```
 
 
@@ -466,9 +485,25 @@ ggplot(tcga_seg, aes(x = value)) +
 
 
 
+# (OLD) Data management
 
+--------------------------------------------------------------------------------
 
+```{r, eval=FALSE}
+tcga_hist_converter <- read.xlsx("./data/TCGA/cell_line_annotation.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE)
+tcga_hist_converter <- add_column(.data = tcga_hist_converter, TCGA_manual = NA, .after = "TCGA_combine")
+tcga_hist_converter <- tcga_hist_converter[with(tcga_hist_converter, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
 
+# For manual curation of TCGA labels
+ccls_for_manual_tcga_curation <- filter(tcga_hist_converter, is.na(TCGA_combine))
+ccls_for_manual_tcga_curation <- ccls_for_manual_tcga_curation[with(ccls_for_manual_tcga_curation, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
+write.csv(ccls_for_manual_tcga_curation, "./data/TCGA/cell_line_annotation_noTCGA.csv")
+tcga_hist_converter <- filter(tcga_hist_converter, !is.na(TCGA_combine))
+ccls_curated <- read.delim("./data/TCGA/cell_line_annotation_noTCGA_curated.csv", sep = ",", row.names = 1)
+tcga_histsconverter <- bind_rows(tcga_hist_converter, ccls_curated)
+tcga_hist_converter$TCGA_combine <- with(tcga_hist_converter, ifelse(is.na(TCGA_combine), as.character(TCGA_manual), TCGA_combine))
+# write.csv(tcga_hist_converter, "./data/TCGA/cell_line_annotation_curated_sally_20190404.csv")
+```
 
 # (OLD) Pozdeyev et al (2016) matched data
 

@@ -1,4 +1,4 @@
-,Cell_line,Histology,CCLE_ccl_name,Broad_ID,Notes,acession_id
+,Cell_line,Histology,CCLE_Name,Broad_ID,Notes,accession_id
 1,2004,kidney,,,,
 2,ASKA,soft_tissue,,,"https://web.expasy.org/cellosaurus/CVCL_6C43, synovial sarcoma like SYO1 and YAMATO cell lines",
 3,BOKU,cervix,,ACH-001451,https://cellmodelpassports.sanger.ac.uk/passports/SIDM00073,CVCL_1089
