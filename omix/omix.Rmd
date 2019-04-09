@@ -23,6 +23,15 @@ The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meye
 
 Annotation files for mutation status, copy number, and gene expression of the CCLE and CTRP datasets (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/). Note that the group that conducted the GDSC screen also collected their own genomic annotation information for mutation status, copy number, and gene expression, but we did not use it.
 
+# NOTES
+
+--------------------------------------------------------------------------------
+
+- Quality check: cluster TCGA samples and cell lines—verify that same tumor types cluster together rather than clustering by cell lines and tumor samples (Kaiqiao)
+- Calculate Pearson correlations between DepMap and TCGA feature sets and create heatmaps (CN, GE, mutation frequency), see Barretina et al. (2016) supplement for example methods and plots
+- Look at Barretina et al. supplement for PCA and mutation load correlations)
+
+
 # SET UP
 
 --------------------------------------------------------------------------------
@@ -36,7 +45,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 options(mc.cores = parallel::detectCores(), expressions = 5e5)
 ```
 
-Edited `.Renviron` to avoid "Error: memory exhausted (limit reached?)" when melting the GE dataset, as per the suggestion from [StackOverflow](https://stackoverflow.com/questions/51295402/r-on-macos-error-vector-memory-exhausted-limit-reached):å
+Edited `.Renviron` to avoid "Error: memory exhausted (limit reached?)" when melting the GE dataset, as per the suggestion from [StackOverflow](https://stackoverflow.com/questions/51295402/r-on-macos-error-vector-memory-exhausted-limit-reached):
 ```
 cd ~
 touch .Renviron
@@ -46,6 +55,8 @@ R_MAX_VSIZE=100Gb
 ```
 
 ```{r}
+library(circlize)
+library(ComplexHeatmap)
 library(crunch)
 library(ggpubr)
 library(ggrepel)
@@ -59,6 +70,16 @@ library(VennDiagram)
 
 theme_set(theme_light())
 ```
+
+```{r}
+unfactorize <- function(df){
+  for(i in which(sapply(df, class) == "factor")) {
+    df[[i]] = as.character(df[[i]])
+  }
+  return(df)
+}
+```
+
 
 # DATA MANAGEMENT {.tabset .tabset-fade .tabset-pills}
 
@@ -97,19 +118,33 @@ colnames(ccl_info)[colnames(ccl_info) == "DepMap_ID"] <- "Broad_ID"
 # KMH2, haematopoietic_and_lymphoid: https://web.expasy.org/cellosaurus/CVCL_1330, https://cellmodelpassports.sanger.ac.uk/passports/SIDM01018
 # MS1, lung: https://web.expasy.org/cellosaurus/CVCL_1429, https://cellmodelpassports.sanger.ac.uk/passports/SIDM00245
 ccl_info <- subset(ccl_info, CCLE_Name != "KMH2_THYROID" & CCLE_Name != "MS1_SKIN")
-```
 
-Adding TCGA labels:
-```{r}
-tcga_hist_converter <- read.xlsx("./data/TCGA/Histology_DepMap_Xena_04052019.xlsx", sheet = 3, startRow = 1, colNames = TRUE, rowNames = FALSE)
-tcga_hist_converter$data_source <- NULL
+# Add TCGA labels
+tcga_hist_converter_depmap <- filter(read.xlsx("./data/TCGA/Histology_DepMap_Xena_04052019.xlsx", sheet = 3, startRow = 1, colNames = TRUE, rowNames = FALSE), data_source == "DepMap")
+colnames(tcga_hist_converter_depmap) <- c("Broad_ID", "TCGA_classification", "data_source")
 
-tcga_hist_converter_depmap <- filter(tcga_hist_converter, grepl("^ACH", sample_ID))
-tcga_hist_converter_tcga <- filter(tcga_hist_converter, grepl("^TCGA", sample_ID))
-colnames(tcga_hist_converter_depmap) <- c("Broad_ID", "TCGA_classification")
-colnames(tcga_hist_converter_tcga) <- c("sample", "TCGA_classification")
+tcga_hist_converter_tcga <- filter(read.xlsx("./data/TCGA/Histology_DepMap_Xena_04052019.xlsx", sheet = 3, startRow = 1, colNames = TRUE, rowNames = FALSE), data_source == "Xena_TCGA")
+colnames(tcga_hist_converter_tcga) <- c("sample", "TCGA_classification", "data_source")
 
 ccl_info <- merge(ccl_info, tcga_hist_converter_depmap, by = "Broad_ID", all.x = TRUE)
+
+# Using Pozdeyev filtering
+ccl_histologies <- select(ccl_info, Cell_line, Histology, TCGA_classification, CCLE_Name, Broad_ID) %>% drop_na(Cell_line)
+
+# Account for cell line aliases and missing histologies
+auc_na_histologies <- read.delim("./data/pozdeyev2016/auc_na_histologies.csv", sep = ",", row.names = 1)
+auc_na_histologies$accession_id <- NULL
+auc_na_histologies$Notes <- NULL
+
+auc_na_histologies$Histology <- ifelse(auc_na_histologies$Histology == "", NA, as.character(auc_na_histologies$Histology))
+auc_na_histologies$CCLE_Name <- ifelse(auc_na_histologies$CCLE_Name  == "", NA, as.character(auc_na_histologies$CCLE_Name ))
+auc_na_histologies$Broad_ID <- ifelse(auc_na_histologies$Broad_ID == "", NA, as.character(auc_na_histologies$Broad_ID))
+auc_na_histologies <- unfactorize(auc_na_histologies)
+
+ccl_histologies <- subset(ccl_histologies, !(Broad_ID %in% auc_na_histologies$Broad_ID))
+ccl_histologies <- unfactorize(ccl_histologies)
+# Bind DepMap histologies and curated histologies
+ccl_histologies <- bind_rows(ccl_histologies, auc_na_histologies)
 ```
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
@@ -179,23 +214,6 @@ colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
 # POZDEYEV ET AL (2016) SUMMARY
 
 --------------------------------------------------------------------------------
-
-```{r}
-ccl_histologies <- select(ccl_info, Cell_line, Histology, TCGA_classification, CCLE_Name, Broad_ID) %>% drop_na(Cell_line)
-
-# Account for cell line aliases and missing histologies
-auc_na_histologies <- read.delim("./data/pozdeyev2016/auc_na_histologies.csv", sep = ",", row.names = 1)
-auc_na_histologies$accession_id <- NULL
-auc_na_histologies$Notes <- NULL
-
-auc_na_histologies$Histology <- ifelse(auc_na_histologies$Histology == "", NA, as.character(auc_na_histologies$Histology))
-auc_na_histologies$CCLE_Name <- ifelse(auc_na_histologies$CCLE_Name  == "", NA, as.character(auc_na_histologies$CCLE_Name ))
-auc_na_histologies$Broad_ID <- ifelse(auc_na_histologies$Broad_ID == "", NA, as.character(auc_na_histologies$Broad_ID))
-
-ccl_histologies <- subset(ccl_histologies, !(Broad_ID %in% auc_na_histologies$Broad_ID))
-# Bind DepMap histologies and curated histologies
-ccl_histologies <- bind_rows(ccl_histologies, auc_na_histologies)
-```
 
 For plotting:
 
@@ -269,27 +287,8 @@ auc_all <- read.delim("./data/pozdeyev2016/merged_auc_v20190408.5.csv.gz", sep =
 # Unique drugs across all datasets
 length(unique(sapply(strsplit(as.character(colnames(auc_all)[13:length(colnames(auc_all))]), split = "_"), function(x) x[1])))
 
-sum(auc_all$HasCopyNumberData)
-sum(auc_all$HasMutationData)
-sum(auc_all$HasGeneExpressionData)
-sum(auc_all$WasDrugScreened)
-
-test <- filter(auc_all, HasMutationData == 1)[, 1:12]
-
-pgx_ccls <- filter(auc_all, WasDrugScreened == 1)
-crispr_ccls <- filter(auc_all, WasCRISPRScreened == 1)
-unscreened_ccls <- filter(auc_all, WasCRISPRScreened == 0 & WasDrugScreened == 0)
-
-ge_ccls <- filter(auc_all, HasGeneExpressionData == 1)
-cn_ccls <- filter(auc_all, HasCopyNumberData == 1)
-mut_ccls <- filter(auc_all, HasMutationData == 1)
-
-all_omics_ccls <- intersect(intersect(unique(ge_ccls$Cell_line), unique(cn_ccls$Cell_line)), unique(mut_ccls$Cell_line))
-sum(filter(auc_all, Cell_line %in% all_omics_ccls)$WasDrugScreened)
-
-ccle_ccls <- filter(auc_all, InCCLE == 1)
-ctrp_ccls <- filter(auc_all, InCTRP == 1)
-gdsc_ccls <- filter(auc_all, InGDSC == 1)
+auc_all_summary <- t(auc_all %>% select(InGDSC, InCTRP, InCCLE, HasCopyNumberData, HasMutationData, HasGeneExpressionData, WasDrugScreened, WasCRISPRScreened) %>% summarise_each(funs(count = sum)))
+auc_all_summary
 
 auc_all %>% count(Histology)
 ```
@@ -297,23 +296,34 @@ auc_all %>% count(Histology)
 ## Exploratory plots
 
 ```{r, eval=FALSE}
+# Data subsetting for easier tracking throughout plots
+pgx_ccls <- filter(auc_all, WasDrugScreened == 1)
+crispr_ccls <- filter(auc_all, WasCRISPRScreened == 1)
+unscreened_ccls <- filter(auc_all, WasCRISPRScreened == 0 & WasDrugScreened == 0)
+ge_ccls <- filter(auc_all, HasGeneExpressionData == 1)
+cn_ccls <- filter(auc_all, HasCopyNumberData == 1)
+mut_ccls <- filter(auc_all, HasMutationData == 1)
+ccle_ccls <- filter(auc_all, InCCLE == 1)
+ctrp_ccls <- filter(auc_all, InCTRP == 1)
+gdsc_ccls <- filter(auc_all, InGDSC == 1)
+
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_pgx_crispr_overlap <- venn.diagram(list("CRISPR" = unique(crispr_ccls$Cell_line), "Drug Screen" = unique(pgx_ccls$Cell_line), "Unscreened" = unique(unscreened_ccls$Cell_line)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened via small-molecule and CRISPR", main.fontface = "bold", lty = rep("blank", 3), fill = c("mediumpurple1", "turquoise4", "slategray3"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./pozdeyev_unmatched/venn_pgx_crispr_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./figures/venn_pgx_crispr_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_pgx_crispr_overlap)
 dev.off()
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_ccl_overlap <- venn.diagram(list("CCLE" = unique(ccle_ccls$Cell_line), "CTRP" = unique(ctrp_ccls$Cell_line), "GDSC" = unique(gdsc_ccls$Cell_line)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./pozdeyev_unmatched/venn_ccl_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./figures/venn_ccl_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_ccl_overlap)
 dev.off()
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_omics_overlap <- venn.diagram(list("Gene Expression" = unique(ge_ccls$Cell_line), "Copy Number" = unique(cn_ccls$Cell_line), "Mutation" = unique(mut_ccls$Cell_line)), resolution = 5000, main = "Overlapping omic annotations in cancer cell lines (CCLs)", main.fontface = "bold", lty = rep("blank", 3), fill = c("yellow2", "orange", "tomato"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./pozdeyev_unmatched/venn_omics_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./figures/venn_omics_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_omics_overlap)
 dev.off()
@@ -325,11 +335,11 @@ bar_ccl_per_hist <- ggplot(data = unique(select(auc_all, Cell_line, Histology)))
   labs(y = "Number of cell lines", title = "Number of unique cell lines per histology across all cell lines") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 bar_ccl_per_hist
-ggsave("./pozdeyev_unmatched/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+ggsave("./figures/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_drugs_overlap <- venn.diagram(list("CCLE" = unique(ccle_poz$Drug_name), "CTRP" = unique(ctrp_poz$Drug_name), "GDSC" = unique(gdsc_poz$Drug_name)), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in each dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
-png("./pozdeyev_unmatched/venn_drugs_overlap.png", res = 500, units = "in", width = 6, height = 6)
+png("./figures/venn_drugs_overlap.png", res = 500, units = "in", width = 6, height = 6)
 grid.newpage()
 grid.draw(venn_drugs_overlap)
 dev.off()
@@ -343,7 +353,7 @@ bar_ccl_per_hist_per_db <- ggplot(data = unique(select(auc, Database, Cell_line,
   labs(y = "Number of cell lines", title = "Number of unique cell lines per histology, grouped by database") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 bar_ccl_per_hist_per_db
-ggsave("./pozdeyev_unmatched/barplot_ccl_per_histology_per_db.png", bar_ccl_per_hist_per_db, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+ggsave("./figures/barplot_ccl_per_histology_per_db.png", bar_ccl_per_hist_per_db, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
 bar_ccl_per_hist <- ggplot(data = unique(select(auc_all, Cell_line, Histology))) +
   geom_bar(aes(x = Histology, fill = Histology), alpha = 0.7) +
@@ -352,7 +362,7 @@ bar_ccl_per_hist <- ggplot(data = unique(select(auc_all, Cell_line, Histology)))
   labs(y = "Number of cell lines", title = "Number of unique cell lines per histology across all annotated cell lines") +
   theme(axis.text.x = element_text(angle = 60, hjust = 1))
 bar_ccl_per_hist
-ggsave("./pozdeyev_unmatched/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+ggsave("./figures/barplot_ccl_per_histology.png", bar_ccl_per_hist, device = "png", dpi = 450, width = 12, height = 8, units = "in")
 
 histo_aucic50_per_db <- ggplot(data = auc) +
   facet_wrap(~ Database, scales = "free_y") +
@@ -361,7 +371,7 @@ histo_aucic50_per_db <- ggplot(data = auc) +
   guides(fill = "none") +
   labs(x = "AUC IC50", y = "Frequency", title = "Distributions of AUC IC50 values for all drugs in each dataset (unmatched)")
 histo_aucic50_per_db
-ggsave("./pozdeyev_unmatched/histogram_aucic50_per_db.png", histo_aucic50_per_db, device = "png", dpi = 450, width = 12, height = 6, units = "in")
+ggsave("./figures/histogram_aucic50_per_db.png", histo_aucic50_per_db, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
 ## README text
@@ -395,38 +405,35 @@ For latest version of merged_auc dataframe:
 
 CHANGE LOG FOR MERGED_AUC DATAFRAME
 
-merged_auc_v20190319.1.csv.gz
-
-merged_auc_v20190319.2.csv.gz:
-- NAs in Histology column (excluding most of the cell lines indicated as being from a "collaborator" in CTRP) hand-curated by searches in DepMap, COSMIC, Cellosaurus, ATCC, canSAR Black, and Cell Model Passports
-
-merged_auc_v20190327.3.csv.gz:
-- Reformatted to have only unique cell lines in rows
-- Cancer cell lines screened in more than one database have multiple AUC columns (column names are formatted as Drug_DatabaseName)
-- Added information on binary presence/absencee of omic annotations for each cell line (i.e. mutations, copy number, gene expression)
-- Added binary columns indicating presence in CCLE, CTRP, GDSC, drug screens in general (in 1, 2, or 3), and the Avana CRISPR screen
-- Added cell lines that have at least one type of omic data but are not in the CRISPR or pharmacogenomic screens
-
-merged_auc_v20190402.4.csv.gz:
-- Fixed duplicate cell line rows derived from manually curating some of the CCL histologies that had been added in merged_auc_v20190319.2.csv.gz
-- Fixed HasMutationData, HasCopyNumberData, and HasGeneExpression data columns
-- Reordered columns
-
-merged_auc_v20190408.5.csv.gz:
-- Removed duplicate cell line entries for KMH2 and MS1 that had incorrect histology entries
-- Added TCGA classifications for all cell lines possible (classifications were manually curated by Kaiqiao Li and Sally Claridge by combining CCLE and GDSC TCGA annotations and two-fold manual comparison)
-- Changed CCLE_ccl_name column to CCLE_Name
+- merged_auc_v20190319.1.csv.gz
+- merged_auc_v20190319.2.csv.gz
+    - NAs in Histology column (excluding most of the cell lines indicated as being from a "collaborator" in CTRP) hand-curated by searches in DepMap, COSMIC, Cellosaurus, ATCC, canSAR Black, and Cell Model Passports
+    - merged_auc_v20190327.3.csv.gz
+    - Reformatted to have only unique cell lines in rows
+    - Cancer cell lines screened in more than one database have multiple AUC columns (column names are formatted as Drug_DatabaseName)
+    - Added information on binary presence/absencee of omic annotations for each cell line (i.e. mutations, copy number, gene expression)
+    - Added binary columns indicating presence in CCLE, CTRP, GDSC, drug screens in general (in 1, 2, or 3), and the Avana CRISPR screen
+    - Added cell lines that have at least one type of omic data but are not in the CRISPR or pharmacogenomic screens
+- merged_auc_v20190402.4.csv.gz
+    - Fixed duplicate cell line rows derived from manually curating some of the CCL histologies that had been added in merged_auc_v20190319.2.csv.gz
+    - Fixed HasMutationData, HasCopyNumberData, and HasGeneExpression data columns
+    - Reordered columns
+- merged_auc_v20190408.5.csv.gz
+    - Removed duplicate cell line entries for KMH2 and MS1 that had incorrect histology entries
+    - Added TCGA classifications for all cell lines possible (classifications were manually curated by Kaiqiao Li and Sally Claridge by combining CCLE and GDSC TCGA annotations and two-fold manual comparison)
+    - Changed CCLE_ccl_name column to CCLE_Name
 
 
-# COMPARE TO TCGA
+# DEPMAP/TCGA: Heatmaps
 
 --------------------------------------------------------------------------------
 
-Quality check: cluster TCGA samples and cell lines—verify that same tumor types cluster together rather than clustering by cell lines and tumor samples (Kaiqiao)
+Cancer cell lines and tumor samples are directly incomparable by nature, so the correlation matrices are asymmetric. The top left shows how well the features of the DepMap cancer cell lines correlate with those of the TCGA tumor samples, and the bottom right shows the reverse. The diagonal of the heatmap shows the comparison of matched TCGA classifications.
 
-Calculate Pearson correlations between data sets and create a heatmap (also look at Barretina et al. supplement for PCA and mutation load correlations)
+## GE
 
-```{r, eval=FALSE}
+Data wrangling and processing:
+```{r ge_heatmap_data, eval=FALSE}
 # DepMap gene expression
 ge_depmap <- read.delim("./../../htscreens_giant_files/omix/GE/GE_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 colnames(ge_depmap)[colnames(ge_depmap) == "cancer"] <- "TCGA_classification"
@@ -457,15 +464,175 @@ rownames(ge_tcga_wide) <- ge_tcga_wide$Gene
 ge_tcga_wide$Gene <- NULL
 colnames(ge_tcga_wide) <- paste(colnames(ge_tcga_wide), "TCGA", sep = "_")
 
+# Correlate all against all
 ge_wide <- bind_cols(ge_depmap_wide, ge_tcga_wide)
+ge_corr <- ge_wide %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+# Filter self-comparisons and eliminate duplicate correlations
+ge_corr <- filter(ge_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
+# Data management
+colnames(ge_corr) <- c("DepMap", "TCGA", "r")
+ge_corr <- data.frame(apply(ge_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
+ge_corr$r <- as.numeric(as.character(ge_corr$r))
+# Set up coprrelation dataframe for plotting
+ge_corr_wide <- dcast(ge_corr, DepMap ~ TCGA)
+rownames(ge_corr_wide) <- ge_corr_wide$DepMap
+ge_corr_wide$DepMap <- NULL
+```
 
-ge_corr <- ge_wide %>% as.matrix %>% cor(method = "pearson") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
-ge_corr <- filter(ge_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)))
-ge_corr_wide <- dcast(ge_corr, formula = var1 ~ var2, fun.aggregate = mean)
-# ge_wide_corr <- apply(ge_wide_corr, 2, function(x) gsub("_TCGA|_DepMap","", x))
+Pseudo-figure caption: This is comparison of gene expression profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, gene expression (in TPM) for each of the 5,000 most variable genes shared between the two datasets were averaged across samples. The dataset averages per TCGA classification were correlated against each other, and these Pearson correlations (r) between TCGA and DepMap gene expression feature sets are shown in the heatmap.
 
-# ge4corr <- merge(ge_depmap_avg, ge_tcga_avg, by = c("TCGA_classification", "Gene"), all = TRUE)
-# ge_corr <- ge4corr %>% group_by(TCGA_classification) %>% summarize(corr = cor.test(y = Mean_TPM_TCGA, x = Mean_TPM_DepMap, method = "pearson", use = "complete.obs")$estimate)
+Make heatmaps:
+```{r ge_heatmap, eval=FALSE, fig.height=4, fig.width=3.75}
+col_fun <- colorRamp2(c(-0.5, 0, 0.5, 1), c("black", "red3", "yellow", "white"))
+ge_ht4order <- Heatmap(ge_corr_wide, cluster_rows = FALSE)
+
+ge_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
+
+ge_ht <- Heatmap(ge_corr_wide, 
+                 name = "Expression correlation",
+                 col = col_fun, 
+                 rect_gp = gpar(col = "black"),
+                 heatmap_legend_param = ge_ht_legend_list,
+                 row_order = rev(column_order(ge_ht4order)), 
+                 show_column_dend = FALSE, 
+                 cluster_rows = FALSE, 
+                 row_names_side = "left",
+                 row_title = "DepMap cancer cell lines",
+                 column_title = "TCGA tumor samples", 
+                 column_title_side = "bottom")
+png(filename = "./figures/ge_depmap_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
+draw(ge_ht, heatmap_legend_side = "top")
+dev.off()
+```
+
+## CN
+
+Data wrangling and processing:
+
+**DO NOT RUN UNTIL ADDED TCGA TO CN AND GE DATASETS**
+```{r cn_heatmap_data, eval=FALSE}
+# TCGA copy number
+cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN")
+# Average scaled TPM per gene per TCGA classification
+cn_tcga_avg <- cn_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN))
+# Make wide
+cn_tcga_wide <- dcast(data = cn_tcga_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(cn_tcga_wide) <- cn_tcga_wide$Gene
+cn_tcga_wide$Gene <- NULL
+colnames(cn_tcga_wide) <- paste(colnames(cn_tcga_wide), "TCGA", sep = "_")
+
+## 18Q4
+
+# DepMap copy number (18Q4)
+cn_depmap <- read.delim("./data/CN/CN_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_depmap)[colnames(cn_depmap) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_depmap_melt <- melt(cn_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_depmap)[4:length(colnames(cn_depmap))], variable.name = "Gene", value.name = "CN")
+# Average CN levels per gene per TCGA classification
+cn_depmap_avg <- cn_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN))
+# Make wide
+cn_depmap_wide <- dcast(data = cn_depmap_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(cn_depmap_wide) <- cn_depmap_wide$Gene
+cn_depmap_wide$Gene <- NULL
+colnames(cn_depmap_wide) <- paste(colnames(cn_depmap_wide), "DepMap", sep = "_")
+
+# Correlate all against all (18Q4)
+cn_wide <- bind_cols(cn_depmap_wide, cn_tcga_wide)
+cn_corr <- cn_wide %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+# Filter self-comparisons and eliminate duplicate correlations
+cn_corr <- filter(cn_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
+# Data management
+colnames(cn_corr) <- c("DepMap", "TCGA", "r")
+cn_corr <- data.frame(apply(cn_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
+cn_corr$r <- as.numeric(as.character(cn_corr$r))
+# Set up coprrelation dataframe for plotting
+cn_corr_wide <- dcast(cn_corr, DepMap ~ TCGA)
+rownames(cn_corr_wide) <- cn_corr_wide$DepMap
+cn_corr_wide$DepMap <- NULL
+
+## 19Q1
+
+# DepMap copy number (19Q1)
+# Filter for genes and TCGA classifications in TCGA CN dataset
+cn_filt <- filter(cn_melt, Hugo_Symbol %in% unique(cn_tcga_melt$Gene) & TCGA_classification %in% unique(cn_tcga_melt$TCGA_classification))
+colnames(cn_filt)[colnames(cn_filt) == "Hugo_Symbol"] <- "Gene"
+# Assign CN levels
+cn_19Q1$CN <- with(cn_19Q1, ifelse(CN > 0.3, 1, ifelse(CN < -0.3, -1, 0)))
+# Average CN levels per gene per TCGA classification
+cn_19Q1_avg <- cn_19Q1 %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN))
+# Make wide
+cn_19Q1_wide <- dcast(data = cn_19Q1_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(cn_19Q1_wide) <- cn_19Q1_wide$Gene
+cn_19Q1_wide$Gene <- NULL
+colnames(cn_19Q1_wide) <- paste(colnames(cn_19Q1_wide), "DepMap", sep = "_")
+
+# Correlate all against all (19Q1)
+cn_wide_19Q1 <- bind_cols(cn_19Q1_wide, cn_tcga_wide)
+cn_corr_19Q1 <- cn_wide_19Q1 %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+# Filter self-comparisons and eliminate duplicate correlations
+cn_corr_19Q1 <- filter(cn_corr_19Q1, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
+# Data management
+colnames(cn_corr_19Q1) <- c("DepMap", "TCGA", "r")
+cn_corr_19Q1 <- data.frame(apply(cn_corr_19Q1, 2, function(x) gsub("_TCGA|_DepMap","", x)))
+cn_corr_19Q1$r <- as.numeric(as.character(cn_corr_19Q1$r))
+# Set up coprrelation dataframe for plotting
+cn_corr_19Q1_wide <- dcast(cn_corr_19Q1, DepMap ~ TCGA)
+rownames(cn_corr_19Q1_wide) <- cn_corr_19Q1_wide$DepMap
+cn_corr_19Q1_wide$DepMap <- NULL
+```
+
+Pseudo-figure caption: This is comparison of thresholded copy number profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. Levels are -1 for copuy number loss, 0 for neutral, and 1 for gain. In each dataset and for each TCGA classification, these numeric copy number levels across all genes shared between the two datasets were averaged, and the datasets were correlated against each other. Pearson correlations (r) between TCGA and DepMap copy number feature sets are shown in the heatmap.
+
+Make heatmaps:
+```{r cn_heatmaps, eval=FALSE, fig.height=4, fig.width=3.75}
+col_fun <- colorRamp2(c(-0.5, 0, 0.5, 1), c("black", "red3", "yellow", "white"))
+cn_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
+
+# 18Q4
+cn_ht4order <- Heatmap(cn_corr_wide, cluster_rows = FALSE)
+cn_ht <- Heatmap(cn_corr_wide, 
+                 name = "Expression correlation",
+                 col = col_fun, 
+                 rect_gp = gpar(col = "black"),
+                 heatmap_legend_param = cn_ht_legend_list,
+                 row_order = rev(column_order(cn_ht4order)), 
+                 show_column_dend = FALSE, 
+                 cluster_rows = FALSE, 
+                 row_names_side = "left",
+                 row_title = "DepMap cancer cell lines",
+                 column_title = "TCGA tumor samples", 
+                 column_title_side = "bottom")
+# png(filename = "./figures/cn_depmap_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
+draw(cn_ht, heatmap_legend_side = "top")
+# dev.off()
+
+# 19Q1
+cn_19Q1_ht4order <- Heatmap(cn_corr_19Q1_wide, cluster_rows = FALSE)
+
+cn_19Q1_ht <- Heatmap(cn_corr_19Q1_wide, 
+                 name = "Expression correlation",
+                 col = col_fun, 
+                 rect_gp = gpar(col = "black"),
+                 heatmap_legend_param = cn_ht_legend_list,
+                 row_order = rev(column_order(cn_19Q1_ht4order)), 
+                 show_column_dend = FALSE, 
+                 cluster_rows = FALSE, 
+                 row_names_side = "left",
+                 row_title = "DepMap cancer cell lines",
+                 column_title = "TCGA tumor samples", 
+                 column_title_side = "bottom")
+# png(filename = "./figures/cn_depmap_19Q1_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
+draw(cn_19Q1_ht, heatmap_legend_side = "top")
+# dev.off()
+```
+
+## Mut
+
+```{r mut_heatmap_data, eval=FALSE}
+
 ```
 
 
@@ -480,14 +647,11 @@ ge_corr_wide <- dcast(ge_corr, formula = var1 ~ var2, fun.aggregate = mean)
 
 
 
-
-
-
-
-
-# (OLD) Data management
+# OLD
 
 --------------------------------------------------------------------------------
+
+## Data management
 
 ```{r, eval=FALSE}
 tcga_hist_converter <- read.xlsx("./data/TCGA/cell_line_annotation.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE)
@@ -505,9 +669,7 @@ tcga_hist_converter$TCGA_combine <- with(tcga_hist_converter, ifelse(is.na(TCGA_
 # write.csv(tcga_hist_converter, "./data/TCGA/cell_line_annotation_curated_sally_20190404.csv")
 ```
 
-# (OLD) Pozdeyev et al (2016) matched data
-
---------------------------------------------------------------------------------
+## Pozdeyev et al (2016) matched data
 
 ```{r, eval=FALSE}
 auc_matched <- read.delim("./data_munging/pharmacogenomics_raw_files/celline_stack.csv.gz", sep = ",")
@@ -571,9 +733,7 @@ aucic50_per_db_matched
 ggsave("./gcn_denise/pozdeyev_matched/pozdeyev_aucic50_per_db_matched.png", aucic50_per_db_matched, device = "png", dpi = 450, width = 12, height = 6, units = "in")
 ```
 
-# (OLD) Denise's GCN dataframes
-
---------------------------------------------------------------------------------
+## Denise's GCN dataframes
 
 Code for Denise's graph convolutional networks analyses (see meeting notes from 6 March 2019).
 - Convert drug/compound names to all capitalized for harmonization.
@@ -582,7 +742,7 @@ Code for Denise's graph convolutional networks analyses (see meeting notes from 
 - For each dataframe, maintain same columns for all three source datasets
 - Columns in final dataframes: `source`, `source_ccl_name`, `source_histology`, `sample_ID`, and `genes/compounds/mutations[p]`
 
-## AUC
+### AUC
 
 Column descriptions for `pgx_all_auc`:
 
@@ -679,7 +839,7 @@ setdiff(unique(na.omit(ccle_auc_long$source_histology)), unique(na.omit(gdsc_auc
 setdiff(unique(na.omit(gdsc_auc_long$source_histology)), unique(na.omit(ctrp_auc_long$source_histology)))
 ```
 
-## Summary figures
+### Summary figures
 
 ```{r, eval=FALSE}
 hist_auc_ccle <- ggplot(data = ccle_auc_long) +
@@ -731,5 +891,15 @@ venn_compound <- venn.diagram(list("CCLE" = unique(na.omit(ccle_auc_long$compoun
 # grid.newpage()
 # grid.draw(venn_compound)
 # dev.off()
+```
+
+
+
+# SESSION INFO
+
+--------------------------------------------------------------------------------
+
+```{r}
+sessionInfo()
 ```
 
