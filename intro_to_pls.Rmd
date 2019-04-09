@@ -1,0 +1,307 @@
+---
+title: "Introduction to PLS"
+author: "Sally Claridge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+    code_folding: hide
+    pandoc_args: [
+      "+RTS", "-K2048m",
+      "-RTS"
+    ]
+---
+
+This is part of the ongoing [Variant Interpretation for Cancer Consortium Meta-Knowledgebase (G2P)](https://search.cancervariants.org/#*) project. This part of the project is mentored by Denise Duma, PhD, in which we aim to use a partial least squares (PLS) multivariate regression model to (**1**) determine the feature modules that best explain the drug responses observed in the [Cancer Cell Line Encyclopedia (CCLE)](https://portals.broadinstitute.org/ccle), [Cancer Therapeutics Response Portal (CTRP)](https://portals.broadinstitute.org/ctrp/), and [Genomics of Drug Senstitivity in Cancer (GDSC)](https://www.cancerrxgene.org/) pharmacogenomics screens in cancer cell lines, and (**2**) develop a robust predictive model for linking multiple omics features to drug sensitivity across these hundreds of cell lines of various cancer lineages. We utillize gene expression, copy number, and mutation status data collected by the CCLE for nearly all of these cell lines and distributed via the [Cancer Dependency Map (DepMap)](https://depmap.org/portal/), a collaborative project helmed by the Broad Institute and Wellcome Trust Sanger Institute.
+
+# SET UP
+
+--------------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+set.seed(1234)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# num_cores <- parallel::detectCores()
+options(mc.cores = parallel::detectCores(), expressions = 5e5, digits = 4)
+```
+
+```{r libraries}
+library(reshape2)
+library(tidyverse)
+library(pls)
+```
+
+# Introduction to the `pls` package
+
+--------------------------------------------------------------------------------
+
+These examples are derived from "Introduction to `pls` Package" by Bjorn Mevik and Ron Wehrens (2018).
+
+Load example data sets:
+```{r}
+data(yarn)
+data(oliveoil)
+data(gasoline)
+```
+
+## `gasoline` example
+
+Divide data into test and training sets:
+```{r}
+gasTrain <- gasoline[1:50,]
+gasTest <- gasoline[51:60,]
+```
+
+Fit a PLSR model. Note that validation is presented as RMSEP, which is Root Mean Squared Error of Prediction. `CV` are ordinary crossvalidation estimates, and `adjCV` are bias-corrected crossvalidation estimates.
+```{r}
+gas1 <- plsr(octane ~ NIR, ncomp = 10, data = gasTrain, validation = "LOO")
+
+summary(gas1)
+```
+
+The first plot is of the the RMSEP curves for gasoline data, grouped by `CV` and `adjCV` as functions of the number of components. Visually, we see the main inflection point occurs at 2 components. Using those 2 components, make a prediction plot. This plots the cross-validated predictions with two components versus measured values. The plots fall along the target $y = 1$ line and we do not observe any curvature or abnormalities.
+```{r}
+par(mfrow = c(1, 2))
+plot(RMSEP(gas1), legendpos = "topright")
+# plot(gas1, plottype = "validation", legendpos = "topright")
+plot(gas1, ncomp = 2, asp = 1, line = TRUE)
+par(mfrow = c(1, 1))
+```
+
+This is a pairwise plot of the score values for the first 3 coponents, which can be used to look for patterns, groups, or outliers in the data (can use `scoreplot` function).
+```{r}
+plot(gas1, plottype = "scores", comps = 1:3)
+```
+
+The percents in parentheses above indicate the relative amount of X variance explained by each component. These explained variances can be extracted:
+```{r}
+explvar(gas1)
+```
+
+Loading plots are frequently used for interpretation purposes (can use `loadingplot` function).
+```{r}
+plot(gas1, "loadings", comps = 1:2, legendpos = "topleft", labels = "numbers", xlab = "nm")
+```
+
+Using the `gas1` model, we can predict response values of new observations. Since we know the true response values for these samples, we can calculate the RMSEP for the test set. We se that for 2 components, we get 0.2445, which is close to the crossvalidated RMSEP (0.297).
+```{r}
+predict(gas1, ncomp = 2, newdata = gasTest)
+RMSEP(gas1, newdata = gasTest)
+```
+
+## Model fitting examples
+
+When the response term is a matrix, a multi-response model is fit:
+```{r}
+dim(oliveoil$sensory)
+dim(oliveoil$chemical)
+plsr(sensory ~ chemical, data = oliveoil)
+```
+
+You can use `update()` to refit a prevoous model using new parameters or new/different observations:
+```{r}
+dens1 <- plsr(density ~ NIR, ncomp = 5, data = yarn)
+trainid <- which(yarn$train == TRUE)
+dens2 <- update(dens1, subset = trainid)
+dens3 <- update(dens1, ncomp = 10)
+```
+
+In PLS, predictor variables are always centered as part of the fit algorithm. If `scale = TRUE`, then each variable is standardized by dividing it by its standard deviation, and if `scale` is a numeric vector, each variable is divided by the corresponding number.
+```{r}
+olive1 <- plsr(sensory ~ chemical, scale = TRUE, data = oliveoil)
+```
+
+## Choosing the number of components with crossvalidation
+
+There are two component selection strategies in `selectNcomp`. (1) Is the one-sigma heuristic that consists of choosing the model with the fewest components that is still less than one standard error away from the overall best model. (2) Uses a permutation approach that tests whether adding a new component is beneficial by taking the global minimum of the crossvalidation curve and reducing the number of components one by one as long as no significant deterioration in performance is found (default is $\alpha = 0.01$).
+```{r}
+par(mfrow = c(1, 2))
+ncomp.onesigma <- selectNcomp(gas1, method = "onesigma", plot = TRUE, main = "One-Sigma")
+ncomp.permut <- selectNcomp(gas1, method = "randomization", plot = TRUE, main = "Permutation")
+par(mfrow = c(1, 1))
+```
+
+The `crossval` function takes an `mvr` object and performs crossvalidation such that the pre-treatment is done for each segment. Applying MSC in this case leads to nearly identical crossvalidation estimates of prediction error. Whe n the scaling does not depend on dividing the data into segments, `crossval`, though slower, gives the same results as `mvrCv`.
+```{r}
+gas2 <- plsr(octane ~ msc(NIR), ncomp = 10, data = gasTrain) # msc is domain-sepcific to NIR
+gas2.cv <- crossval(gas2, segments = 10)
+plot(MSEP(gas2.cv), legendpos = "topright")
+summary(gas2.cv, what = "validation")
+```
+
+## Inspecting fitted models
+
+### Plots
+
+Prediction plots (`predplot`) can be used to compare predicted vs. measured values. Test data predictions are used if the `newdata` argument is called, crossvalidated predictions are used if the model was built using crossvalidation, and the default is to use predictions from the training set.
+
+We can use a validation plot (`validationplot`) to visually assess the optimal number of components. The y-axis is RMSEP, MSEP, or R^2^, and the x-axis is the number of components. Usually, you take the first locak minimum rather than the absolute minimum to avoid overfitting.
+
+We can look at the loadings and scores using `loadingplot` and `scoreplot` functions (examples of these plots are above).
+
+We can also visualize the regression coefficients using `coefplot` or as below. We can plot the regression vectors for multiple components simultaneously. Coefficients for component 2 and 3 look similar becasue component 3 contributes little to the predictions.
+```{r}
+plot(gas1, plottype = "coef", ncomp = 1:3, legendpos = "bottomleft", labels = "numbers", xlab = "nm")
+```
+
+A correlation loadings plot (`corrplot` function) shows correlations between each variable and specified components. From the manual:
+
+>These plots are scatter plots of two sets of scores with concentric circles of radii given by `radii`. Each point corresponds to an X variable. The squared distance between the point and the origin equals the fraction of the variance of the variable explained by the components in the panel. The default values for radii correspond to 50% and 100% explained variance, respectively.
+
+```{r}
+plot(gas1, plottype = "correlation", comps = 1:3)
+```
+
+### Extraction
+
+Using `coef`, you can extract the regression coefficients from the model. You can modify how many components to take into account and whether or not an intercept is necessary (default is `FALSE`).
+
+Scores and loadings can be extracted via `scores` and `loadings` for X and `Yscores` and `Yloadings` for Y. The `loading.weights` function can extract the weights from a PLSR model but not a PCA model.
+
+## Predicting new observations
+
+The `predict` method is used to predict future observations. Standard form is `predict(mymodel, ncomp = myncomp, newdata = mynewdata)`, where `mymodel` is a fitted model, `myncomp` specifies the model size to be used, and `mynewdata` is a data frame or matrix of new X observations and can contain new Y data to compare against the predictions or to estimate the predictive ability of the model. You can also make predictions using specific components with the `comps` argument. `predict` returns a three-dimensional array, in which entry (*i*, *j*, *k*) is the predicted value for observation *i*, response *j*, and model size *k*. When `comps` is used, the *k* dimension is dropped because the results are always from a single model. `drop` drops singleton dimensions. You can use `predplot` to view the predictions comparing predicted and measured values.
+```{r}
+drop(predict(gas1, ncomp = 2:3, newdata = gasTest[1:5,]))
+predplot(gas1, ncomp = 2:3, newdata = gasTest, asp = 1, line = TRUE)
+```
+
+# Test `pls` with drugscreen data
+
+--------------------------------------------------------------------------------
+
+## Global data files
+
+Load in G2P data for gene filtering:
+```{r}
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
+ach2cvcl <- select(ccl_converter, accession_id, DepMap_ID)
+lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
+
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
+g2p[, 1:2] <- NULL
+g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+
+g2p$Drug <- tolower(g2p$Drug)
+g2p[g2p == -1] <- NA
+g2p$Ref[g2p$Ref == "None"] <- NA
+g2p$Alt[g2p$Alt == "None"] <- NA
+g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
+g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
+g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
+g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
+
+g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
+g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
+g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+# g2p_druggenes
+# g2p_drugs
+# g2p_genes
+# g2p_lins
+
+# Order and genes taken from pink heatmapo from Daniel's analyses
+g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
+```
+
+Drug metadata and gene expression data:
+```{r}
+drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv", sep = "\t", header = FALSE)
+colnames(drug_meta) <- c("CID", "Drug")
+drug_meta$Drug <- tolower(drug_meta$Drug)
+
+ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
+# ge <- filter(ge_melt_18Q3, DepMap_ID %in% ach2cvcl$DepMap_ID)
+# ge <- dcast(ge[sample(nrow(ge), 5000),], CCLE_Name + DepMap_ID ~ Hugo_Symbol, value.var = "RPKM")
+ge <- filter(ge_melt_18Q3, Hugo_Symbol %in% g2p_genes)
+ge <- dcast(ge, CCLE_Name + DepMap_ID ~ Hugo_Symbol, value.var = "RPKM")
+ge <- merge(ach2cvcl, ge, by = "DepMap_ID")
+rownames(ge) <- ge$accession_id
+ge[, 1:3] <- NULL
+ge[] <- sapply(ge, function(x) log2(x + 0.25))
+```
+
+## CCLE
+
+```{r}
+ccle <- read.delim("./data_munging/data_drug_auc_ccle_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
+ccle <- merge(drug_meta, ccle, by = "CID")
+ccle <- filter(ccle, Drug %in% g2p_drugs)
+rownames(ccle) <- ccle$Drug
+ccle$Drug <- NULL
+ccle$CID <- NULL
+ccle$Dataset <- NULL
+ccle[] <- sapply(ccle, function(x) as.numeric(as.character(x)))
+ccle <- t(ccle)
+
+ccle <- ccle[intersect(rownames(ccle), rownames(ge)),]
+ge_ccle <- ge[intersect(rownames(ccle), rownames(ge)),]
+
+# Test only erlotinib
+ccle_eqn <- data.frame(depy = I(as.matrix(ccle[,2])), indx = I(as.matrix(ge_ccle))) 
+ccle_plsr1 <- plsr(depy ~ indx, data = ccle_eqn, validation = "LOO")
+summary(ccle_plsr1)
+
+par(mfrow = c(1, 2))
+ccle_erlot_ncomp.onesigma <- selectNcomp(ccle_plsr1, method = "onesigma", plot = TRUE, main = "One-Sigma")
+ccle_erlot_ncomp.permut <- selectNcomp(ccle_plsr1, method = "randomization", plot = TRUE, main = "Permutation")
+par(mfrow = c(1, 1))
+```
+
+```{r}
+plot(RMSEP(ccle_plsr1))
+plot(ccle_plsr1, ncomp = ccle_erlot_ncomp.onesigma, asp = 1, line = TRUE)
+plot(ccle_plsr1, plottype = "scores", comps = 1:5)
+plot(ccle_plsr1, plottype = "loadings", comps = 1:5, legendpos = "topright")
+plot(ccle_plsr1, plottype = "correlation", comps = 1:5)
+plot(ccle_plsr1, plottype = "coef", ncomp = 1:5, legendpos = "topright")
+```
+
+## CTRP
+
+```{r}
+ctrp <- read.delim("./data_munging/data_drug_auc_ctrp_10_12_2018.csv", sep = "\t", header  = TRUE, row.names = 1, check.names = FALSE)
+ctrp <- merge(drug_meta, ctrp, by = "CID")
+ctrp <- filter(ctrp, Drug %in% g2p_drugs)
+rownames(ctrp) <- ctrp$Drug
+ctrp$Drug <- NULL
+ctrp$CID <- NULL
+ctrp$Dataset <- NULL
+ctrp[] <- sapply(ctrp, function(x) as.numeric(as.character(x)))
+ctrp <- t(ctrp)
+
+ctrp <- ctrp[intersect(rownames(ctrp), rownames(ge)),]
+ge_ctrp <- ge[intersect(rownames(ctrp), rownames(ge)),]
+
+ctrp_eqn <- data.frame(depy = I(as.matrix(ctrp[,6])), indx = I(as.matrix(ge_ctrp))) 
+ctrp_plsr1 <- plsr(depy ~ indx, data = ctrp_eqn, validation = "LOO")
+summary(ctrp_plsr1)
+```
+
+```{r, eval=FALSE}
+ctrp_plsr <- list()
+for(i in 1:ncol(ctrp)) {
+  ctrp_eqn <- data.frame(depy = I(as.matrix(ctrp[,i])), indx = I(as.matrix(ge_ctrp)))
+  ctrp_plsr_new <- plsr(depy ~ indx, data = ctrp_eqn, validation = "LOO")
+  ctrp_plsr[[i]] <- ctrp_plsr_new
+  # summary(ctrp_plsr1)
+}
+names(ctrp_plsr) <- colnames(ctrp)
+
+test <- selectNcomp(ctrp_plsr[["fluorouracil"]], method = "randomization", plot = TRUE)
+```
+
+
+
+
+
+
+
