@@ -54,7 +54,7 @@ open .Renviron
 R_MAX_VSIZE=100Gb
 ```
 
-```{r}
+```{r load_libraries}
 library(circlize)
 library(ComplexHeatmap)
 library(crunch)
@@ -71,7 +71,7 @@ library(VennDiagram)
 theme_set(theme_light())
 ```
 
-```{r}
+```{r functions}
 unfactorize <- function(df){
   for(i in which(sapply(df, class) == "factor")) {
     df[[i]] = as.character(df[[i]])
@@ -100,7 +100,7 @@ And changes to the data processing pipelines (the following is taken verbatim fr
 ## Cell line metadata
 
 DepMap 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
-```{r}
+```{r ccl_info_processing, eval=FALSE}
 ccl_info <- read.delim("./data/DepMap/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 
 ccl_info <- subset(ccl_info, Primary.Disease != "unknown" & Primary.Disease != "primary cells" & !grepl("MERGED", CCLE_Name, fixed = TRUE))
@@ -145,56 +145,63 @@ ccl_histologies <- subset(ccl_histologies, !(Broad_ID %in% auc_na_histologies$Br
 ccl_histologies <- unfactorize(ccl_histologies)
 # Bind DepMap histologies and curated histologies
 ccl_histologies <- bind_rows(ccl_histologies, auc_na_histologies)
+write.csv(ccl_histologies, "./data/ccl_histologies_metadata.csv")
+```
+
+Load cell line metadata file:
+```{r}
+ccl_histologies <- read.delim("./data/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 ```
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
 Mutation calls (coding region, germline filtered):
-```{r, eval=FALSE}
+```{r mutation, eval=FALSE}
 maf_raw <- read.delim("./../data_munging/19Q1/depmap_19Q1_mutation_calls_20190305.csv.gz", header = TRUE, sep = ",", row.names = 1)
 # Harmonize ID column name
 colnames(maf_raw)[colnames(maf_raw) == "DepMap_ID"] <- "Broad_ID"
+colnames(maf_raw)[colnames(maf_raw) == "Hugo_Symbol"] <- "Gene"
+# Merge CCL metadata
+maf_raw <- merge(select(ccl_histologies, Broad_ID, TCGA_classification), maf_raw, by = "Broad_ID", all.y = TRUE)
 # Select columns
-maf_df <- subset(maf_raw, select = c("Hugo_Symbol", "Broad_ID", "Variant_Classification", "Reference_Allele", "Tumor_Seq_Allele1", "Genome_Change"))
+maf_df <- subset(maf_raw, select = c("Gene", "Broad_ID", "TCGA_classification", "Variant_Classification", "Reference_Allele", "Tumor_Seq_Allele1", "Genome_Change"))
 maf_df$Reference_Allele <- ifelse(maf_df$Reference_Allele == "-", 0, nchar(as.character(maf_df$Reference_Allele)))
 maf_df$Tumor_Seq_Allele1 <- nchar(as.character(maf_df$Tumor_Seq_Allele1))
 maf_df <- maf_df[maf_df$Variant_Classification != "Silent",]
 # Add Mutation_Status column
-maf_df$Mutation_Status_Nonsilent <- "Mutant"
+maf_df$Mutation_Status <- 1
 
 saveRDS(maf_df, "./../data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
 
 DepMap WES CN Data:
-```{r, eval=FALSE}
+```{r copy_number, eval=FALSE}
 cn <- read.delim("./../data_munging/19Q1/public_19Q1_gene_cn_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(cn) <- gsub(" .*", "", colnames(cn))
 colnames(cn)[1] <- "Broad_ID"
+# Merge CCL metadata with TCGA labels
+cn <- merge(select(ccl_histologies, Broad_ID, TCGA_classification), cn, by = "Broad_ID", all.y = TRUE)
 # Melt
-cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Hugo_Symbol", value.name = "CN")
+cn_melt <- melt(data = cn, id.vars = c("Broad_ID", "TCGA_classification"), measure.vars = colnames(cn[3:ncol(cn)]), variable.name = "Gene", value.name = "CN")
 saveRDS(cn_melt, "./../data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```
 
 19Q1, CCLE RNAseq gene expression data (log2(TPM+1)):
-```{r, eval=FALSE}
-ge_19Q1 <- read.delim("./../../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+```{r gene_expression, eval=FALSE}
+ge <- read.delim("./../../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
-colnames(ge_19Q1) <- gsub(" .*", "", colnames(ge_19Q1))
-colnames(ge_19Q1)[1] <- "Broad_ID"
-
-# For Denise's GCN
-# pgx_ccle_ge <- merge(select(ccl_info, source, source_ccl_name, source_histology, sample_ID, CCLE_ccl_name, Broad_ID), ge_19Q1, by = "Broad_ID", all = TRUE)
-# saveRDS(pgx_ccle_ge, "./data_munging/19Q1/pgx_ccle_ge.rds", compress = "xz")
-
+colnames(ge) <- gsub(" .*", "", colnames(ge))
+colnames(ge)[1] <- "Broad_ID"
+# Merge CCL metadata with TCGA labels
+ge <- merge(select(ccl_histologies, Broad_ID, TCGA_classification), ge, by = "Broad_ID", all.y = TRUE)
 # Melt
-ge_melt_19Q1 <- melt(ge_19Q1, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Hugo_Symbol", value.name = "TPM")
-# ge_melt_19Q1 <- unique(ge_melt_19Q1_all)
-saveRDS(ge_melt_19Q1, "./../data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
+ge_melt <- melt(ge, id.vars = c("Broad_ID", "TCGA_classification"), measure.vars = colnames(ge)[3:ncol(ge)], variable.name = "Gene", value.name = "TPM")
+saveRDS(ge_melt, "./../data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
 
 Load omics RDS:
-```{r}
+```{r load_omics_rds}
 maf_df <- readRDS("./../data_munging/19Q1/maf_df_19Q1.rds")
 cn_melt <- readRDS("./../data_munging/19Q1/cn_melt_19Q1.rds")
 ge_melt <- readRDS("./../data_munging/19Q1/ge_melt_19Q1.rds")
@@ -202,7 +209,7 @@ ge_melt <- readRDS("./../data_munging/19Q1/ge_melt_19Q1.rds")
 
 ## CRISPR
 
-```{r, eval=TRUE}
+```{r crispr, eval=TRUE}
 # Sample info from figshare
 crispr_meta <- read.delim("./data/DepMap/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
@@ -222,7 +229,7 @@ For plotting:
 
 ## Data wrangling
 
-```{r, eval=FALSE}
+```{r pozdeyev_processing, eval=FALSE}
 ccle_poz <- read.delim("./data/pozdeyev2016/CCLE_drug_response_metrics.csv.gz", sep = ",")
 # ccle_test <- merge(select(ccle_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CCLE"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
@@ -281,7 +288,7 @@ write.csv.gz(auc_all, file = "./data/pozdeyev2016/merged_auc_v20190408.5.csv.gz"
 # test <- filter(auc_all, Cell_line %in% c("KMH2", "MS1", "TT"))[, 1:12]
 ```
 
-```{r}
+```{r pozdeyev_summaries}
 auc_all <- read.delim("./data/pozdeyev2016/merged_auc_v20190408.5.csv.gz", sep = ",", check.names = FALSE)
 
 # Unique drugs across all datasets
@@ -295,7 +302,7 @@ auc_all %>% count(Histology)
 
 ## Exploratory plots
 
-```{r, eval=FALSE}
+```{r exploratory_plots, eval=FALSE}
 # Data subsetting for easier tracking throughout plots
 pgx_ccls <- filter(auc_all, WasDrugScreened == 1)
 crispr_ccls <- filter(auc_all, WasCRISPRScreened == 1)
@@ -433,7 +440,7 @@ Cancer cell lines and tumor samples are directly incomparable by nature, so the 
 ## GE
 
 Data wrangling and processing:
-```{r ge_heatmap_data, eval=FALSE}
+```{r ge_heatmap_data, eval=FALSE, warning=FALSE}
 # DepMap gene expression
 ge_depmap <- read.delim("./../../htscreens_giant_files/omix/GE/GE_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 colnames(ge_depmap)[colnames(ge_depmap) == "cancer"] <- "TCGA_classification"
@@ -479,7 +486,7 @@ rownames(ge_corr_wide) <- ge_corr_wide$DepMap
 ge_corr_wide$DepMap <- NULL
 ```
 
-Pseudo-figure caption: This is comparison of gene expression profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, gene expression (in TPM) for each of the 5,000 most variable genes shared between the two datasets were averaged across samples. The dataset averages per TCGA classification were correlated against each other, and these Pearson correlations (r) between TCGA and DepMap gene expression feature sets are shown in the heatmap.
+Pseudo-figure caption: This is comparison of gene expression profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, gene expression (in TPM) for each of the 5,000 most variable genes shared between the two datasets were averaged across samples. The dataset averages per TCGA classification were correlated against each other, and these Pearson/Spearman correlations (r) between TCGA and DepMap gene expression feature sets are shown in the heatmap.
 
 Make heatmaps:
 ```{r ge_heatmap, eval=FALSE, fig.height=4, fig.width=3.75}
@@ -508,9 +515,7 @@ dev.off()
 ## CN
 
 Data wrangling and processing:
-
-**DO NOT RUN UNTIL ADDED TCGA TO CN AND GE DATASETS**
-```{r cn_heatmap_data, eval=FALSE}
+```{r cn_heatmap_data, eval=FALSE, warning=FALSE}
 # TCGA copy number
 cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
@@ -523,8 +528,6 @@ cn_tcga_wide <- dcast(data = cn_tcga_avg, formula = Gene ~ TCGA_classification, 
 rownames(cn_tcga_wide) <- cn_tcga_wide$Gene
 cn_tcga_wide$Gene <- NULL
 colnames(cn_tcga_wide) <- paste(colnames(cn_tcga_wide), "TCGA", sep = "_")
-
-## 18Q4
 
 # DepMap copy number (18Q4)
 cn_depmap <- read.delim("./data/CN/CN_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
@@ -541,7 +544,7 @@ colnames(cn_depmap_wide) <- paste(colnames(cn_depmap_wide), "DepMap", sep = "_")
 
 # Correlate all against all (18Q4)
 cn_wide <- bind_cols(cn_depmap_wide, cn_tcga_wide)
-cn_corr <- cn_wide %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+cn_corr <- cn_wide %>% as.matrix %>% cor(method = "pearson") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
 # Filter self-comparisons and eliminate duplicate correlations
 cn_corr <- filter(cn_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
 # Data management
@@ -552,49 +555,19 @@ cn_corr$r <- as.numeric(as.character(cn_corr$r))
 cn_corr_wide <- dcast(cn_corr, DepMap ~ TCGA)
 rownames(cn_corr_wide) <- cn_corr_wide$DepMap
 cn_corr_wide$DepMap <- NULL
-
-## 19Q1
-
-# DepMap copy number (19Q1)
-# Filter for genes and TCGA classifications in TCGA CN dataset
-cn_filt <- filter(cn_melt, Hugo_Symbol %in% unique(cn_tcga_melt$Gene) & TCGA_classification %in% unique(cn_tcga_melt$TCGA_classification))
-colnames(cn_filt)[colnames(cn_filt) == "Hugo_Symbol"] <- "Gene"
-# Assign CN levels
-cn_19Q1$CN <- with(cn_19Q1, ifelse(CN > 0.3, 1, ifelse(CN < -0.3, -1, 0)))
-# Average CN levels per gene per TCGA classification
-cn_19Q1_avg <- cn_19Q1 %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN))
-# Make wide
-cn_19Q1_wide <- dcast(data = cn_19Q1_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(cn_19Q1_wide) <- cn_19Q1_wide$Gene
-cn_19Q1_wide$Gene <- NULL
-colnames(cn_19Q1_wide) <- paste(colnames(cn_19Q1_wide), "DepMap", sep = "_")
-
-# Correlate all against all (19Q1)
-cn_wide_19Q1 <- bind_cols(cn_19Q1_wide, cn_tcga_wide)
-cn_corr_19Q1 <- cn_wide_19Q1 %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
-# Filter self-comparisons and eliminate duplicate correlations
-cn_corr_19Q1 <- filter(cn_corr_19Q1, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
-# Data management
-colnames(cn_corr_19Q1) <- c("DepMap", "TCGA", "r")
-cn_corr_19Q1 <- data.frame(apply(cn_corr_19Q1, 2, function(x) gsub("_TCGA|_DepMap","", x)))
-cn_corr_19Q1$r <- as.numeric(as.character(cn_corr_19Q1$r))
-# Set up coprrelation dataframe for plotting
-cn_corr_19Q1_wide <- dcast(cn_corr_19Q1, DepMap ~ TCGA)
-rownames(cn_corr_19Q1_wide) <- cn_corr_19Q1_wide$DepMap
-cn_corr_19Q1_wide$DepMap <- NULL
 ```
 
-Pseudo-figure caption: This is comparison of thresholded copy number profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. Levels are -1 for copuy number loss, 0 for neutral, and 1 for gain. In each dataset and for each TCGA classification, these numeric copy number levels across all genes shared between the two datasets were averaged, and the datasets were correlated against each other. Pearson correlations (r) between TCGA and DepMap copy number feature sets are shown in the heatmap.
+Pseudo-figure caption: This is comparison of thresholded copy number profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. Levels are -1 for copy number loss, 0 for neutral, and 1 for gain. In each dataset and for each TCGA classification, these numeric copy number levels across all genes shared between the two datasets were averaged, and the datasets were correlated against each other. Pearson/Spearman correlations (r) between TCGA and DepMap copy number feature sets are shown in the heatmap.
 
 Make heatmaps:
 ```{r cn_heatmaps, eval=FALSE, fig.height=4, fig.width=3.75}
-col_fun <- colorRamp2(c(-0.5, 0, 0.5, 1), c("black", "red3", "yellow", "white"))
+col_fun <- colorRamp2(c(0, 0.25, 0.5, 0.75), c("black", "red3", "yellow", "white"))
 cn_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
 
 # 18Q4
 cn_ht4order <- Heatmap(cn_corr_wide, cluster_rows = FALSE)
 cn_ht <- Heatmap(cn_corr_wide, 
-                 name = "Expression correlation",
+                 name = "Copy number correlation",
                  col = col_fun, 
                  rect_gp = gpar(col = "black"),
                  heatmap_legend_param = cn_ht_legend_list,
@@ -605,34 +578,86 @@ cn_ht <- Heatmap(cn_corr_wide,
                  row_title = "DepMap cancer cell lines",
                  column_title = "TCGA tumor samples", 
                  column_title_side = "bottom")
-# png(filename = "./figures/cn_depmap_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
+# png(filename = "./figures/cn_depmap_tcga_heatmap_pearson.png", width = 7.5, height = 8, units = "in", res = 500)
 draw(cn_ht, heatmap_legend_side = "top")
 # dev.off()
+```
 
-# 19Q1
-cn_19Q1_ht4order <- Heatmap(cn_corr_19Q1_wide, cluster_rows = FALSE)
+## Mut
 
-cn_19Q1_ht <- Heatmap(cn_corr_19Q1_wide, 
-                 name = "Expression correlation",
+Data wrangling and processing:
+```{r mut_heatmap_data, eval=FALSE}
+# TCGA
+mut_tcga <- read.delim("./data/mutation/mutation_Xena_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+mut_tcga <- unfactorize(mut_tcga)
+mut_tcga[, 4:ncol(mut_tcga)] <- apply(mut_tcga[, 4:ncol(mut_tcga)], 2, function(x) ifelse(x > 1, 1, x))
+colnames(mut_tcga)[colnames(mut_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+mut_tcga_melt <- melt(mut_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(mut_tcga)[4:length(colnames(mut_tcga))], variable.name = "Gene", value.name = "Mutation_Status")
+# Average CN levels per gene per TCGA classification
+mut_tcga_prop <- mut_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion_Mut = sum(Mutation_Status)/n())
+# Make wide
+mut_tcga_wide <- dcast(data = mut_tcga_prop, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(mut_tcga_wide) <- mut_tcga_wide$Gene
+mut_tcga_wide$Gene <- NULL
+colnames(mut_tcga_wide) <- paste(colnames(mut_tcga_wide), "TCGA", sep = "_")
+
+# DepMap
+mut_depmap <- read.delim("./data/mutation/mutation_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+mut_depmap <- unfactorize(mut_depmap)
+mut_depmap[, 4:ncol(mut_depmap)] <- apply(mut_depmap[, 4:ncol(mut_depmap)], 2, function(x) ifelse(x > 1, 1, x))
+colnames(mut_depmap)[colnames(mut_depmap) == "cancer"] <- "TCGA_classification"
+# Melt
+mut_depmap_melt <- melt(mut_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(mut_depmap)[4:length(colnames(mut_depmap))], variable.name = "Gene", value.name = "Mutation_Status")
+# Average CN levels per gene per TCGA classification
+mut_depmap_prop <- mut_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion_Mut = sum(Mutation_Status)/n())
+# Make wide
+mut_depmap_wide <- dcast(data = mut_depmap_prop, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
+rownames(mut_depmap_wide) <- mut_depmap_wide$Gene
+mut_depmap_wide$Gene <- NULL
+colnames(mut_depmap_wide) <- paste(colnames(mut_depmap_wide), "DepMap", sep = "_")
+
+# Correlate all against all (18Q4)
+mut_wide <- bind_cols(mut_depmap_wide, mut_tcga_wide)
+mut_corr <- mut_wide %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+# Filter self-comparisons and eliminate duplicate correlations
+mut_corr <- filter(mut_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
+# Data management
+colnames(mut_corr) <- c("DepMap", "TCGA", "r")
+mut_corr <- data.frame(apply(mut_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
+mut_corr$r <- as.numeric(as.character(mut_corr$r))
+# Set up coprrelation dataframe for plotting
+mut_corr_wide <- dcast(mut_corr, DepMap ~ TCGA)
+rownames(mut_corr_wide) <- mut_corr_wide$DepMap
+mut_corr_wide$DepMap <- NULL
+```
+
+Pseudo-figure caption: This is comparison of binary gene-level mutation frequency profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, the proportion of samples containing at least one mutation was calculated for all genes shared between the two datasets, and the proportions were correlated against each other. Pearson/Spearman correlations (r) between TCGA and DepMap copy number feature sets are shown in the heatmap.
+
+Genes in the TCGA mutation dataset were analyzed if they were mutated in >=4% annotated samples and had a mutaiton in at least one cancer cell line from DepMap.
+
+Make heatmaps:
+```{r cn_heatmaps, eval=FALSE, fig.height=4, fig.width=3.75}
+col_fun <- colorRamp2(c(0, 0.15, 0.35, 0.5), c("black", "red3", "yellow", "white"))
+mut_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
+
+# 18Q4
+mut_ht4order <- Heatmap(mut_corr_wide, cluster_rows = FALSE)
+mut_ht <- Heatmap(mut_corr_wide, 
+                 name = "Mutation correlation",
                  col = col_fun, 
                  rect_gp = gpar(col = "black"),
-                 heatmap_legend_param = cn_ht_legend_list,
-                 row_order = rev(column_order(cn_19Q1_ht4order)), 
+                 heatmap_legend_param = mut_ht_legend_list,
+                 row_order = rev(column_order(mut_ht4order)), 
                  show_column_dend = FALSE, 
                  cluster_rows = FALSE, 
                  row_names_side = "left",
                  row_title = "DepMap cancer cell lines",
                  column_title = "TCGA tumor samples", 
                  column_title_side = "bottom")
-# png(filename = "./figures/cn_depmap_19Q1_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
-draw(cn_19Q1_ht, heatmap_legend_side = "top")
+# png(filename = "./figures/mut_depmap_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
+draw(mut_ht, heatmap_legend_side = "top")
 # dev.off()
-```
-
-## Mut
-
-```{r mut_heatmap_data, eval=FALSE}
-
 ```
 
 
