@@ -80,6 +80,120 @@ unfactorize <- function(df){
   }
   return(df)
 }
+
+DepMapTCGAMakeWideDF <- function(melted_df, output_type, data_source, exclusions) {
+  # Input is a 4-column melted dataframe of omic features
+  # Rename columns: sample_ID, TCGA_classification, Gene, Value
+  colnames(df) <- c("sample_ID", "TCGA_classification", "Gene", "Value")
+  if(tolower(output_type) == "average" | tolower(output_type) == "avg") {
+    # Average feature values per gene per TCGA classification
+    df_avg <- df %>%
+              group_by(TCGA_classification, Gene) %>%
+              summarise(Mean_Value = mean(Value))
+    # Make wide
+    df_wide <- dcast(data = df_avg,
+                     formula = Gene ~ TCGA_classification,
+                     value.var = "Mean_Value",
+                     fun.aggregate = mean)
+    # Remove genes if argument exists
+    if(!missing(exclusions)) { df_wide <- df_wide[df_wide$Gene != exclusions, ] }
+    rownames(df_wide) <- df_wide$Gene
+    df_wide$Gene <- NULL
+    colnames(df_wide) <- paste(colnames(df_wide), data_source, sep = "_")
+  }  
+  if(tolower(output_type) == "proportion" | tolower(output_type) == "prop") {
+    # Calc proportion of 1s over 1s + 0s per gene per TCGA classification
+    df_prop <- df %>% 
+               group_by(TCGA_classification, Gene) %>%
+               summarise(Proportion = sum(Value) / n())
+    # Make wide
+    df_wide <- dcast(data = df_prop,
+                     formula = Gene ~ TCGA_classification,
+                     value.var = "Proportion",
+                     fun.aggregate = mean)
+    # Remove genes if argument exists
+    if(!missing(exclusions)) { df_wide <- df_wide[df_wide$Gene != exclusions, ] }
+    rownames(df_wide) <- df_wide$Gene
+    df_wide$Gene <- NULL
+    colnames(df_wide) <- paste(colnames(df_wide), data_source, sep = "_")
+  }
+  return(df_wide)
+}
+
+DepMapTCGACorrMatrix <- function(DepMap_wide_df, TCGA_wide_df, corr_method) {
+  # Input is the output from DepMapTCGAMakeWideDF function for DepMap and TCGA
+  wide <- bind_cols(DepMap_wide_df, TCGA_wide_df)
+  # Correlate all against all
+  corr <- wide %>% as.matrix %>% cor(method = corr_method) %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
+  # Filter self-comparisons and eliminate duplicate correlations
+  corr <- filter(corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
+  # Data management
+  colnames(corr) <- c("DepMap", "TCGA", "r")
+  corr <- data.frame(apply(corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
+  corr$r <- as.numeric(as.character(corr$r))
+  # Set up coprrelation dataframe for plotting
+  corr_wide <- dcast(corr, DepMap ~ TCGA, value.var = "r")
+  rownames(corr_wide) <- corr_wide$DepMap
+  corr_wide$DepMap <- NULL
+  return(corr_wide)
+}
+
+DepMapTCGACorrHeatmap <- function(corr_wide_df, out_filepath, legend_title, color_breaks) {
+  # Libraries
+  require(ComplexHeatmap)
+  require(circlize)
+  # Define color scale
+  col_fun <- colorRamp2(color_breaks, c("black", "red3", "yellow", "white"))
+  # Legend properties list
+  ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
+  # Get column order to have symmetrically ordered axes
+  ht4order <- Heatmap(corr_wide_df, cluster_rows = FALSE)
+  # Make heatmap
+  ht <- Heatmap(corr_wide_df, 
+                name = legend_title,
+                col = col_fun, 
+                rect_gp = gpar(col = "black"),
+                heatmap_legend_param = ht_legend_list,
+                row_order = rev(column_order(ht4order)), 
+                show_column_dend = FALSE, 
+                cluster_rows = FALSE, 
+                row_names_side = "left",
+                row_title = "DepMap cancer cell lines",
+                column_title = "TCGA tumor samples", 
+                column_title_side = "bottom")
+  # Save to file
+  png(filename = out_filepath, width = 7.5, height = 8, units = "in", res = 500)
+  draw(ht, heatmap_legend_side = "top")
+  dev.off()
+  # Return heatmap object for in-line rendering
+  return(ht)
+}
+
+DepMapTCGAPropsScatterplots <- function(DepMap_melted_df, TCGA_melted_df, out_filepath) {
+  # Input is the 4-column melted dataframe of omic features from DepMap and TCGA
+  # Rename columns: sample_ID, TCGA_classification, Gene, Value
+  colnames(DepMap_melted_df) <- c("sample_ID", "TCGA_classification", "Gene", "Value")
+  colnames(TCGA_melted_df) <- c("sample_ID", "TCGA_classification", "Gene", "Value")
+  # Calculate proportions
+  DepMap_prop <- DepMap_melted_df %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion = sum(Value) / n())
+  TCGA_prop <- TCGA_melted_df %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion = sum(Value) / n())
+  # Merge proportions from DepMap and TCGA
+  props <- merge(DepMap_prop, TCGA_prop, by = c("TCGA_classification", "Gene"), all = TRUE, suffixes = c("_DepMap","_TCGA"))
+  # Plot faceted scatterplots
+  props_scatters <- ggplot(data = props, aes(x = Proportion_TCGA, y = Proportion_DepMap)) +
+    facet_wrap(~ TCGA_classification, nrow = 4) +
+    geom_point(alpha = 0.3, color = "darkcyan") +
+    scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+    scale_x_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+    coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
+    geom_smooth(method = "lm", se = FALSE, lwd = 0.5, color = "darkgray") +
+    stat_cor(method = "pearson", label.x = 0.85, label.y = 0.15, label.sep = "\n") +
+    labs(x = "TCGA frequency", y = "DepMap frequency", caption = paste0(formatC(x = length(unique(props$Gene)), format = "d", big.mark = ","), " genes compared."))
+  # Save to file
+  ggsave(out_filepath, props_scatters, device = "png", dpi = 450, width = 12, height = 12, units = "in")
+  # Return for in-line rendering
+  return(props_scatters)
+}
 ```
 
 
@@ -102,7 +216,7 @@ And changes to the data processing pipelines (the following is taken verbatim fr
 ## Cell line metadata
 
 DepMap 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
-```{r ccl_info_processing, eval=FALSE}
+```{r ccl_info_processing, eval = FALSE}
 ccl_info <- read.delim("./data/DepMap/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 
 ccl_info <- subset(ccl_info, Primary.Disease != "unknown" & Primary.Disease != "primary cells" & !grepl("MERGED", CCLE_Name, fixed = TRUE))
@@ -158,7 +272,7 @@ ccl_histologies <- read.delim("./data/ccl_histologies_metadata.csv", sep = ",", 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
 Mutation calls (coding region, germline filtered):
-```{r mutation, eval=FALSE}
+```{r mutation, eval = FALSE}
 maf_raw <- read.delim("./../data_munging/19Q1/depmap_19Q1_mutation_calls_20190305.csv.gz", header = TRUE, sep = ",", row.names = 1)
 # Harmonize ID column name
 colnames(maf_raw)[colnames(maf_raw) == "DepMap_ID"] <- "Broad_ID"
@@ -177,7 +291,7 @@ saveRDS(maf_df, "./../data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
 
 DepMap WES CN Data:
-```{r copy_number, eval=FALSE}
+```{r copy_number, eval = FALSE}
 cn <- read.delim("./../data_munging/19Q1/public_19Q1_gene_cn_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(cn) <- gsub(" .*", "", colnames(cn))
@@ -190,7 +304,7 @@ saveRDS(cn_melt, "./../data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```
 
 19Q1, CCLE RNAseq gene expression data (log2(TPM+1)):
-```{r gene_expression, eval=FALSE}
+```{r gene_expression, eval = FALSE}
 ge <- read.delim("./../../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames, format is "Hugo_Symbol (Entrez ID)"
 colnames(ge) <- gsub(" .*", "", colnames(ge))
@@ -211,7 +325,7 @@ ge_melt <- readRDS("./../data_munging/19Q1/ge_melt_19Q1.rds")
 
 ## CRISPR
 
-```{r crispr, eval=TRUE}
+```{r crispr}
 # Sample info from figshare
 crispr_meta <- read.delim("./data/DepMap/sample_info_20190306.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 colnames(crispr_meta)[colnames(crispr_meta) == "CCLE_name"] <- "CCLE_Name"
@@ -231,7 +345,7 @@ For plotting:
 
 ## Data wrangling
 
-```{r pozdeyev_processing, eval=FALSE}
+```{r pozdeyev_processing, eval = FALSE}
 ccle_poz <- read.delim("./data/pozdeyev2016/CCLE_drug_response_metrics.csv.gz", sep = ",")
 # ccle_test <- merge(select(ccle_poz, Drug_name, Cell_line, AUC_IC50), select(filter(auc, Database == "CCLE"), Drug_name, Cell_line, AUC_IC50), by = c("Drug_name", "Cell_line"), suffixes = c("_unmatched", "_matched_all_pairs"), all = TRUE)
 
@@ -304,7 +418,7 @@ auc_all %>% count(Histology)
 
 ## Exploratory plots
 
-```{r exploratory_plots, eval=FALSE}
+```{r exploratory_plots, eval = FALSE}
 # Data subsetting for easier tracking throughout plots
 pgx_ccls <- filter(auc_all, WasDrugScreened == 1)
 crispr_ccls <- filter(auc_all, WasCRISPRScreened == 1)
@@ -443,26 +557,20 @@ Cancer cell lines and tumor samples are directly incomparable by nature, so the 
 tcga_classifications_16 <- c("BLCA", "BRCA", "COADREAD", "ESCA", "GBMLGG", "HNSC", "KIRC", "LIHC", "LUAD", "LUSC", "OV", "PAAD", "SARC", "SKCM", "STAD", "UCEC")
 ```
 
-## Heatmaps
-
-### GE
+## GE
 
 Data wrangling and processing:
 ```{r ge_heatmap_data, eval=FALSE, warning=FALSE}
-# DepMap gene expression
+# DepMap
+# TPM
 ge_depmap <- read.delim("./../../htscreens_giant_files/omix/GE/GE_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 colnames(ge_depmap)[colnames(ge_depmap) == "cancer"] <- "TCGA_classification"
-# Mean center scale
+# Mean-center scale
 ge_depmap[, 4:ncol(ge_depmap)] <- apply(ge_depmap[, 4:ncol(ge_depmap)], MARGIN = 2, FUN = scale, center = TRUE, scale = TRUE)
 # Melt
 ge_depmap_melt <- melt(ge_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(ge_depmap)[4:length(colnames(ge_depmap))], variable.name = "Gene", value.name = "TPM_scaled")
-# Average scaled TPM per gene per TCGA classification
-ge_depmap_avg <- ge_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_TPM = mean(TPM_scaled))
 # Make wide
-ge_depmap_wide <- dcast(data = ge_depmap_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(ge_depmap_wide) <- ge_depmap_wide$Gene
-ge_depmap_wide$Gene <- NULL
-colnames(ge_depmap_wide) <- paste(colnames(ge_depmap_wide), "DepMap", sep = "_")
+ge_depmap_wide <- DepMapTCGAMakeWideDF(df = ge_depmap_melt, output_type = "average", data_source = "DepMap")
 
 # TCGA gene expression
 ge_tcga <- read.delim("./../../htscreens_giant_files/omix/GE/GE_Xena_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
@@ -471,56 +579,74 @@ colnames(ge_tcga)[colnames(ge_tcga) == "cancer"] <- "TCGA_classification"
 ge_tcga[, 4:ncol(ge_tcga)] <- apply(ge_tcga[, 4:ncol(ge_tcga)], MARGIN = 2, FUN = scale, center = TRUE, scale = TRUE)
 # Melt
 ge_tcga_melt <- melt(ge_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(ge_tcga)[4:length(colnames(ge_tcga))], variable.name = "Gene", value.name = "TPM_scaled")
-# Average scaled TPM per gene per TCGA classification
-ge_tcga_avg <- ge_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_TPM = mean(TPM_scaled))
 # Make wide
-ge_tcga_wide <- dcast(data = ge_tcga_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(ge_tcga_wide) <- ge_tcga_wide$Gene
-ge_tcga_wide$Gene <- NULL
-colnames(ge_tcga_wide) <- paste(colnames(ge_tcga_wide), "TCGA", sep = "_")
+ge_tcga_wide <- DepMapTCGAMakeWideDF(df = ge_tcga_melt, output_type = "average", data_source = "TCGA")
 
 # Correlate all against all
-ge_wide <- bind_cols(ge_depmap_wide, ge_tcga_wide)
-ge_corr <- ge_wide %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
-# Filter self-comparisons and eliminate duplicate correlations
-ge_corr <- filter(ge_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
-# Data management
-colnames(ge_corr) <- c("DepMap", "TCGA", "r")
-ge_corr <- data.frame(apply(ge_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
-ge_corr$r <- as.numeric(as.character(ge_corr$r))
-# Set up coprrelation dataframe for plotting
-ge_corr_wide <- dcast(ge_corr, DepMap ~ TCGA)
-rownames(ge_corr_wide) <- ge_corr_wide$DepMap
-ge_corr_wide$DepMap <- NULL
+ge_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = ge_depmap_wide, TCGA_wide_df = ge_tcga_wide, corr_method = "pearson")
+ge_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = ge_depmap_wide, TCGA_wide_df = ge_tcga_wide, corr_method = "spearman")
 ```
 
 Pseudo-figure caption: This is comparison of gene expression profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, gene expression (in TPM) for each of the 5,000 most variable genes shared between the two datasets were averaged across samples. The dataset averages per TCGA classification were correlated against each other, and these Pearson/Spearman correlations (r) between TCGA and DepMap gene expression feature sets are shown in the heatmap.
 
 Make heatmaps:
 ```{r ge_heatmap, eval=FALSE, fig.height=4, fig.width=3.75}
-col_fun <- colorRamp2(c(-0.5, 0, 0.5, 1), c("black", "red3", "yellow", "white"))
-ge_ht4order <- Heatmap(ge_corr_wide, cluster_rows = FALSE)
+ge_ht_p <- DepMapTCGACorrHeatmap(corr_wide_df = ge_corr_wide_pearson, out_filepath = "./figures/ge_depmap_tcga_heatmap_pearson.png", legend_title = "Expression Pearson correlation", color_breaks = c(-0.5, 0, 0.5, 1))
+# draw(ge_ht_p, heatmap_legend_side = "top")
 
-ge_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
-
-ge_ht <- Heatmap(ge_corr_wide, 
-                 name = "Expression correlation",
-                 col = col_fun, 
-                 rect_gp = gpar(col = "black"),
-                 heatmap_legend_param = ge_ht_legend_list,
-                 row_order = rev(column_order(ge_ht4order)), 
-                 show_column_dend = FALSE, 
-                 cluster_rows = FALSE, 
-                 row_names_side = "left",
-                 row_title = "DepMap cancer cell lines",
-                 column_title = "TCGA tumor samples", 
-                 column_title_side = "bottom")
-png(filename = "./figures/ge_depmap_tcga_heatmap_spearman.png", width = 7.5, height = 8, units = "in", res = 500)
-draw(ge_ht, heatmap_legend_side = "top")
-dev.off()
+ge_ht_s <- DepMapTCGACorrHeatmap(corr_wide_df = ge_corr_wide_spearman, out_filepath = "./figures/ge_depmap_tcga_heatmap_spearman.png", legend_title = "Expression Spearman correlation", color_breaks = c(-0.5, 0, 0.5, 1))
+# draw(ge_ht_s, heatmap_legend_side = "top")
 ```
 
-### CN
+## Mut
+
+Data wrangling and processing:
+```{r mut_heatmap_data, eval=FALSE}
+# DepMap
+mut_depmap <- read.delim("./data/mutation/mutation_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+mut_depmap <- unfactorize(mut_depmap)
+mut_depmap[, 4:ncol(mut_depmap)] <- apply(mut_depmap[, 4:ncol(mut_depmap)], 2, function(x) ifelse(x > 1, 1, x))
+colnames(mut_depmap)[colnames(mut_depmap) == "cancer"] <- "TCGA_classification"
+# Melt
+mut_depmap_melt <- melt(mut_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(mut_depmap)[4:length(colnames(mut_depmap))], variable.name = "Gene", value.name = "Mutation_Status")
+# Make wide
+mut_depmap_wide <- DepMapTCGAMakeWideDF(df = mut_depmap_melt, output_type = "proportion", data_source = "DepMap", exclusions = c("TP53"))
+
+# TCGA
+mut_tcga <- read.delim("./data/mutation/mutation_Xena_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+mut_tcga <- unfactorize(mut_tcga)
+mut_tcga[, 4:ncol(mut_tcga)] <- apply(mut_tcga[, 4:ncol(mut_tcga)], 2, function(x) ifelse(x > 1, 1, x))
+colnames(mut_tcga)[colnames(mut_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+mut_tcga_melt <- melt(mut_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(mut_tcga)[4:length(colnames(mut_tcga))], variable.name = "Gene", value.name = "Mutation_Status")
+# Make wide
+mut_tcga_wide <- DepMapTCGAMakeWideDF(df = mut_tcga_melt, output_type = "proportion", data_source = "TCGA", exclusions = c("TP53"))
+
+# Correlate all against all
+mut_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = mut_depmap_wide, TCGA_wide_df = mut_tcga_wide, corr_method = "pearson")
+mut_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = mut_depmap_wide, TCGA_wide_df = mut_tcga_wide, corr_method = "spearman")
+```
+
+Pseudo-figure caption: This is comparison of binary gene-level mutation frequency profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, the proportion of samples containing at least one mutation was calculated for all genes shared between the two datasets, and the proportions were correlated against each other. Pearson/Spearman correlations (r) between TCGA and DepMap mutation feature sets are shown in the heatmap.
+
+For plots labeled as "5000", the 5,000 most variable genes analyzed in the gene expression heatmap were selected for the mutation analyses. Alternatively, for the plots labeled as "252", the genes in the TCGA mutation dataset were analyzed if they were mutated in >=4% annotated samples and had a mutation in at least one cancer cell line from DepMap. TP53 was removed from the heatmap, as was done in Barretina et al. (2012). For the scatterplots, TP53 was retained.
+
+Pseudo-caption for scatterplots: This is a comparison of proportions of mutated samples between cancer cell lines and TCGA samples in our 16 TCGA classification categories. Each point corresponds to a single gene in the associated cancer type.
+
+Make plots:
+```{r mut_plots, eval=FALSE, fig.height=4, fig.width=3.75}
+mut_ht_p <- DepMapTCGACorrHeatmap(corr_wide_df = mut_corr_wide_pearson, out_filepath = "./figures/mut_depmap_tcga_heatmap_pearson_252.png", legend_title = "Mutation Pearson correlation", color_breaks = c(0, 0.3, 0.6, 0.9))
+# draw(mut_ht_p, heatmap_legend_side = "top")
+
+mut_ht_s <- DepMapTCGACorrHeatmap(corr_wide_df = mut_corr_wide_spearman, out_filepath = "./figures/mut_depmap_tcga_heatmap_spearman_252.png", legend_title = "Mutation Spearman correlation", color_breaks = c(0, 0.3, 0.5, 0.7))
+# draw(mut_ht_s, heatmap_legend_side = "top")
+
+mut_props_scatters <- DepMapTCGAPropsScatterplots(DepMap_melted_df = mut_depmap_melt, TCGA_melted_df = mut_tcga_melt, out_filepath = "./figures/mut_depmap_tcga_scatter_pearson_253.png")
+```
+
+## CN
+
+### Continuous
 
 Continuous CN estimate data wrangling and processing:
 ```{r cn_heatmap_data_continuous, eval=FALSE, warning=FALSE}
@@ -532,13 +658,8 @@ cn_depmap[, 4:ncol(cn_depmap)] <- apply(cn_depmap[, 4:ncol(cn_depmap)], MARGIN =
 # Melt
 cn_depmap_melt <- melt(cn_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_depmap)[4:length(colnames(cn_depmap))], variable.name = "Gene", value.name = "CN_scaled")
 cn_depmap_melt <- filter(cn_depmap_melt, TCGA_classification %in% tcga_classifications_16)
-# Average scaled TPM per gene per TCGA classification
-cn_depmap_avg <- cn_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN_scaled))
 # Make wide
-cn_depmap_wide <- dcast(data = cn_depmap_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(cn_depmap_wide) <- cn_depmap_wide$Gene
-cn_depmap_wide$Gene <- NULL
-colnames(cn_depmap_wide) <- paste(colnames(cn_depmap_wide), "DepMap", sep = "_")
+cn_depmap_wide <- DepMapTCGAMakeWideDF(df = cn_depmap_melt, output_type = "average", data_source = "DepMap")
 
 # TCGA cop number
 cn_tcga <- read.delim("./../../htscreens_giant_files/omix/CN/CN_cont_Xena_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
@@ -548,243 +669,148 @@ cn_tcga[, 4:ncol(cn_tcga)] <- apply(cn_tcga[, 4:ncol(cn_tcga)], MARGIN = 2, FUN 
 # Melt
 cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN_scaled")
 cn_tcga_melt <- filter(cn_tcga_melt, TCGA_classification %in% tcga_classifications_16)
-# Average scaled TPM per gene per TCGA classification
-cn_tcga_avg <- cn_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN_scaled))
 # Make wide
-cn_tcga_wide <- dcast(data = cn_tcga_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(cn_tcga_wide) <- cn_tcga_wide$Gene
-cn_tcga_wide$Gene <- NULL
-colnames(cn_tcga_wide) <- paste(colnames(cn_tcga_wide), "TCGA", sep = "_")
+cn_tcga_wide <- DepMapTCGAMakeWideDF(df = cn_tcga_melt, output_type = "proportion", data_source = "TCGA")
 
 # Correlate all against all
-cn_wide <- bind_cols(cn_depmap_wide, cn_tcga_wide)
-cn_corr <- cn_wide %>% as.matrix %>% cor(method = "pearson") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
-# Filter self-comparisons and eliminate duplicate correlations
-cn_corr <- filter(cn_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
-# Data management
-colnames(cn_corr) <- c("DepMap", "TCGA", "r")
-cn_corr <- data.frame(apply(cn_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
-cn_corr$r <- as.numeric(as.character(cn_corr$r))
-# cn_corr <- filter(cn_corr, DepMap %in% tcga_classifications_16 & TCGA %in% tcga_classifications_16)
-# Set up coprrelation dataframe for plotting
-cn_corr_wide <- dcast(cn_corr, DepMap ~ TCGA)
-rownames(cn_corr_wide) <- cn_corr_wide$DepMap
-cn_corr_wide$DepMap <- NULL
+cn_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "pearson")
+cn_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "spearman")
 ```
 
-Thresholded CN estimate data wrangling and processing:
-```{r cn_heatmap_data_thresholded, eval=FALSE, warning=FALSE}
-# TCGA copy number
-cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
-colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
-# Melt
-cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN")
-# Average scaled TPM per gene per TCGA classification
-cn_tcga_avg <- cn_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN))
-# Make wide
-cn_tcga_wide <- dcast(data = cn_tcga_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(cn_tcga_wide) <- cn_tcga_wide$Gene
-cn_tcga_wide$Gene <- NULL
-colnames(cn_tcga_wide) <- paste(colnames(cn_tcga_wide), "TCGA", sep = "_")
+### -1, 0, +1
 
+Thresholded tertiary CN estimate data wrangling and processing:
+```{r cn_heatmap_data_thresholded3, eval=FALSE, warning=FALSE}
 # DepMap copy number (18Q4)
 cn_depmap <- read.delim("./data/CN/CN_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 colnames(cn_depmap)[colnames(cn_depmap) == "cancer"] <- "TCGA_classification"
 # Melt
 cn_depmap_melt <- melt(cn_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_depmap)[4:length(colnames(cn_depmap))], variable.name = "Gene", value.name = "CN")
-# Average CN levels per gene per TCGA classification
-cn_depmap_avg <- cn_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Mean_CN = mean(CN))
 # Make wide
-cn_depmap_wide <- dcast(data = cn_depmap_avg, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-rownames(cn_depmap_wide) <- cn_depmap_wide$Gene
-cn_depmap_wide$Gene <- NULL
-colnames(cn_depmap_wide) <- paste(colnames(cn_depmap_wide), "DepMap", sep = "_")
+cn_depmap_wide <- DepMapTCGAMakeWideDF(df = cn_depmap_melt, output_type = "average", data_source = "DepMap")
 
-# Correlate all against all (18Q4)
-cn_wide <- bind_cols(cn_depmap_wide, cn_tcga_wide)
-cn_corr <- cn_wide %>% as.matrix %>% cor(method = "pearson") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
-# Filter self-comparisons and eliminate duplicate correlations
-cn_corr <- filter(cn_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
-# Data management
-colnames(cn_corr) <- c("DepMap", "TCGA", "r")
-cn_corr <- data.frame(apply(cn_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
-cn_corr$r <- as.numeric(as.character(cn_corr$r))
-# Set up coprrelation dataframe for plotting
-cn_corr_wide <- dcast(cn_corr, DepMap ~ TCGA)
-rownames(cn_corr_wide) <- cn_corr_wide$DepMap
-cn_corr_wide$DepMap <- NULL
+# TCGA copy number
+cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN")
+# Make wide
+cn_tcga_wide <- DepMapTCGAMakeWideDF(df = cn_tcga_melt, output_type = "proportion", data_source = "TCGA")
+
+# Correlate all against all
+cn_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "pearson")
+cn_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "spearman")
 ```
+
+### ±1, 0
+
+Thresholded binary CN estimate data wrangling and processing (for both datasets, CN_Status is encoded as 1 is non-neutral (-1 or +1) and 0 is neutral):
+```{r cn_heatmap_data_thresholded2, eval=FALSE, warning=FALSE}
+# DepMap
+cn_depmap <- read.delim("./data/CN/CN_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_depmap)[colnames(cn_depmap) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_depmap_melt <- melt(cn_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_depmap)[4:length(colnames(cn_depmap))], variable.name = "Gene", value.name = "CN")
+# Calc proportion of non-neutral CN per gene per TCGA classification
+cn_depmap_melt$CN_Status <- with(cn_depmap_melt, ifelse(CN != 0, 1, CN))
+cn_depmap_melt$CN <- NULL
+# Make wide
+cn_depmap_wide <- DepMapTCGAMakeWideDF(df = cn_depmap_melt, output_type = "average", data_source = "DepMap")
+
+# TCGA
+cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN")
+# Calc proportion of non-neutral CN per gene per TCGA classification
+cn_tcga_melt$CN_Status <- with(cn_tcga_melt, ifelse(CN != 0, 1, CN))
+cn_tcga_melt$CN <- NULL
+# Make wide
+cn_tcga_wide <- DepMapTCGAMakeWideDF(df = cn_tcga_melt, output_type = "proportion", data_source = "TCGA")
+
+# Correlate all against all
+cn_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "pearson")
+cn_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "spearman")
+```
+
+### -1/0, +1
+
+Thresholded binary CN gain/non-gain estimate data wrangling and processing:
+```{r cn_heatmap_data_thresholdedgain, eval=FALSE, warning=FALSE}
+# DepMap
+cn_depmap <- read.delim("./data/CN/CN_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_depmap)[colnames(cn_depmap) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_depmap_melt <- melt(cn_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_depmap)[4:length(colnames(cn_depmap))], variable.name = "Gene", value.name = "CN")
+# Calc proportion of non-neutral CN per gene per TCGA classification
+cn_depmap_melt$CN_Status <- with(cn_depmap_melt, ifelse(CN != 1, 0, CN))
+cn_depmap_melt$CN <- NULL
+# Make wide
+cn_depmap_wide <- DepMapTCGAMakeWideDF(df = cn_depmap_melt, output_type = "average", data_source = "DepMap")
+
+# TCGA
+cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN")
+# Calc proportion of non-neutral CN per gene per TCGA classification
+cn_tcga_melt$CN_Status <- with(cn_tcga_melt, ifelse(CN != 1, 0, CN))
+cn_tcga_melt$CN <- NULL
+# Make wide
+cn_tcga_wide <- DepMapTCGAMakeWideDF(df = cn_tcga_melt, output_type = "proportion", data_source = "TCGA")
+
+# Correlate all against all
+cn_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "pearson")
+cn_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "spearman")
+```
+
+### -1, 0/+1
+
+Thresholded binary CN loss/non-loss estimate data wrangling and processing:
+```{r cn_heatmap_data_thresholdedloss, eval=FALSE, warning=FALSE}
+# DepMap
+cn_depmap <- read.delim("./data/CN/CN_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_depmap)[colnames(cn_depmap) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_depmap_melt <- melt(cn_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_depmap)[4:length(colnames(cn_depmap))], variable.name = "Gene", value.name = "CN")
+# Calc proportion of non-neutral CN per gene per TCGA classification
+cn_depmap_melt$CN_Status <- with(cn_depmap_melt, ifelse(CN != -1, 0, CN))
+cn_depmap_melt$CN <- NULL
+# Make wide
+cn_depmap_wide <- DepMapTCGAMakeWideDF(df = cn_depmap_melt, output_type = "average", data_source = "DepMap")
+
+# TCGA
+cn_tcga <- read.delim("./data/CN/CN_GDC_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+colnames(cn_tcga)[colnames(cn_tcga) == "cancer"] <- "TCGA_classification"
+# Melt
+cn_tcga_melt <- melt(cn_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(cn_tcga)[4:length(colnames(cn_tcga))], variable.name = "Gene", value.name = "CN")
+# Calc proportion of non-neutral CN per gene per TCGA classification
+cn_tcga_melt$CN_Status <- with(cn_tcga_melt, ifelse(CN != -1, 0, CN))
+cn_tcga_melt$CN <- NULL
+# Make wide
+cn_tcga_wide <- DepMapTCGAMakeWideDF(df = cn_tcga_melt, output_type = "proportion", data_source = "TCGA")
+
+# Correlate all against all
+cn_corr_wide_pearson <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "pearson")
+cn_corr_wide_spearman <- DepMapTCGACorrMatrix(DepMap_wide_df = cn_depmap_wide, TCGA_wide_df = cn_tcga_wide, corr_method = "spearman")
+```
+
+### Plots
 
 Pseudo-figure caption for thresholded data: This is comparison of thresholded copy number profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. Levels are -1 for copy number loss, 0 for neutral, and 1 for gain. In each dataset and for each TCGA classification, these numeric copy number levels across all genes shared between the two datasets were averaged, and the datasets were correlated against each other. Pearson/Spearman correlations (r) between TCGA and DepMap copy number feature sets are shown in the heatmap.
 
-Make heatmaps:
-```{r cn_heatmaps, eval=FALSE, fig.height=4, fig.width=3.75}
-col_fun <- colorRamp2(c(-0.5, 0, 0.25, 0.75), c("black", "red3", "yellow", "white"))
-cn_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
+Pseudo-caption for scatterplots: This is a comparison of proportions of non-neutral copy number samples between cancer cell lines and TCGA samples in our 16 TCGA classification categories. Each point corresponds to a single gene in the associated cancer type. For these plots, thresholded copy number levels of -1 (loss) and +1 (gain) were recoded as "non-neutral."
 
-# 18Q4
-cn_ht4order <- Heatmap(cn_corr_wide, cluster_rows = FALSE)
-cn_ht <- Heatmap(cn_corr_wide, 
-                 name = "Copy number correlation",
-                 col = col_fun, 
-                 rect_gp = gpar(col = "black"),
-                 heatmap_legend_param = cn_ht_legend_list,
-                 row_order = rev(column_order(cn_ht4order)), 
-                 show_column_dend = FALSE, 
-                 cluster_rows = FALSE, 
-                 row_names_side = "left",
-                 row_title = "DepMap cancer cell lines",
-                 column_title = "TCGA tumor samples", 
-                 column_title_side = "bottom")
-# png(filename = "./figures/cn_depmap_tcga_heatmap_pearson_continuous.png", width = 7.5, height = 8, units = "in", res = 500)
-draw(cn_ht, heatmap_legend_side = "top")
-# dev.off()
+Make plots:
+```{r cn_plots, eval=TRUE, fig.height=4, fig.width=3.75}
+cn_ht_p <- DepMapTCGACorrHeatmap(corr_wide_df = cn_corr_wide_pearson, out_filepath = "./figures/cn_depmap_tcga_heatmap_pearson_thresholdedloss.png", legend_title = "Copy number Pearson correlation", color_breaks = c(0, 0.2, 0.4, 0.6))
+# draw(cn_ht_p, heatmap_legend_side = "top")
+
+cn_ht_s <- DepMapTCGACorrHeatmap(corr_wide_df = cn_corr_wide_spearman, out_filepath = "./figures/cn_depmap_tcga_heatmap_spearman_thresholdedloss.png", legend_title = "Copy number Spearman correlation", color_breaks = c(0, 0.2, 0.4, 0.6))
+# draw(cn_ht_s, heatmap_legend_side = "top")
+
+cn_props_scatters <- DepMapTCGAPropsScatterplots(DepMap_melted_df = cn_depmap_melt, TCGA_melted_df = cn_tcga_melt, out_filepath = "./figures/cn_depmap_tcga_scatter_pearson_thresholdedloss.png")
 ```
-
-### Mut
-
-Data wrangling and processing:
-```{r mut_heatmap_data, eval=FALSE}
-# TCGA
-mut_tcga <- read.delim("./data/mutation/mutation_Xena_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
-mut_tcga <- unfactorize(mut_tcga)
-mut_tcga[, 4:ncol(mut_tcga)] <- apply(mut_tcga[, 4:ncol(mut_tcga)], 2, function(x) ifelse(x > 1, 1, x))
-colnames(mut_tcga)[colnames(mut_tcga) == "cancer"] <- "TCGA_classification"
-# Melt
-mut_tcga_melt <- melt(mut_tcga, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(mut_tcga)[4:length(colnames(mut_tcga))], variable.name = "Gene", value.name = "Mutation_Status")
-# Calce proportion mutated per gene per TCGA classification
-mut_tcga_prop <- mut_tcga_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion_Mut = sum(Mutation_Status) / n())
-# Make wide
-mut_tcga_wide <- dcast(data = mut_tcga_prop, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-mut_tcga_wide <- mut_tcga_wide[mut_tcga_wide$Gene != "TP53", ]
-rownames(mut_tcga_wide) <- mut_tcga_wide$Gene
-mut_tcga_wide$Gene <- NULL
-colnames(mut_tcga_wide) <- paste(colnames(mut_tcga_wide), "TCGA", sep = "_")
-
-# DepMap
-mut_depmap <- read.delim("./data/mutation/mutation_DepMap_filter.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
-mut_depmap <- unfactorize(mut_depmap)
-mut_depmap[, 4:ncol(mut_depmap)] <- apply(mut_depmap[, 4:ncol(mut_depmap)], 2, function(x) ifelse(x > 1, 1, x))
-colnames(mut_depmap)[colnames(mut_depmap) == "cancer"] <- "TCGA_classification"
-# Melt
-mut_depmap_melt <- melt(mut_depmap, id.vars = c("sample_ID", "TCGA_classification"), measure.vars = colnames(mut_depmap)[4:length(colnames(mut_depmap))], variable.name = "Gene", value.name = "Mutation_Status")
-# Calce proportion mutated per gene per TCGA classification
-mut_depmap_prop <- mut_depmap_melt %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion_Mut = sum(Mutation_Status) / n())
-# Make wide
-mut_depmap_wide <- dcast(data = mut_depmap_prop, formula = Gene ~ TCGA_classification, fun.aggregate = mean)
-mut_depmap_wide <- mut_depmap_wide[mut_depmap_wide$Gene != "TP53", ]
-rownames(mut_depmap_wide) <- mut_depmap_wide$Gene
-mut_depmap_wide$Gene <- NULL
-colnames(mut_depmap_wide) <- paste(colnames(mut_depmap_wide), "DepMap", sep = "_")
-
-# Correlate all against all (18Q4)
-mut_wide <- bind_cols(mut_depmap_wide, mut_tcga_wide)
-mut_corr <- mut_wide %>% as.matrix %>% cor(method = "spearman") %>% as.data.frame %>% rownames_to_column(var = "var1") %>% gather(var2, value, -var1)
-# Filter self-comparisons and eliminate duplicate correlations
-mut_corr <- filter(mut_corr, !(grepl("DepMap", var1) & grepl("DepMap", var2)) & !(grepl("TCGA", var1) & grepl("TCGA", var2)) & grepl("TCGA", var2))
-# Data management
-colnames(mut_corr) <- c("DepMap", "TCGA", "r")
-mut_corr <- data.frame(apply(mut_corr, 2, function(x) gsub("_TCGA|_DepMap","", x)))
-mut_corr$r <- as.numeric(as.character(mut_corr$r))
-# Set up coprrelation dataframe for plotting
-mut_corr_wide <- dcast(mut_corr, DepMap ~ TCGA)
-rownames(mut_corr_wide) <- mut_corr_wide$DepMap
-mut_corr_wide$DepMap <- NULL
-```
-
-Pseudo-figure caption: This is comparison of binary gene-level mutation frequency profiles between DepMap cancer cell lines and TCGA tumor samples, both classified by TCGA project. In each dataset and for each TCGA classification, the proportion of samples containing at least one mutation was calculated for all genes shared between the two datasets, and the proportions were correlated against each other. Pearson/Spearman correlations (r) between TCGA and DepMap mutation feature sets are shown in the heatmap.
-
-For plots labeled as "5000", the 5,000 mosr variable genes analyzed in the gene expression heatmap were selected for the mutation analyses. Alternatively, for the plots labeled as "252", the genes in the TCGA mutation dataset were analyzed if they were mutated in >=4% annotated samples and had a mutation in at least one cancer cell line from DepMap. TP53 was removed from the heatmap, as was done in Barretina et al. (2012). For the scatterplots, TP53 was retained.
-
-Make heatmaps:
-```{r cn_heatmaps, eval=FALSE, fig.height=4, fig.width=3.75}
-col_fun <- colorRamp2(c(0, 0.2, 0.5, 0.7), c("black", "red3", "yellow", "white"))
-mut_ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(1.5, "in"), border = "black")
-
-# 18Q4
-mut_ht4order <- Heatmap(mut_corr_wide, cluster_rows = FALSE)
-mut_ht <- Heatmap(mut_corr_wide,
-                 name = "Mutation correlation",
-                 col = col_fun, 
-                 rect_gp = gpar(col = "black"),
-                 heatmap_legend_param = mut_ht_legend_list,
-                 row_order = rev(column_order(mut_ht4order)), 
-                 show_column_dend = FALSE, 
-                 cluster_rows = FALSE, 
-                 row_names_side = "left",
-                 row_title = "DepMap cancer cell lines",
-                 column_title = "TCGA tumor samples", 
-                 column_title_side = "bottom")
-# png(filename = "./figures/mut_depmap_tcga_heatmap_spearman_252.png", width = 7.5, height = 8, units = "in", res = 500)
-draw(mut_ht, heatmap_legend_side = "top")
-# dev.off()
-```
-
-## Scatterplots
-
-### CN
-
-```{r cn_scatters_data, eval=FALSE}
-# For both datasets: CN_Status encoded as 1 is non-neutral (-1 or +1) and 0 is neutral
-
-# TCGA
-# Calc proportion of non-neutral CN per gene per TCGA classification
-cn_tcga_prop <- cn_tcga_melt
-cn_tcga_prop$CN_Status <- with(cn_tcga_prop, ifelse(CN != 0, 1, CN))
-cn_tcga_prop <- cn_tcga_prop %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion_NonNeutral_CN = sum(CN_Status) / n(), N = n())
-
-# DepMap
-# Calc proportion of non-neutral CN per gene per TCGA classification
-cn_depmap_prop <- cn_depmap_melt
-cn_depmap_prop$CN_Status <- with(cn_depmap_prop, ifelse(CN != 0, 1, CN))
-cn_depmap_prop <- cn_depmap_prop %>% group_by(TCGA_classification, Gene) %>% summarise(Proportion_NonNeutral_CN = sum(CN_Status) / n(), N = n())
-
-# Merge non-neutral CN proportion dataframes for plotting
-cn_props <- merge(cn_depmap_prop, cn_tcga_prop, by = c("TCGA_classification", "Gene"), all = TRUE, suffixes = c("_DepMap","_TCGA"))
-```
-
-Pseudo-caption: This is a comparison of proportions of non-neutral copy number samples between cancer cell lines and TCGA samples in our 16 TCGA classification categories. Each point corresponds to a single gene in the associated cancer type. For these plots, thresholded copy number levels of -1 (loss) and +1 (gain) were recoded as "non-neutral."
-
-```{r cn_scatters, fig.height=8, fig.width=8, eval=FALSE}
-cn_props_scatters <- ggplot(data = cn_props, aes(x = Proportion_NonNeutral_CN_TCGA, y = Proportion_NonNeutral_CN_DepMap)) +
-  facet_wrap(~ TCGA_classification, nrow = 4) +
-  geom_point(alpha = 0.3, color = "darkcyan") +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
-  geom_smooth(method = "lm", se = FALSE, lwd = 0.5, color = "darkgray") +
-  stat_cor(method = "pearson", label.x = 0.85, label.y = 0.15, label.sep = "\n") +
-  # geom_text_repel(data = subset(cn_props, Proportion_NonNeutral_CN_TCGA > 0.4 & Proportion_NonNeutral_CN_DepMap > 0.6), aes(x = Proportion_NonNeutral_CN_DepMap, y = Proportion_NonNeutral_CN_DepMap, label = Gene), size = 3) +
-  labs(x = "TCGA non-neutral CN frequency", y = "DepMap non-neutral CN frequency", caption = paste0(formatC(x = length(unique(cn_props$Gene)), format = "d", big.mark = ","), " genes compared."))
-
-ggsave("./figures/cn_depmap_tcga_scatter_pearson.png", cn_props_scatters, device = "png", dpi = 450, width = 12, height = 12, units = "in")
-```
-
-### Mut
-
-```{r mut_scatters_data, eval=FALSE}
-# Merge mutation proportion dataframes for plotting
-mut_props <- merge(mut_depmap_prop, mut_tcga_prop, by = c("TCGA_classification", "Gene"), all = TRUE, suffixes = c("_DepMap","_TCGA"))
-```
-
-Pseudo-caption: This is a comparison of proportions of mutated samples between cancer cell lines and TCGA samples in our 16 TCGA classification categories. Each point corresponds to a single gene in the associated cancer type.
-
-```{r mut_scatters, fig.height=8, fig.width=8, eval=FALSE}
-mut_props_scatters <- ggplot(data = mut_props, aes(x = Proportion_Mut_TCGA, y = Proportion_Mut_DepMap)) +
-  facet_wrap(~ TCGA_classification, nrow = 4) +
-  geom_point(alpha = 0.3, color = "darkcyan") +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  scale_x_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
-  geom_smooth(method = "lm", se = FALSE, lwd = 0.5, color = "gainsboro") +
-  stat_cor(method = "pearson", label.x = 0.85, label.y = 0.15, label.sep = "\n") +
-  geom_text_repel(data = subset(mut_props, Proportion_Mut_TCGA > 0.3 & Proportion_Mut_DepMap > 0.3), aes(x = Proportion_Mut_TCGA, y = Proportion_Mut_DepMap, label = Gene), size = 3) +
-  labs(x = "TCGA mutation frequency", y = "DepMap mutation frequency", caption = paste0(formatC(x = length(unique(mut_props$Gene)), format = "d", big.mark = ","), " genes compared."))
-
-ggsave("./figures/mut_depmap_tcga_scatter_pearson.png", mut_props_scatters, device = "png", dpi = 450, width = 12, height = 12, units = "in")
-```
-
-
 
 
 
@@ -800,7 +826,7 @@ ggsave("./figures/mut_depmap_tcga_scatter_pearson.png", mut_props_scatters, devi
 
 ## Data management
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 tcga_hist_converter <- read.xlsx("./data/TCGA/cell_line_annotation.xlsx", sheet = 1, startRow = 1, colNames = TRUE, rowNames = FALSE)
 tcga_hist_converter <- add_column(.data = tcga_hist_converter, TCGA_manual = NA, .after = "TCGA_combine")
 tcga_hist_converter <- tcga_hist_converter[with(tcga_hist_converter, order(primary_DepMap, subtype_DepMap, primary_site_CTRP, primary_hist_CTRP, subtype_CTRP, tissue1_GDSC)),]
@@ -818,7 +844,7 @@ tcga_hist_converter$TCGA_combine <- with(tcga_hist_converter, ifelse(is.na(TCGA_
 
 ## Pozdeyev et al (2016) matched data
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 auc_matched <- read.delim("./data_munging/pharmacogenomics_raw_files/celline_stack.csv.gz", sep = ",")
 auc_matched <- merge(ccl_histologies, auc_matched , by = "Cell_line", all.y = TRUE)
 num_auc_per_db_matched <- auc_matched %>% count(Database)
@@ -829,7 +855,7 @@ num_db_per_ccl_matched <- unique(select(auc_matched , Database, Cell_line)) %>% 
 ```
 
 Plots:
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn_ccl_matched_poz <- venn.diagram(list("CCLE" = unique(filter(ccl_per_db_matched, Database == "CCLE"))$Cell_line, "CTRP" = unique(filter(ccl_per_db_matched, Database == "CTRP"))$Cell_line, "GDSC" = unique(filter(ccl_per_db_matched, Database == "GDSC"))$Cell_line), resolution = 5000, main = "Overlap of cancer cell lines (CCLs) screened in matched_all_pairs dataset", main.fontface = "bold", lty = rep("blank", 3), fill = c("springgreen4", "steelblue4", "turquoise4"), alpha = c(0.5, 0.5, 0.5), cat.pos = c(-30, 30, 180), cat.dist = c(0.01, 0.001, 0.001), cat.cex = 1.5, cex = 1, filename = NULL)
 png("./gcn_denise/pozdeyev_matched/pozdeyev_venn_ccl_matched.png", res = 500, units = "in", width = 6, height = 6)
@@ -903,7 +929,7 @@ Column descriptions for `pgx_all_auc`:
 - All other columns: compound and drug names that were screened in at least one CCL in at least one source dataset
     - NA values indictate that compound wasn't screened in the respective CCL in the respective source dataset
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 ccl_info$sample_ID <- with(ccl_info, paste(source, source_ccl_name, source_histology, sep = "_"))
 
 ccle <- read.delim("./data_munging/pharmacogenomics_raw_files/CCLE_NP24.2009_Drug_data_2015.02.24_20190307.csv", sep = ",", header  = TRUE, check.names = FALSE)
@@ -977,7 +1003,7 @@ pgx_all_auc <- do.call(rbind, c(lapply(pgx_auc_list, function(x) data.frame(c(x,
 ```
 
 Compare histology representation for CCLE, CTRP, and GDSC:
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 sort(unique(na.omit(ccle_auc_long$source_histology)))
 sort(unique(na.omit(ctrp_auc_long$source_histology)))
 sort(unique(na.omit(gdsc_auc_long$source_histology)))
@@ -988,7 +1014,7 @@ setdiff(unique(na.omit(gdsc_auc_long$source_histology)), unique(na.omit(ctrp_auc
 
 ### Summary figures
 
-```{r, eval=FALSE}
+```{r, eval = FALSE}
 hist_auc_ccle <- ggplot(data = ccle_auc_long) +
   geom_histogram(mapping = aes(x = AUC, fill = source), color = "black", binwidth = 0.25, boundary = 0, closed = "left") +
   scale_x_continuous(breaks = seq(0, 8, by = 1), labels = seq(0, 8, by = 1)) +
