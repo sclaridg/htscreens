@@ -196,6 +196,8 @@ test <- test[order(test$n, decreasing = TRUE),]
 
 `r nrow(filter(test, n == 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
 
+**UPDATE WITH POZDEYEV AUC DATA**
+
 ```{r, eval=FALSE}
 # Drug metadata
 drug_meta <- read.delim("./data_munging/drug_id_drug_name_table_10_12_2018.tsv", sep = "\t", header = FALSE)
