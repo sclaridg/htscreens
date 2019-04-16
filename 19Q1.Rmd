@@ -49,6 +49,15 @@ library(VennDiagram)
 theme_set(theme_light())
 ```
 
+```{r functions}
+unfactorize <- function(df){
+  for(i in which(sapply(df, class) == "factor")) {
+    df[[i]] = as.character(df[[i]])
+  }
+  return(df)
+}
+```
+
 # DATA
 
 --------------------------------------------------------------------------------
@@ -73,8 +82,8 @@ This comprehensive cancer cell line information was curated by both Daniel Chary
 
 **Might not need this anymore due to increased care taken by DepMap to harmonize disease names**
 ```{r}
-# ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-# lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+lineage_converter <- unique(ccl_converter[, c("Broad_ID", "grouped_general_doid", "group_general_lineage_name")])
 ```
 
 **DepMap metadata**
@@ -88,9 +97,14 @@ ccl_meta$Cell_line <- as.character(lapply(ccl_meta$CCLE_Name, function(x) strspl
 ccl_meta$histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_Name, ignore.case = TRUE))
 # Convert Primary.Disease entries to all lower case to fix factorization issue
 ccl_meta$Primary.Disease <- as.factor(tolower(ccl_meta$Primary.Disease))
-# Harmonize ID column name and rename CCLE_Name column to fit with dataframe style
-colnames(ccl_meta)[colnames(ccl_meta) == "CCLE_Name"] <- "CCLE_ccl_name"
+# Harmonize ID column name
 colnames(ccl_meta)[colnames(ccl_meta) == "DepMap_ID"] <- "Broad_ID"
+
+# Remove two rows that contain cell lines with two different histologies
+# The histologies that are kept are verified through matching in Cellosaurus and Cell Model Passports
+# KMH2, haematopoietic_and_lymphoid: https://web.expasy.org/cellosaurus/CVCL_1330, https://cellmodelpassports.sanger.ac.uk/passports/SIDM01018
+# MS1, lung: https://web.expasy.org/cellosaurus/CVCL_1429, https://cellmodelpassports.sanger.ac.uk/passports/SIDM00245
+ccl_meta <- subset(ccl_meta, CCLE_Name != "KMH2_THYROID" & CCLE_Name != "MS1_SKIN")
 ```
 
 ## G2P
@@ -120,11 +134,11 @@ g2p_drugs
 g2p_genes
 g2p_lins
 
-# Order and genes taken from pink heatmapo from Daniel's analyses
-g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
+# Order and genes taken from pink heatmap from Daniel's analyses
+# g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
 ```
 
-```{r}
+```{r, eval=FALSE}
 # levels(g2p_filt$Phenotype.Description)
 unique(g2p_filt$group_general_lineage_name)
 levels(g2p_filt$group_general_lineage_name)
@@ -197,6 +211,14 @@ test <- test[order(test$n, decreasing = TRUE),]
 `r nrow(filter(test, n == 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
 
 **UPDATE WITH POZDEYEV AUC DATA**
+
+```{r}
+ccle <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
+ctrp <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
+gdsc <- read.delim("./../htscreens_giant_files/pozdeyev_data/GDSC_drug_response_metrics.csv.gz", sep = ",")
+```
+
+
 
 ```{r, eval=FALSE}
 # Drug metadata
