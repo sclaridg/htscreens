@@ -330,7 +330,7 @@ gdsc_ptmuts <- FilterForPointMuts(dataframe = gdsc, outfile = "./data_munging/rd
 
 ### Summaries
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ccle <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
 # ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes.rds")
 gdsc <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
@@ -424,10 +424,22 @@ crispr_data_g2p$Primary.Disease <- factor(crispr_data_g2p$Primary.Disease)
 crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_data_g2p, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_data_g2p, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
-ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
-ccle_signif_lineage <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
+ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
+ccle_signif_gene$G2P_Drug_Gene <- ifelse(ccle_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
+ccle_signif_lineage <- WilcoxonTestDF(dataframe = filter(ccle_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
+
+# ctrp_signif_gene <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ctrp_signif_g2p_gene.rds")
+# ctrp_signif_gene$G2P_Drug_Gene <- ifelse(ctrp_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
+# ctrp_signif_lineage <- WilcoxonTestDF(dataframe = filter(ctrp_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
+
+gdsc_signif_gene <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/gdsc_signif_g2p_gene.rds")
+gdsc_signif_gene$G2P_Drug_Gene <- ifelse(gdsc_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
+gdsc_signif_lineage <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
+```{r}
+test <- gdsc_ptmuts %>% count(Drug_Gene_Lin, Mutation_Status)
+```
 
 
 # SESSION INFORMATION
