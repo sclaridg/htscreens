@@ -59,27 +59,41 @@ unfactorize <- function(df){
 
 MergeOmicsG2P <- function(database, outfile) {
   # Merge mutation status, CN, and GE omics data with drugscreen results and metadata
-  filt <- auc %>% filter(Database == database) %>% select(Cell_line, Histology, TCGA_classification, CCLE_Name, Broad_ID, Drug, AUC_IC50)
-  print(paste0("Filtered for ", database, "."))
-  colnames(filt)[colnames(filt) == "AUC_IC50"] <- "Score"
-  
-  # Get all G2Pgene-cell line combinations
-  grid <- expand.grid("Cell_line" = unique(filt$Cell_line), "Gene" = g2p_genes)
-  data <-  merge(filt, grid, by = "Cell_line", all.y = TRUE)
-  print("Merged grid.")
-  
-  # Merge metadata
-  data <-  merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = c("Cell_line", "Histology", "CCLE_Name", "Broad_ID"), all.x = TRUE)
-  ## Add columns for G2P drug-gene and drug-gene-lineage sorting
-  data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
-  data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$Primary.Disease)
-  print("Merged metadata.")
+  if(database %in% c("CCLE", "CTRP", "GDSC")) {
+    filt <- auc %>% filter(Database == database) %>% select(Cell_line, Histology, TCGA_classification, CCLE_Name, Broad_ID, Drug, AUC_IC50)
+    print(paste0("Processing ", database, " data."))
+    colnames(filt)[colnames(filt) == "AUC_IC50"] <- "Score"
+    
+    # Get all G2Pgene-cell line combinations
+    grid <- expand.grid("Cell_line" = unique(filt$Cell_line), "Gene" = g2p_genes)
+    data <-  merge(filt, grid, by = "Cell_line", all.y = TRUE)
+    print("Merged grid.")
+    # Merge metadata
+    data <-  merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = c("Cell_line", "Histology", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+    ## Add columns for G2P drug-gene and drug-gene-lineage sorting
+    data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
+    data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$Primary.Disease)
+    print("Merged metadata.")
+  if(database == "CRISPR") {
+    print(paste0("Processing ", database, " data."))
+    # Melt CRISPR dataset for merging
+    data <- melt(crispr, id.vars = "Broad_ID", measure.vars = colnames(crispr)[2:ncol(crispr)], variable.name = "Gene", value.name = "Score")
+    # Merge cell line metadata
+    data <- merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = "Broad_ID", all.x = TRUE)
+    data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
+    data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$Primary.Disease)
+    print("Merged metadata.")
+  }
   
   # Merge mutation calls
   data <- merge(data, maf_df_filt, by = c("Gene", "Broad_ID"), all.x = TRUE)
   data$Mutation_Status <- ifelse(is.na(data$Mutation_Status), 0, data$Mutation_Status)
   ## Identify point mutations
   data$PointMutation <- ifelse(is.na(data$PointMutation), 1, data$PointMutation)
+  # Summarize number of mutant and Wildtype cell lines
+  data_muts_summ <- data %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
+  ## Merge test results back into full dataset, which restores information lost in the summarization
+  data <- merge(data_muts_summ, data, by = "Gene")
   ## Add color columns for plotting
   if(database == "CCLE") {
     data$Color <- ifelse(data$Mutation_Status == 0, "palegreen3", "springgreen4")
@@ -93,8 +107,12 @@ MergeOmicsG2P <- function(database, outfile) {
     data$Color <- ifelse(data$Mutation_Status == 0, "paleturquoise3", "turquoise4")
     data$Color <- factor(data$Color)
   }
+  if(database == "CRISPR") {
+    data$Color <- ifelse(data$Mutation_Status == 0, "thistle", "darkorchid")
+    data$Color <- factor(data$Color)
+  }
   print("Merged mutation calls.")
-  
+
   # Merge GE data
   data <- merge(data, ge_filt, by = c("Gene", "Broad_ID"), all.x = TRUE)
   print("Merged gene expression data.")
@@ -297,6 +315,8 @@ test <- test[order(test$n, decreasing = TRUE),]
 ```
 
 `r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
+
+**NEED TO RUN CTRP OVER WEEKEND**
 ```{r, eval=FALSE}
 # Load in Pozdeyev et al. (2016) data
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
@@ -362,13 +382,13 @@ for(drug in g2p_drugs) {
 ### Merge CRISPR data and annotations
 
 ```{r, eval=FALSE}
-crispr <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
+crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
-colnames(crispr) <- gsub(" .*", "", colnames(crispr))
-colnames(crispr)[1] <- "Broad_ID"
+colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
+colnames(crispr_all)[1] <- "Broad_ID"
 
 # Melt CRISPR dataset for merging
-crispr_melt <- melt(crispr, id.vars = "Broad_ID", measure.vars = colnames(crispr)[2:ncol(crispr)], variable.name = "Gene", value.name = "Score")
+crispr_melt <- melt(crispr_all, id.vars = "Broad_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
 # Merge cell line metadata
 crispr_melt <- merge(crispr_melt, ccl_meta, by = "Broad_ID", all.x = TRUE)
@@ -416,6 +436,13 @@ crispr_data_g2p$Mutation_Status <- factor(crispr_data_g2p$Mutation_Status)
 crispr_data_g2p$Primary.Disease <- factor(crispr_data_g2p$Primary.Disease)
 ```
 
+Test merging and filtering functions on CRISPR data:
+```{r, eval=FALSE}
+crispr <- MergeOmicsG2P(database = "CRISPR", outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes.rds")
+crispr_ptmuts <- FilterForPointMuts(dataframe = crispr, outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts.rds")
+```
+
+
 # WILCOXON TESTS
 
 --------------------------------------------------------------------------------
@@ -437,8 +464,39 @@ gdsc_signif_gene$G2P_Drug_Gene <- ifelse(gdsc_signif_gene$Drug_Gene %in% g2p_dru
 gdsc_signif_lineage <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
+# SANDBOX
+
+--------------------------------------------------------------------------------
+
+Filter for BRCA1/2 mutations to see if we catch non-germline mutations/CN variants:
 ```{r}
-test <- gdsc_ptmuts %>% count(Drug_Gene_Lin, Mutation_Status)
+test <- filter(maf_df, Gene == "BRCA1" | Gene == "BRCA2")
+test2 <- filter(cn_melt, Gene == "BRCA1" | Gene == "BRCA2")
+```
+
+Test out standardization/normalization methods on Pozdeyev data. This yields evidence that the AUC values are already normalized.
+```{r, eval=FALSE}
+ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
+ccle_all$AUC_IC50_standardized <- scale(ccle_all$AUC_IC50, center = TRUE, scale = TRUE)
+ccle_all$AUC_IC50_normalized <- scale(ccle_all$AUC_IC50, center = min(ccle_all$AUC_IC50[!is.na(ccle_all$AUC_IC50)]), scale = max(ccle_all$AUC_IC50[!is.na(ccle_all$AUC_IC50)]) - min(ccle_all$AUC_IC50[!is.na(ccle_all$AUC_IC50)]))
+ctrp_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
+ctrp_all$AUC_IC50_standardized <- scale(ctrp_all$AUC_IC50, center = TRUE, scale = TRUE)
+ctrp_all$AUC_IC50_normalized <- scale(ctrp_all$AUC_IC50, center = min(ctrp_all$AUC_IC50[!is.na(ctrp_all$AUC_IC50)]), scale = max(ctrp_all$AUC_IC50[!is.na(ctrp_all$AUC_IC50)]) - min(ctrp_all$AUC_IC50[!is.na(ctrp_all$AUC_IC50)]))
+gdsc_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/GDSC_drug_response_metrics.csv.gz", sep = ",")
+gdsc_all$AUC_IC50_standardized <- scale(gdsc_all$AUC_IC50, center = TRUE, scale = TRUE)
+gdsc_all$AUC_IC50_normalized <- scale(gdsc_all$AUC_IC50, center = min(gdsc_all$AUC_IC50[!is.na(gdsc_all$AUC_IC50)]), scale = max(gdsc_all$AUC_IC50[!is.na(gdsc_all$AUC_IC50)]) - min(gdsc_all$AUC_IC50[!is.na(gdsc_all$AUC_IC50)]))
+
+auc_test <- bind_rows(ccle_all, ctrp_all, gdsc_all)
+
+ggplot(data = auc_test) +
+  geom_histogram(aes(x = AUC_IC50)) +
+  facet_wrap(~ Database, ncol = 3, scales = "free_y")
+ggplot(data = auc_test) +
+  geom_histogram(aes(x = AUC_IC50_normalized)) +
+  facet_wrap(~ Database, ncol = 3, scales = "free_y")
+ggplot(data = auc_test) +
+  geom_histogram(aes(x = AUC_IC50_standardized)) +
+  facet_wrap(~ Database, ncol = 3, scales = "free_y")
 ```
 
 

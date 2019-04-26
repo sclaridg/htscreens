@@ -660,7 +660,7 @@ summ
 ```
 
 ```{r, eval=FALSE}
-cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q4.rds")
+cn_melt <- readRDS("./data_munging/18Q4/cn_melt_18Q4.rds")
 ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 # ge_melt_18Q4 <- readRDS("./data_munging/rds/ge_melt_18Q4.rds")
 
@@ -673,7 +673,7 @@ ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 ### Merge drug data and annotations
 
 ```{r}
-maf_df <- readRDS("./data_munging/rds/maf_df_18Q4.rds")
+maf_df <- readRDS("./data_munging/18Q4/maf_df_18Q4.rds")
 test <- filter(maf_df, Hugo_Symbol %in% g2p_genes) %>% count(Hugo_Symbol, CCLE_Name)
 test <- test[order(test$n, decreasing = TRUE),]
 ```
