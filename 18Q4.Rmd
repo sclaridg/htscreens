@@ -660,7 +660,7 @@ summ
 ```
 
 ```{r, eval=FALSE}
-cn_melt <- readRDS("./data_munging/rds/cn_melt_18Q4.rds")
+cn_melt <- readRDS("./data_munging/18Q4/cn_melt_18Q4.rds")
 ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 # ge_melt_18Q4 <- readRDS("./data_munging/rds/ge_melt_18Q4.rds")
 
@@ -673,7 +673,7 @@ ge_melt_18Q3 <- readRDS("./../htscreens_giant_files/ge_melt_18Q3.rds")
 ### Merge drug data and annotations
 
 ```{r}
-maf_df <- readRDS("./data_munging/rds/maf_df_18Q4.rds")
+maf_df <- readRDS("./data_munging/18Q4/maf_df_18Q4.rds")
 test <- filter(maf_df, Hugo_Symbol %in% g2p_genes) %>% count(Hugo_Symbol, CCLE_Name)
 test <- test[order(test$n, decreasing = TRUE),]
 ```
@@ -1244,22 +1244,10 @@ Example of how to describe Spearman correaltion results: A Spearman's correlatio
 ## CRISPR
 
 ```{r, warning=FALSE}
-crispr_pearson_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                         summarize(p = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$p.value,
-                                   corr = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$estimate,
-                                   Metric = "Gene Expression")
-crispr_pearson_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                         summarize(p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$p.value,
-                                   corr = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$estimate,
-                                   Metric = "Copy Number")
-crispr_spearman_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                          summarize(p = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$p.value,
-                                    corr = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$estimate,
-                                    Metric = "Gene Expression")
-crispr_spearman_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%
-                          summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value,
-                                    corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                                    Metric = "Copy Number")
+crispr_pearson_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>% summarize(p = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = RPKM, method = "pearson", use = "complete.obs")$estimate, Metric = "Gene Expression")
+crispr_pearson_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>% summarize(p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs")$estimate, Metric = "Copy Number")
+crispr_spearman_res_GE <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>%summarize(p = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = RPKM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression")
+crispr_spearman_res_CN <- crispr_data_g2p %>% group_by(Hugo_Symbol) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number")
 ```
 
 ## Drug screens
@@ -2438,9 +2426,7 @@ g2p_corr_stats <- g2p_corr_stats %>% separate(col = Metric, into = c("Correlatio
 g2p_corr_stats$Metric <- ifelse(g2p_corr_stats$Metric == "GE", "Gene Expression", "Copy Number")
 g2p_corr_stats
 
-g2p_mut_stats <- g2p_corr_all %>% group_by(Dataset, G2P_DGL) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif),
-                                                                                                   Total_Tests = length(Mut_Signif),
-                                                                                                   Perc_Signif = N_Signif_Muts / Total_Tests * 100)
+g2p_mut_stats <- g2p_corr_all %>% group_by(Dataset, G2P_DGL) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif), Total_Tests = length(Mut_Signif), Perc_Signif = N_Signif_Muts / Total_Tests * 100)
 g2p_mut_stats
 ```
 
