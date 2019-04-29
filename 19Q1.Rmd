@@ -35,6 +35,7 @@ options(mc.cores = parallel::detectCores(), expressions = 5e5)
 ```
 
 ```{r}
+library(cowplot)
 library(crunch)
 library(ggpubr)
 library(ggrepel)
@@ -141,24 +142,6 @@ FilterForPointMuts <- function(dataframe, outfile) {
   ptmuts <- unique(ptmuts)
   saveRDS(ptmuts, outfile, compress = "xz")
   return(ptmuts)
-}
-
-adj_signif <- function(df, alpha) {
-  # Takes df from compare_means and creates a signif code column for FDR-adjusted p-vals
-  df$p.signif.adj <- ifelse(df$p.adj <= alpha, "*", NA)
-  df$p.signif <- ifelse(df$p.signif == "ns", NA, df$p.signif)
-  df$p.short <- formatC(df$p, format = "g", digits =  2)
-  df$p.adj.short <- formatC(df$p.adj, format = "g", digits =  2)
-  return(df)
-}
-
-WilcoxonTestDF <- function(dataframe, measure_var, grouping, outfile) {
-  require(ggpubr)
-  signif <- compare_means(Score ~ Mutation_Status, group.by = grouping, data = dataframe, method = "wilcox.test", p.adjust.method = "BH")
-  signif <- adj_signif(signif, alpha = 0.05)
-  signif <- signif[order(signif$p),]
-  saveRDS(signif, outfile)
-  return(signif)
 }
 ```
 
@@ -350,7 +333,7 @@ gdsc_ptmuts <- FilterForPointMuts(dataframe = gdsc, outfile = "./data_munging/rd
 
 ### Summaries
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ccle <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
 ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes.rds")
 gdsc <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
@@ -370,9 +353,9 @@ drug_summ <- data.frame(Drug = character(), Dataset_Count = integer(), stringsAs
 
 for(drug in g2p_drugs) {
   counter = 0
-  if(drug %in% as.character(unique(ccle_data_g2p$Drug))) { counter <- counter + 1 }
-  if(drug %in% as.character(unique(ctrp_data_g2p$Drug))) { counter <- counter + 1 }
-  if(drug %in% as.character(unique(gdsc_data_g2p$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(ccle$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(ctrp$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(gdsc$Drug))) { counter <- counter + 1 }
   drug_summ <- rbind(drug_summ, data.frame(Drug = drug, Dataset_Count = counter))
 }
 ```
@@ -450,14 +433,39 @@ crispr_fxn <- MergeOmicsG2P(database = "CRISPR", outfile = "./../htscreens_giant
 crispr_ptmuts_fxn <- FilterForPointMuts(dataframe = crispr_fxn, outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
 ```
 
+```{r}
+crispr_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_fxn.rds")
+crispr_ptmuts_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
+```
+
 
 # Wilcoxon tests
 
 --------------------------------------------------------------------------------
 
-```{r, eval=TRUE}
-crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_data_g2p, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
-crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_data_g2p, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
+```{r wilcoxon_functions}
+adj_signif <- function(df, alpha) {
+  # Takes df from compare_means and creates a signif code column for FDR-adjusted p-vals
+  df$p.signif.adj <- ifelse(df$p.adj <= alpha, "*", NA)
+  df$p.signif <- ifelse(df$p.signif == "ns", NA, df$p.signif)
+  df$p.short <- formatC(df$p, format = "g", digits =  2)
+  df$p.adj.short <- formatC(df$p.adj, format = "g", digits =  2)
+  return(df)
+}
+
+WilcoxonTestDF <- function(dataframe, measure_var, grouping, outfile) {
+  require(ggpubr)
+  signif <- compare_means(Score ~ Mutation_Status, group.by = grouping, data = dataframe, method = "wilcox.test", p.adjust.method = "BH")
+  signif <- adj_signif(signif, alpha = 0.05)
+  signif <- signif[order(signif$p),]
+  saveRDS(signif, outfile)
+  return(signif)
+}
+```
+
+```{r, eval=FALSE}
+crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_g2p, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
+crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_g2p, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
 ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
 ccle_signif_gene$G2P_Drug_Gene <- ifelse(ccle_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
@@ -477,42 +485,44 @@ gdsc_signif_lineage <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug_Gene_
 --------------------------------------------------------------------------------
 
 Spearman correlations for gene expression and copy number:
-```{r fig.height=8, fig.width=16}
-crispr_spear_ge <- transform(crispr_data_g2p %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
-crispr_spear_cn <- transform(crispr_data_g2p %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
+```{r fig.height=6, fig.width=12}
+crispr_spear_ge <- transform(crispr_g2p %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
+crispr_spear_cn <- transform(crispr_g2p %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
 
-spearman_KRAS <- rbind(filter(crispr_data_g2p, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), filter(crispr_data_g2p, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"))
+spearman_KRAS <- rbind(filter(crispr_g2p, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), filter(crispr_g2p, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"))
 
-crispr_ge_spearman_corr_inset <- ggplot(filter(crispr_data_g2p, Gene == "KRAS"), aes(x = TPM, y = Score)) +
+crispr_ge_spearman_corr_inset <- ggplot(filter(crispr_g2p, Gene == "KRAS"), aes(x = TPM, y = Score)) +
   geom_point(pch = 21, fill = "cadetblue3", alpha = 0.6) +
   labs(x = "KRAS Gene Expression (TPM)", y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[1], 2), " (p = ", formatC(as.numeric(spearman_KRAS$p[1]), format = "e", digits = 1), ")"))
 
-crispr_cn_spearman_corr_inset <- ggplot(filter(crispr_data_g2p, Gene == "KRAS"), aes(x = CN, y = Score)) +
+crispr_cn_spearman_corr_inset <- ggplot(filter(crispr_g2p, Gene == "KRAS"), aes(x = CN, y = Score)) +
   geom_point(pch = 21, fill = "palegreen2", alpha = 0.6) +
-  labs(x = "KRAS Copy Number (log2 ratio)", y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[2], 2), " (p = ", formatC(as.numeric(spearman_KRAS$p[2]), format = "e", digits = 1), ")"))
+  labs(x = expression("KRAS Copy Number"~(log[2]-ratio)), y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[2], 2), " (p = ", formatC(as.numeric(spearman_KRAS$p[2]), format = "e", digits = 1), ")"))
 
 crispr_ge_spearman_corr_plot <- ggplot(data = crispr_spear_ge, aes(x = Gene, y = corr)) +
   geom_point(aes(fill = p_log10), pch = 21, size = 5) +
-  scale_fill_gradient2(low = "white", mid = "white", high = "deepskyblue4", midpoint = 1.3010299957) +
-  coord_cartesian(ylim = c(-0.45, 0.2)) +
-  theme(legend.position = "bottom", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
-  labs(fill = "-log10(p)", x = "Gene", y = expression("Spearman Correlation Coefficient"~(r[s]))) +
-  annotation_custom(ggplotGrob(crispr_ge_spearman_corr_inset), xmin = 12, xmax = 32, ymin = -0.15, ymax = -0.45) +
-  geom_curve(aes(x = 3.5, y = -0.27, xend = 14, yend = -0.165), color = "lightgray", curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))
+  scale_fill_gradientn(colours = c("white", "deepskyblue4"), breaks = c(0, 3, 6, 9, 12, 15), labels = c(0, 3, 6, 9, 12, 15), limits = c(0, 15)) +
+  coord_cartesian(ylim = c(-0.325, 0.325)) +
+  scale_y_continuous(breaks = seq(-0.4, 0.4, by = 0.05), labels = seq(-0.4, 0.4, by = 0.05)) +
+  theme(legend.position = c(0.15, 0.95), legend.direction = "horizontal", legend.key.size = unit(0.05, "npc"), axis.text.x = element_text(angle = 65, hjust = 1, vjust = 1, size = 10)) +
+  labs(title = "Gene Expression", fill = expression(-log[10](p)), x = "Gene", y = expression("Spearman Correlation Coefficient"~(r[s]))) +
+  annotation_custom(ggplotGrob(crispr_ge_spearman_corr_inset), xmin = 12, xmax = 32, ymin = -0.325, ymax = -0.1) +
+  geom_curve(aes(x = 2, y = -0.262, xend = 13.7, yend = -0.112), color = "lightgray", curvature = -0.45, arrow = arrow(length = unit(0.03, "npc")))
 
 crispr_cn_spearman_corr_plot <- ggplot(data = crispr_spear_cn, aes(x = Gene, y = corr)) +
   geom_point(aes(fill = p_log10), pch = 21, size = 5) +
-  scale_fill_gradient2(low = "white", mid = "white", high = "green4", midpoint = 1.3010299957) +
-  coord_cartesian(ylim = c(-0.45, 0.2)) +
-  theme(legend.position = "bottom", axis.title.y = element_blank(), axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
-  labs(fill = "-log10(p)", x = "Gene", y = "Spearman Correlation Coefficient (r_s)") +
-  annotation_custom(ggplotGrob(crispr_cn_spearman_corr_inset), xmin = 12, xmax = 32, ymin = -0.15, ymax = -0.45) +
-  geom_curve(aes(x = 2.5, y = -0.232, xend = 14, yend = -0.165), color = "lightgray", curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))
+  scale_fill_gradientn(colours = c("white", "green4"), breaks = c(0, 3, 6, 9, 12, 15), labels = c(0, 3, 6, 9, 12, 15), limits = c(0, 15)) +
+  coord_cartesian(ylim = c(-0.325, 0.325)) +
+  scale_y_continuous(breaks = seq(-0.4, 0.4, by = 0.05), labels = seq(-0.4, 0.4, by = 0.05)) +
+  theme(legend.position = c(0.15, 0.95), legend.direction = "horizontal", legend.key.size = unit(0.05, "npc"), axis.title.y = element_blank(), axis.text.x = element_text(angle = 65, hjust = 1, vjust = 1, size = 10)) +
+  labs(title = "Copy Number", fill = expression(-log[10](p)), x = "Gene", y = expression("Spearman Correlation Coefficient"~(r[s]))) +
+  annotation_custom(ggplotGrob(crispr_cn_spearman_corr_inset), xmin = 12, xmax = 32, ymin = -0.325, ymax = -0.1) +
+  geom_curve(aes(x = 2, y = -0.255, xend = 13.7, yend = -0.112), color = "lightgray", curvature = -0.2, arrow = arrow(length = unit(0.03, "npc")))
 
 crispr_spearman_corr_plot <- plot_grid(crispr_ge_spearman_corr_plot, crispr_cn_spearman_corr_plot, align = "h")
 crispr_spearman_corr_plot
 
-# ggsave("./plots/manuscript/crispr_spearman_corr_plot.pdf", crispr_spearman_corr_plot, device = "pdf", dpi = 450, width = 16, height = 8, units = "in")
+ggsave("./plots/manuscript/crispr_spearman_corr_plot.pdf", crispr_spearman_corr_plot, device = "pdf", dpi = 450, width = 20, height = 10, units = "in")
 ```
 
 # DGL KS tests
@@ -522,25 +532,36 @@ crispr_spearman_corr_plot
 ```{r KS_functions}
 MakeCorrResSummaryTable <- function(df_list, dataset_name) {
   # Input: list of dataframes corresponding to Drug_Gene groupings in the drugscreen datasets filtered for point mutations
-  CorrResSummaryTable <- data.frame(matrix(ncol = 6, nrow = 0))
+  CorrResSummaryTable <- data.frame(matrix(ncol = 7, nrow = 0))
   for(i in 1:length(df_list)) {
-    corr_res <- df_list[[i]] %>% group_by(G2P_Drug_Gene_Lin) %>% summarize(Dataset = dataset_name,
+    corr_res <- df_list[[i]] %>% group_by(G2P_Drug_Gene_Lin) %>% summarize(
+                Dataset = dataset_name,
                 Drug_Gene = names(df_list)[i],
+                G2P_Drug_Gene = ifelse(Drug_Gene %in% g2p_druggenes, "Yes", "No"),
                 Lineages = paste(as.character(unique(Primary.Disease)), collapse = ", "),
                 N_Lineages = length(as.character(unique(Primary.Disease))),
                 Spearman_Corr_GE = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
                 Spearman_Corr_CN = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate)
-    dgl_signif <- compare_means(Score ~ Mutation_Status, data = df_list[[i]], group.by = "G2P_Drug_Gene_Lin", method = "wilcox.test")[, c("G2P_Drug_Gene_Lin", "p")]
+    print(names(df_list)[i])
+    
+    if(length(unique(df_list[[i]]$Mutation_Status)) == 2) {
+      dgl_signif <- compare_means(Score ~ Mutation_Status, data = df_list[[i]], group.by = "G2P_Drug_Gene_Lin", method = "wilcox.test")[, c("G2P_Drug_Gene_Lin", "p")]
+    }
+    if(length(unique(df_list[[i]]$Mutation_Status)) == 1) {
+      dgl_signif <- data.frame("G2P_Drug_Gene_Lin" = NA, "p" = NA)
+    }
+    
     corr_res <- merge(corr_res, dgl_signif, by = "G2P_Drug_Gene_Lin", all = TRUE)
     corr_res$Mut_Signif <- ifelse(corr_res$p < 0.05, 1, 0)
     CorrResSummaryTable <- rbind(CorrResSummaryTable, corr_res)
   }
+  CorrResSummaryTable <- CorrResSummaryTable[!is.na(CorrResSummaryTable$G2P_Drug_Gene_Lin), ]
   return(CorrResSummaryTable)
 }
 
 G2PCorrKStest <- function(dataset, dataset_name) {
   # Input: CorrResSummaryTable created by the MakeCorrResSummaryTable function
-  Metric <- colnames(dataset)[6:9]
+  Metric <- colnames(dataset)[7:8]
   D_stat <- NULL
   pval <- NULL
   signif <- NULL
@@ -548,7 +569,7 @@ G2PCorrKStest <- function(dataset, dataset_name) {
   yes <- dataset[dataset$G2P_Drug_Gene_Lin == "Yes",]
   no <- dataset[dataset$G2P_Drug_Gene_Lin == "No",]
   
-  for(i in 6:9) {
+  for(i in 7:8) {
     test <- ks.test(yes[[colnames(yes)[i]]], no[[colnames(no)[i]]])
     D_stat <- c(D_stat, test$statistic)
     pval <- c(pval, test$p.value)
@@ -559,50 +580,54 @@ G2PCorrKStest <- function(dataset, dataset_name) {
   return(df)
 }
 
-G2PCorrTables <- function(table_type) {
+G2PCorrTable <- function(ccle_ptmuts_df, ctrp_ptmuts_df, gdsc_ptmuts_df) {
   # CCLE
-  ccle_split <- split(ccle_ptmuts, f = ccle_ptmuts$Drug_Gene)
+  ccle_split <- split(ccle_ptmuts_df, f = ccle_ptmuts_df$Drug_Gene)
   ccle_corr_all <- MakeCorrResSummaryTable(ccle_split, dataset_name = "CCLE")
+  print("CCLE correlations: Complete.")
   # CTRP
-  ctrp_split <- split(ctrp_ptmuts, f = ctrp_ptmuts$Drug_Gene)
+  ctrp_split <- split(ctrp_ptmuts_df, f = ctrp_ptmuts_df$Drug_Gene)
   ctrp_corr_all <- MakeCorrResSummaryTable(ctrp_split, dataset_name = "CTRP")
+  print("CTRP correlations: Complete.")
   # GDSC
-  gdsc_split <- split(gdsc_ptmuts, f = gdsc_ptmuts$Drug_Gene)
+  gdsc_split <- split(gdsc_ptmuts_df, f = gdsc_ptmuts_df$Drug_Gene)
   gdsc_corr_all <- MakeCorrResSummaryTable(gdsc_split, dataset_name = "GDSC")
+  print("GDSC correlations: Complete.")
   
   g2p_corr_all <- rbind(ccle_corr_all, ctrp_corr_all, gdsc_corr_all)
   
-  if(table_type == "correlation" | table_type == "corr" ) {
-    return(g2p_corr_all)
-  }  
+  return(g2p_corr_all)
+} 
+  
+G2PCorrStatsTables<- function(corr_df, table_type) {  
   if(table_type == "mutation" | table_type == "mut" ) {
-    g2p_mut_stats <- g2p_corr_all %>% group_by(Dataset, G2P_Drug_Gene_lin) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif),   Total_Tests = length(Mut_Signif), Perc_Signif = N_Signif_Muts / Total_Tests * 100)
-    return(g2p_mut_stats)
+    mut_stats <- corr_df %>% group_by(G2P_Drug_Gene_Lin, Dataset) %>% drop_na(Mut_Signif) %>% summarize(N_Signif_Muts = sum(Mut_Signif), Total_Tests = length(Mut_Signif), Perc_Signif = N_Signif_Muts / Total_Tests * 100)
+    print("Returning mutation statistics.")
+    return(mut_stats)
   }
   if(table_type == "KS" | table_type == "ks") {
-    ccle_corr_stats <- G2PCorrKStest(ccle_corr_all, "CCLE")
-    ctrp_corr_stats <- G2PCorrKStest(ctrp_corr_all, "CTRP")
-    gdsc_corr_stats <- G2PCorrKStest(gdsc_corr_all, "GDSC")
-    g2p_corr_stats <- rbind(ccle_corr_stats, ctrp_corr_stats, gdsc_corr_stats)
-    g2p_corr_stats <- g2p_corr_stats %>% separate(col = Metric, into = c("Correlation_Method", "corr", "Metric"), sep = "_")
-    g2p_corr_stats$Metric <- ifelse(g2p_corr_stats$Metric == "GE", "Gene Expression", "Copy Number")
-    return(g2p_corr_stats)
+    ccle_corr_stats <- G2PCorrKStest(filter(corr_df, Dataset == "CCLE"), "CCLE")
+    ctrp_corr_stats <- G2PCorrKStest(filter(corr_df, Dataset == "CTRP"), "CTRP")
+    gdsc_corr_stats <- G2PCorrKStest(filter(corr_df, Dataset == "GDSC"), "GDSC")
+    corr_stats <- rbind(ccle_corr_stats, ctrp_corr_stats, gdsc_corr_stats)
+    corr_stats <- corr_stats %>% separate(col = Metric, into = c("Correlation_Method", "corr", "Metric"), sep = "_")
+    corr_stats$Metric <- ifelse(corr_stats$Metric == "GE", "Gene Expression", "Copy Number")
+    print("Returning KS test results.")
+    return(corr_stats)
   }
 }
 ```
 
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
-
-**RUN THIS WHEN ALL DRUGSCREEN DATA HAS BEEN MERGED**
 ```{r, eval=FALSE, fig.height=6, fig.width=12}
-g2p_mut_stats <- G2PCorrTables(table_type = "mutation")
-g2p_corr_all <- G2PCorrTables(table_type = "correlation")
-g2p_corr_stats <- G2PCorrTables(table_type = "KS")
+g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
+g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
+g2p_corr_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "KS")
 
 g2p_corr_4plot <- g2p_corr_all
 g2p_corr_4plot$p <- NULL
 g2p_corr_4plot$Mut_Signif <- NULL
-g2p_corr_4plot <- melt(g2p_corr_4plot, id.vars = colnames(g2p_corr_4plot)[1:5], measure.vars = colnames(g2p_corr_4plot)[6:9], value.name = "Correlation")
+g2p_corr_4plot <- melt(g2p_corr_4plot, id.vars = colnames(g2p_corr_4plot)[1:5], measure.vars = colnames(g2p_corr_4plot)[6:7], value.name = "Correlation")
 g2p_corr_4plot <- g2p_corr_4plot %>% separate(col = variable, into = c("Correlation_Method", "corr", "Metric"), sep = "_", remove = FALSE)
 g2p_corr_4plot$Metric <- ifelse(g2p_corr_4plot$Metric == "GE", "Gene Expression", "Copy Number")
 
