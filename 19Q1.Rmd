@@ -522,7 +522,7 @@ crispr_cn_spearman_corr_plot <- ggplot(data = crispr_spear_cn, aes(x = Gene, y =
 crispr_spearman_corr_plot <- plot_grid(crispr_ge_spearman_corr_plot, crispr_cn_spearman_corr_plot, align = "h")
 crispr_spearman_corr_plot
 
-ggsave("./plots/manuscript/crispr_spearman_corr_plot.pdf", crispr_spearman_corr_plot, device = "pdf", dpi = 450, width = 20, height = 10, units = "in")
+# ggsave("./plots/manuscript/crispr_spearman_corr_plot.pdf", crispr_spearman_corr_plot, device = "pdf", dpi = 450, width = 20, height = 10, units = "in")
 ```
 
 # DGL KS tests
@@ -620,14 +620,16 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
 ```{r, eval=FALSE, fig.height=6, fig.width=12}
-g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
+# g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
+# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
+g2p_corr_all <- readRDS("./data_munging/rds/g2p_corr_all.rds")
 g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
 g2p_corr_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "KS")
 
 g2p_corr_4plot <- g2p_corr_all
 g2p_corr_4plot$p <- NULL
 g2p_corr_4plot$Mut_Signif <- NULL
-g2p_corr_4plot <- melt(g2p_corr_4plot, id.vars = colnames(g2p_corr_4plot)[1:5], measure.vars = colnames(g2p_corr_4plot)[6:7], value.name = "Correlation")
+g2p_corr_4plot <- melt(g2p_corr_4plot, id.vars = colnames(g2p_corr_4plot)[1:6], measure.vars = colnames(g2p_corr_4plot)[7:8], value.name = "Correlation")
 g2p_corr_4plot <- g2p_corr_4plot %>% separate(col = variable, into = c("Correlation_Method", "corr", "Metric"), sep = "_", remove = FALSE)
 g2p_corr_4plot$Metric <- ifelse(g2p_corr_4plot$Metric == "GE", "Gene Expression", "Copy Number")
 
