@@ -215,7 +215,7 @@ MergeOmicsG2P <- function(database, outfile) {
     print(paste0("Processing ", database, " data."))
     colnames(filt)[colnames(filt) == "AUC_IC50"] <- "Score"
 
-    # Get all G2Pgene-cell line combinations
+    # Get all G2P gene-cell line combinations
     grid <- expand.grid("Cell_line" = unique(filt$Cell_line), "Gene" = g2p_genes)
     data <-  merge(filt, grid, by = "Cell_line", all.y = TRUE)
     print("Merged grid.")
@@ -232,6 +232,8 @@ MergeOmicsG2P <- function(database, outfile) {
     print(paste0("Processing ", database, " data."))
     # Melt CRISPR dataset for merging
     data <- melt(crispr_all, id.vars = "Broad_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
+    # Get all G2P gene-cell line combinations
+    data <-  filter(data, Gene %in% g2p_genes)
     # Merge cell line metadata
     data <- merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = "Broad_ID", all.x = TRUE)
     data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
@@ -363,6 +365,7 @@ for(drug in g2p_drugs) {
 
 ## CRISPR
 
+Merge all CRISPR genes:
 ```{r, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
@@ -408,64 +411,73 @@ crispr_data <- readRDS("./../htscreens_giant_files/crispr_data_19Q1.rds")
 # Filter G2P CRISPR for point mutations
 crispr_ptmuts <- filter(crispr_data, PointMutation == 1)
 crispr_ptmuts <- subset(crispr_ptmuts, select = -c(PointMutation))
-# Filter CRISPR for G2P genes in G2P
-crispr_g2p <- filter(crispr_ptmuts, Gene %in% g2p_genes)
-crispr_g2p <- unique(crispr_g2p)
-crispr_g2p$Gene <- factor(crispr_g2p$Gene)
-crispr_g2p$Mutation_Status <- factor(crispr_g2p$Mutation_Status)
-crispr_g2p$Primary.Disease <- factor(crispr_g2p$Primary.Disease)
+crispr_ptmuts <- filter(crispr_ptmuts, Gene %in% g2p_genes)
 ```
 
-Test merging and filtering functions on CRISPR data:
-```{r, eval=FALSE}
-# crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
-# # Remove Entrez gene IDs from colnames
-# colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
-# colnames(crispr_all)[1] <- "Broad_ID"
-
-# Omics metadata
-maf_df_filt <- filter(maf_df, Gene %in% g2p_genes)
-ge_filt <- filter(ge_melt, Gene %in% g2p_genes)
-cn_filt <- filter(cn_melt, Gene %in% g2p_genes)
-
-crispr_fxn <- MergeOmicsG2P(database = "CRISPR", outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_fxn.rds")
-crispr_ptmuts_fxn <- FilterForPointMuts(dataframe = crispr_fxn, outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
-```
-
-```{r}
-crispr_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_fxn.rds")
-crispr_ptmuts_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
-```
-
-# G2P summary figures
+# G2P summary heatmap
 
 --------------------------------------------------------------------------------
 
-```{r fig.height=6, fig.width=12}
-g2p_dg_counts <- g2p_all %>% count(Drug, , Gene) %>% filter(!is.na(Drug), !is.na(Gene))
-g2p_dg_counts <- dcast(g2p_dg_counts, Gene ~ Drug, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+```{r fig.height=6, fig.width=8}
+g2p_dg_counts <- g2p_all %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
+g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
 g2p_dg_counts[g2p_dg_counts == 0] <- NA
 
+# Create annotation layer
+hta_data <- data.frame(Drug = rownames(g2p_dg_counts), CCLE = NA, CTRP = NA, GDSC = NA)
+hta_data$CCLE <- ifelse(hta_data$Drug %in% unique(ccle_ptmuts$Drug), "Screened", "Not screened")
+hta_data$CTRP <- ifelse(hta_data$Drug %in% unique(ctrp_ptmuts$Drug), "Screened", "Not screened")
+hta_data$GDSC <- ifelse(hta_data$Drug %in% unique(gdsc_ptmuts$Drug), "Screened", "Not screened")
+rownames(hta_data) <- hta_data$Drug
+hta_data$Drug <- NULL
+
+hta_annot <- HeatmapAnnotation(text = anno_text(colnames(hta_data), offset = unit(0.1, "in"), gp = gpar(fontsize = 10)))
+hta_legend_list <- list(legend_direction = "horizontal", border = "gray70", nrow = 2)
+hta <- Heatmap(hta_data,
+               name = "Functional screen status           ",
+               col = c("Screened" = "purple4", "Not screened" = "gray97"), 
+               rect_gp = gpar(col = "gray70"),
+               top_annotation = hta_annot,
+               heatmap_legend_param = hta_legend_list,
+               row_names_side = "left",
+               row_names_gp = gpar(fontsize = 10),
+               column_names_side = "top",
+               column_names_gp = gpar(fontsize = 10),
+               show_column_names = FALSE,
+               cluster_rows = FALSE, 
+               cluster_columns = FALSE,
+               row_title = "Drugs",
+               row_title_gp = gpar(fontface = "bold", fontsize = 14),
+               column_title = "Dataset",
+               column_title_gp = gpar(fontface = "bold", fontsize = 14),
+               width = unit(1.5, "in"))
+
 # Define color scale
-col_fun <- colorRamp2(c(0, 103), c("mistyrose", "purple4"))
+col_fun <- colorRamp2(c(0, 100), c("mistyrose", "purple4"))
 # Legend properties list
-ht_legend_list <- list(legend_direction = "horizontal", title_position = "lefttop", legend_width = unit(6, "in"), border = "black")
+ht_legend_list <- list(legend_direction = "horizontal", legend_width = unit(2.5, "in"), border = "gray70")
 ht <- Heatmap(g2p_dg_counts, 
-              name = "Frequency",
+              name = "Number of G2P interpretations",
               col = col_fun,
-              na_col = "white",
-              rect_gp = gpar(col = "gray88"),
+              na_col = "gray97",
+              rect_gp = gpar(col = "gray70"),
               heatmap_legend_param = ht_legend_list,
               cluster_rows = FALSE, 
               cluster_columns = FALSE, 
+              show_row_names = FALSE,
               row_names_side = "left",
-              row_title = "Genes",
-              column_title = "Drugs", 
+              row_names_gp = gpar(fontsize = 10),
+              column_names_side = "bottom",
+              column_names_gp = gpar(fontsize = 10),
+              row_title = "Drugs",
+              row_title_gp = gpar(fontface = "bold", fontsize = 14),
+              column_title = "Genes", 
+              column_title_gp = gpar(fontface = "bold", fontsize = 14),
               column_title_side = "bottom")
 
-# png(filename = out_filepath, width = 7.5, height = 8, units = "in", res = 500)
-draw(ht, heatmap_legend_side = "top")
+# png(filename = "./plots/manuscript/g2p_summary_heatmap.png", width = 12, height = 10, units = "in", res = 500)
+draw(hta + ht, gap = unit(5, "mm"), heatmap_legend_side = "top")
 # dev.off()
 ```
 
@@ -522,26 +534,31 @@ gdsc_signif_gene <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
 gdsc_signif_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
+## Plots
+
+
 
 # Spearman (CN, GE)
 
 --------------------------------------------------------------------------------
 
 Spearman correlations for gene expression and copy number:
-```{r}
-crispr_spear_ge <- transform(crispr_g2p %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
-crispr_spear_cn <- transform(crispr_g2p %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
+```{r, warning=FALSE}
+crispr_spear_ge <- transform(crispr_ptmuts %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
+crispr_spear_cn <- transform(crispr_ptmuts %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
 ```
+
+## Plots
 
 Create CRISPR two-column, KRAS-inset plot for CN and GE:
 ```{r fig.height=6, fig.width=12}
-spearman_KRAS <- rbind(filter(crispr_g2p, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), filter(crispr_g2p, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"))
+spearman_KRAS <- rbind(filter(crispr_ptmuts, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), filter(crispr_ptmuts, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"))
 
-crispr_ge_spearman_corr_inset <- ggplot(filter(crispr_g2p, Gene == "KRAS"), aes(x = TPM, y = Score)) +
+crispr_ge_spearman_corr_inset <- ggplot(filter(crispr_ptmuts, Gene == "KRAS"), aes(x = TPM, y = Score)) +
   geom_point(pch = 21, fill = "cadetblue3", alpha = 0.6) +
   labs(x = "KRAS Gene Expression (TPM)", y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[1], 2), " (p = ", formatC(as.numeric(spearman_KRAS$p[1]), format = "e", digits = 1), ")"))
 
-crispr_cn_spearman_corr_inset <- ggplot(filter(crispr_g2p, Gene == "KRAS"), aes(x = CN, y = Score)) +
+crispr_cn_spearman_corr_inset <- ggplot(filter(crispr_ptmuts, Gene == "KRAS"), aes(x = CN, y = Score)) +
   geom_point(pch = 21, fill = "palegreen2", alpha = 0.6) +
   labs(x = expression("KRAS Copy Number"~(log[2]-ratio)), y = "CERES Score", subtitle = paste0("Spearman correlation coefficient = ", round(spearman_KRAS$corr[2], 2), " (p = ", formatC(as.numeric(spearman_KRAS$p[2]), format = "e", digits = 1), ")"))
 
@@ -595,7 +612,7 @@ crispr_cn_spearman_corr_plot <- ggplot(data = crispr_spear_cn, aes(x = Gene, y =
 crispr_spearman_corr_plot <- plot_grid(crispr_ge_spearman_corr_plot, crispr_cn_spearman_corr_plot, align = "h")
 crispr_spearman_corr_plot
 
-ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
+# ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
 ```
 
 # DGL KS tests
@@ -692,9 +709,6 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 ```
 
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
-
-**NEED TO FILTER FOR ONLY G2P DRUG-GENE COMBINATIONS PRIOR TO KS TEST**
-
 ```{r, eval=TRUE, fig.height=6, fig.width=12}
 # g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
 # saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
@@ -728,7 +742,7 @@ g2p_ks_res_plot_spearman <- ggplot(data = filter(g2p_corr_4plot, Correlation_Met
        y = expression("Spearman Correlation Coefficient"~(r[s])))
 g2p_ks_res_plot_spearman
 
-ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 500, width = 12, height = 6, units = "in")
+# ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 500, width = 12, height = 6, units = "in")
 ```
 
 # Sandbox
@@ -739,6 +753,27 @@ Filter for BRCA1/2 mutations to see if we catch non-germline mutations/CN varian
 ```{r}
 test <- filter(maf_df, Gene == "BRCA1" | Gene == "BRCA2")
 test2 <- filter(cn_melt, Gene == "BRCA1" | Gene == "BRCA2")
+```
+
+Test filtering CRISPR data for G2P genes using function:
+```{r, eval=FALSE}
+crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
+# Remove Entrez gene IDs from colnames
+colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
+colnames(crispr_all)[1] <- "Broad_ID"
+
+# Omics metadata
+maf_df_filt <- filter(maf_df, Gene %in% g2p_genes)
+ge_filt <- filter(ge_melt, Gene %in% g2p_genes)
+cn_filt <- filter(cn_melt, Gene %in% g2p_genes)
+
+crispr_fxn <- MergeOmicsG2P(database = "CRISPR", outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_fxn.rds")
+crispr_ptmuts_fxn <- FilterForPointMuts(dataframe = crispr_fxn, outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
+```
+
+```{r, eval=FALSE}
+crispr_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_fxn.rds")
+crispr_ptmuts_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
 ```
 
 Test out standardization/normalization methods on Pozdeyev data. This yields evidence that the AUC values are already normalized.
@@ -765,7 +800,6 @@ ggplot(data = auc_test) +
   geom_histogram(aes(x = AUC_IC50_standardized)) +
   facet_wrap(~ Database, ncol = 3, scales = "free_y")
 ```
-
 
 # Session information
 
