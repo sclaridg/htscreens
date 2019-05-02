@@ -23,7 +23,7 @@ The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meye
 
 Annotation files for mutation status, copy number, and gene expression of the CCLE and CTRP datasets (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/). Note that the group that conducted the GDSC screen also collected their own genomic annotation information for mutation status, copy number, and gene expression, but we did not use it.
 
-# Set up
+# SET UP
 
 --------------------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 options(mc.cores = parallel::detectCores(), expressions = 5e5)
 ```
 
-```{r}
+```{r libraries}
 library(circlize)
 library(ComplexHeatmap)
 library(cowplot)
@@ -46,6 +46,7 @@ library(kableExtra)
 library(naniar)
 library(openxlsx)
 library(reshape2)
+library(scales)
 library(tidyverse)
 library(VennDiagram)
 
@@ -61,7 +62,7 @@ unfactorize <- function(df){
 }
 ```
 
-# Import data
+# DATA
 
 --------------------------------------------------------------------------------
 
@@ -82,16 +83,17 @@ And changes to the data processing pipelines (the following is taken verbatim fr
 **D. Charytonowicz cell line converter**
 
 This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
-```{r}
+```{r dan_ccl_database}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-lineage_converter <- unique(ccl_converter[, c("Broad_ID", "grouped_general_doid", "group_general_lineage_name")])
+ccl_lineage_converter <- unique(ccl_converter[, c("Broad_ID", "grouped_general_doid", "group_general_lineage_name")])
+lineage_converter <- unique(select(lineage_converter, grouped_general_doid, group_general_lineage_name))
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 ```
 
 **DepMap metadata**
 
 DepMap 19Q1 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
-```{r}
+```{r depmap_metadata}
 ccl_meta <- read.delim("./data_munging/19Q1/DepMap-2019q1-celllines_v2_20190305.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 ccl_meta$Primary.Disease <- tolower(ccl_meta$Primary.Disease)
 ccl_meta$Primary.Disease <- with(ccl_meta, ifelse(Primary.Disease == "colon/colorectal cancer", "colorectal cancer", Primary.Disease))
@@ -112,20 +114,19 @@ ccl_meta <- subset(ccl_meta, CCLE_Name != "KMH2_THYROID" & CCLE_Name != "MS1_SKI
 
 ## G2P
 
-```{r}
-g2p_all <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
-g2p_all[, 1:2] <- NULL
-g2p_all$Drug <- tolower(g2p_all$Drug)
-g2p_all[g2p_all == -1] <- NA
-g2p_all$Ref[g2p_all$Ref == "None"] <- NA
-g2p_all$Alt[g2p_all$Alt == "None"] <- NA
-g2p_all <- subset(g2p_all, grepl("^CID", g2p_all$DrugID))
-g2p <- merge(g2p_all, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
-
+```{r g2p_interpretations}
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
+g2p[, 1:2] <- NULL
+g2p$Drug <- tolower(g2p$Drug)
+g2p[g2p == -1] <- NA
+g2p$Ref[g2p$Ref == "None"] <- NA
+g2p$Alt[g2p$Alt == "None"] <- NA
+g2p <- subset(g2p, grepl("^CID", g2p$DrugID))
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
-g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
 g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
 g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
+g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
 
 g2p_dgls <-  unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)])
 g2p_druggenes <- unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)])
@@ -141,11 +142,11 @@ g2p_lins
 # g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
 ```
 
-```{r, eval=FALSE}
+```{r testing, eval=FALSE}
 unique(g2p$group_general_lineage_name)
 levels(g2p$group_general_lineage_name)
 
-g2p_nonCID <- subset(g2p_all, !grepl("^CID", g2p_all$DrugID))
+g2p_nonCID <- subset(g2p, !grepl("^CID", g2p$DrugID))
 summ <- g2p_nonCID %>% group_by(Drug, DrugID) %>% tally() %>% summarize(DrugID = DrugID, n = n, percent = formatC(n / 402 * 100, digits = 6, format = "f"))
 summ
 ```
@@ -155,7 +156,7 @@ summ
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
 Mutation calls (coding region, germline filtered):
-```{r, eval=FALSE}
+```{r mutation_status, eval=FALSE}
 maf_raw <- read.delim("./data_munging/19Q1/depmap_19Q1_mutation_calls_20190305.csv.gz", header = TRUE, sep = ",", row.names = 1)
 # Harmonize ID column name
 colnames(maf_raw)[colnames(maf_raw) == "DepMap_ID"] <- "Broad_ID"
@@ -173,7 +174,7 @@ saveRDS(maf_df, "./data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
 
 DepMap WES CN Data:
-```{r, eval=FALSE}
+```{r copy_number, eval=FALSE}
 cn <- read.delim("./data_munging/19Q1/public_19Q1_gene_cn_20190305.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 # Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
 colnames(cn) <- gsub(" .*", "", colnames(cn))
@@ -185,7 +186,7 @@ saveRDS(cn_melt, "./data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```
 
 19Q1, CCLE RNAseq gene expression data (log2(TPM+1)):
-```{r, eval=FALSE}
+```{r gene_expression, eval=FALSE}
 ge <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
 colnames(ge) <- gsub(" .*", "", colnames(ge_19Q1))
@@ -197,13 +198,18 @@ saveRDS(ge_melt, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
 
 Load Rds:
-```{r}
+```{r load_omics_rds}
 maf_df <- readRDS("./data_munging/19Q1/maf_df_19Q1.rds")
 cn_melt <- readRDS("./data_munging/19Q1/cn_melt_19Q1.rds")
 ge_melt <- readRDS("./data_munging/19Q1/ge_melt_19Q1.rds")
 ```
 
-# Merge omics
+```{r omics_testing, eval=FALSE}
+test <- filter(maf_df, Gene %in% g2p_genes) %>% count(Gene, Broad_ID)
+test <- test[order(test$n, decreasing = TRUE),]
+```
+
+# MERGE OMICS
 
 --------------------------------------------------------------------------------
 
@@ -299,13 +305,8 @@ FilterForPointMuts <- function(dataframe, outfile) {
 
 ## Drug screens
 
-```{r}
-test <- filter(maf_df, Gene %in% g2p_genes) %>% count(Gene, Broad_ID)
-test <- test[order(test$n, decreasing = TRUE),]
-```
-
 `r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
-```{r, eval=FALSE}
+```{r merge_filter_drug_data, eval=FALSE}
 # Load in Pozdeyev et al. (2016) data
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
 ctrp_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
@@ -336,7 +337,7 @@ ctrp_ptmuts <- FilterForPointMuts(dataframe = ctrp, outfile = "./../htscreens_gi
 gdsc_ptmuts <- FilterForPointMuts(dataframe = gdsc, outfile = "./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
 ```
 
-```{r, eval=TRUE}
+```{r load_drug_rds, eval=TRUE}
 ccle <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
 ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes.rds")
 gdsc <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
@@ -351,7 +352,7 @@ test_gdsc <- gdsc_ptmuts %>% count(Gene, Mutation_Status)
 ```
 
 How many datasets screen each G2P drug?
-```{r, eval=FALSE}
+```{r drug_testing, eval=FALSE}
 drug_summ <- data.frame(Drug = character(), Dataset_Count = integer(), stringsAsFactors = FALSE)
 
 for(drug in g2p_drugs) {
@@ -366,7 +367,7 @@ for(drug in g2p_drugs) {
 ## CRISPR
 
 Merge all CRISPR genes:
-```{r, eval=FALSE}
+```{r merge_crispr_data, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
@@ -405,21 +406,81 @@ crispr_data <- merge(crispr_data, ge_crispr, by = c("Gene", "Broad_ID"), all.x =
 saveRDS(crispr_data, "./../htscreens_giant_files/crispr_data_19Q1.rds", compress = "xz")
 ```
 
-```{r, eval=TRUE}
+```{r load_crispr_filter, eval=TRUE}
 crispr_data <- readRDS("./../htscreens_giant_files/crispr_data_19Q1.rds")
 
 # Filter G2P CRISPR for point mutations
 crispr_ptmuts <- filter(crispr_data, PointMutation == 1)
 crispr_ptmuts <- subset(crispr_ptmuts, select = -c(PointMutation))
 crispr_ptmuts <- filter(crispr_ptmuts, Gene %in% g2p_genes)
+crispr_ptmuts$Gene <- factor(crispr_ptmuts$Gene)
+crispr_ptmuts$Primary.Disease <- factor(crispr_ptmuts$Primary.Disease)
 ```
 
-# G2P summary heatmap
+# DATA SUMMARY FIGURES
 
 --------------------------------------------------------------------------------
 
-```{r fig.height=6, fig.width=8}
-g2p_dg_counts <- g2p_all %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
+## Cell line and drug overlaps
+
+```{r ccl_venn, eval=FALSE}
+ccle_ccls <- unique(ccle_ptmuts$Broad_ID)
+ctrp_ccls <- unique(ctrp_ptmuts$Broad_ID)
+gdsc_ccls <- unique(gdsc_ptmuts$Broad_ID)
+crispr_ccls <- unique(crispr_ptmuts$Broad_ID)
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
+             filename = "./plots/manuscript/venn_ccls.png",
+             output = TRUE, imagetype = "png",
+             height = 2000, width = 2000, resolution = 500,
+             lwd = 1, cex = 1,
+             category.names = c("CCLE", "CTRP", "GDSC", "CRISPR"),
+             cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
+             # cat.dist = c(0.06, 0.06, 0.035),
+             fill = c("springgreen4", "steelblue4", "turquoise4", "darkorchid"))
+```
+
+```{r drug_venn, eval=FALSE}
+ccle_drugs <- unique(ccle_ptmuts$Drug)
+ctrp_drugs <- unique(ctrp_ptmuts$Drug)
+gdsc_drugs <- unique(gdsc_ptmuts$Drug)
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
+             filename = "./plots/manuscript/venn_drugs.png",
+             output = TRUE, imagetype = "png",
+             height = 2000, width = 2000, resolution = 500,
+             lwd = 1, cex = 1.4,
+             category.names = c("CCLE", "CTRP", "GDSC"),
+             cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
+             cat.dist = c(0.06, 0.06, 0.035),
+             fill = c("palegreen3", "slategray3", "paleturquoise3"))
+```
+
+**RUN THIS IN TEH EVENING**
+```{r, eval=FALSE}
+ccle_hists <- unique(select(ccle_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
+ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
+ccle_hists$Dataset <- "CCLE"
+ctrp_hists <- unique(select(ctrp_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
+ctrp_hists$Perc <- ctrp_hists$n / sum(ctrp_hists$n) * 100
+ctrp_hists$Dataset <- "CTRP"
+gdsc_hists <- unique(select(gdsc_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
+gdsc_hists$Perc <- gdsc_hists$n / sum(gdsc_hists$n) * 100
+gdsc_hists$Dataset <- "GDSC"
+
+drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists)
+drug_hists$Primary.Disease <- as.character(drug_hists$Primary.Disease)
+
+ggplot(drug_hists, aes(x = Dataset, y = n, fill = Primary.Disease)) +
+  geom_bar(stat = "identity", color = "black")
+```
+
+## G2P summary heatmap
+
+```{r dg_heatmap, fig.height=6, fig.width=8}
+g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
 g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
 g2p_dg_counts[g2p_dg_counts == 0] <- NA
@@ -482,7 +543,7 @@ draw(hta + ht, gap = unit(5, "mm"), heatmap_legend_side = "top")
 ```
 
 
-# Wilcoxon tests (mut)
+# WILCOXON (MUT)
 
 --------------------------------------------------------------------------------
 
@@ -496,34 +557,47 @@ adj_signif <- function(df, alpha) {
   return(df)
 }
 
-WilcoxonTestDF <- function(dataframe, measure_var, grouping, outfile) {
+WilcoxonTestDF <- function(dataframe, grouping, outfile) {
   require(ggpubr)
-  signif <- compare_means(Score ~ Mutation_Status, group.by = grouping, data = dataframe, method = "wilcox.test", p.adjust.method = "BH")
+  if(grouping == "Drug_Gene_Lin") {
+    # Filter out DGLs with too few samples in at least one mutation status category
+    count <- ctrp_ptmuts %>% count(Drug_Gene_Lin, Mutation_Status)
+    count2 <- count %>% count(Drug_Gene_Lin)
+    count3 <- merge(count, count2, by = "Drug_Gene_Lin", suffixes = c("_sub3", "_1mut")) %>% filter(n_1mut == 2)
+    count3$n_sub3 <- ifelse(count3$n_sub3 >= 3, TRUE, FALSE)
+    count4 <- count3 %>% filter(n_sub3) %>% count(Drug_Gene_Lin) %>% filter(n == 2)
+    dataframe <- filter(dataframe, Drug_Gene_Lin %in% unique(count4$Drug_Gene_Lin))
+    dataframe$Drug_Gene_Lin <- factor(dataframe$Drug_Gene_Lin)
+  }
+  signif <- compare_means(Score ~ Mutation_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
   signif <- adj_signif(signif, alpha = 0.05)
   signif <- signif[order(signif$p),]
+  if(grouping == "Drug_Gene") {
+    signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_druggenes, "Yes", "No")
+  }
+  if(grouping == "Drug_Gene_Lin") {
+    signif$InG2P <- ifelse(signif$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+  }
   saveRDS(signif, outfile)
   return(signif)
 }
 ```
 
-```{r, eval=FALSE}
-crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_g2p, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
-crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_g2p, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
+```{r wilcoxon_tests, eval=FALSE}
+crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
+crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
 ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
-ccle_signif_gene$G2P_Drug_Gene <- ifelse(ccle_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
-ccle_signif_lineage <- WilcoxonTestDF(dataframe = filter(ccle_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
+ccle_signif_lineage <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
 
 ctrp_signif_gene <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ctrp_signif_g2p_gene.rds")
-ctrp_signif_gene$G2P_Drug_Gene <- ifelse(ctrp_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
-ctrp_signif_lineage <- WilcoxonTestDF(dataframe = filter(ctrp_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
+ctrp_signif_lineage <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 
 gdsc_signif_gene <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/gdsc_signif_g2p_gene.rds")
-gdsc_signif_gene$G2P_Drug_Gene <- ifelse(gdsc_signif_gene$Drug_Gene %in% g2p_druggenes, TRUE, FALSE)
-gdsc_signif_lineage <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug_Gene_Lin %in% g2p_dgls), grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
+gdsc_signif_lineage <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
-```{r}
+```{r load_wilcoxon_rds}
 crispr_signif_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_lineage.rds")
 ccle_signif_gene <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
@@ -538,20 +612,63 @@ gdsc_signif_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 
 
 
-# Spearman (CN, GE)
+# SPEARMAN (CN, GE)
 
 --------------------------------------------------------------------------------
 
+## Drugscreens
+
+```{r drug_spear_calc, warning=FALSE}
+g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+
+# CCLE
+ccle_cor_res <- ccle_ptmuts %>% group_by(Drug_Gene) %>%summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
+ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
+ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
+ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
+ccle_cor_res$Dataset <- "CCLE"
+
+# CTRP
+ctrp_cor_res <- ctrp_ptmuts %>% group_by(Drug_Gene) %>%summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
+ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y = TRUE)
+ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
+ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
+ctrp_cor_res$Dataset <- "CTRP"
+
+# GDSC
+gdsc_cor_res <- gdsc_ptmuts %>% group_by(Drug_Gene) %>%summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
+gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y = TRUE)
+gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
+gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
+gdsc_cor_res$Dataset <- "GDSC"
+
+# All
+g2p_cor <- rbind(ccle_cor_res, ctrp_cor_res, gdsc_cor_res)
+```
+
+
+## CRISPR
+
 Spearman correlations for gene expression and copy number:
-```{r, warning=FALSE}
+```{r crispr_spear_calc, warning=FALSE}
 crispr_spear_ge <- transform(crispr_ptmuts %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
 crispr_spear_cn <- transform(crispr_ptmuts %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
 ```
 
-## Plots
-
 Create CRISPR two-column, KRAS-inset plot for CN and GE:
-```{r fig.height=6, fig.width=12}
+```{r crispr_spear_plot, fig.height=6, fig.width=12}
 spearman_KRAS <- rbind(filter(crispr_ptmuts, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), filter(crispr_ptmuts, Gene == "KRAS") %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"))
 
 crispr_ge_spearman_corr_inset <- ggplot(filter(crispr_ptmuts, Gene == "KRAS"), aes(x = TPM, y = Score)) +
@@ -615,7 +732,7 @@ crispr_spearman_corr_plot
 # ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
 ```
 
-# DGL KS tests
+# DGL KS TESTS
 
 --------------------------------------------------------------------------------
 
@@ -632,7 +749,7 @@ MakeCorrResSummaryTable <- function(df_list, dataset_name) {
                 N_Lineages = length(as.character(unique(Primary.Disease))),
                 Spearman_Corr_GE = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
                 Spearman_Corr_CN = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate)
-    print(names(df_list)[i])
+    # print(names(df_list)[i])
     
     if(length(unique(df_list[[i]]$Mutation_Status)) == 2) {
       dgl_signif <- compare_means(Score ~ Mutation_Status, data = df_list[[i]], group.by = "G2P_Drug_Gene_Lin", method = "wilcox.test")[, c("G2P_Drug_Gene_Lin", "p")]
@@ -709,9 +826,9 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 ```
 
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
-```{r, eval=TRUE, fig.height=6, fig.width=12}
+```{r drug_KS_tests, eval=TRUE, warning=FALSE, fig.height=6, fig.width=12}
 # g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
-# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
+saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
 g2p_corr_all <- readRDS("./data_munging/rds/g2p_corr_all.rds")
 g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
 
@@ -745,18 +862,18 @@ g2p_ks_res_plot_spearman
 # ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 500, width = 12, height = 6, units = "in")
 ```
 
-# Sandbox
+# SANDBOX
 
 --------------------------------------------------------------------------------
 
 Filter for BRCA1/2 mutations to see if we catch non-germline mutations/CN variants:
-```{r}
+```{r brca_test, eval=FALSE}
 test <- filter(maf_df, Gene == "BRCA1" | Gene == "BRCA2")
 test2 <- filter(cn_melt, Gene == "BRCA1" | Gene == "BRCA2")
 ```
 
 Test filtering CRISPR data for G2P genes using function:
-```{r, eval=FALSE}
+```{r crispr_fnx_test, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
@@ -771,13 +888,13 @@ crispr_fxn <- MergeOmicsG2P(database = "CRISPR", outfile = "./../htscreens_giant
 crispr_ptmuts_fxn <- FilterForPointMuts(dataframe = crispr_fxn, outfile = "./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
 ```
 
-```{r, eval=FALSE}
+```{r load_crispr_fnx_test_rds, eval=FALSE}
 crispr_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_fxn.rds")
 crispr_ptmuts_fxn <- readRDS("./../htscreens_giant_files/crispr_data_19Q1_g2pgenes_ptmuts_fxn.rds")
 ```
 
 Test out standardization/normalization methods on Pozdeyev data. This yields evidence that the AUC values are already normalized.
-```{r, eval=FALSE}
+```{r pozdeyev_norm_testing, eval=FALSE}
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
 ccle_all$AUC_IC50_standardized <- scale(ccle_all$AUC_IC50, center = TRUE, scale = TRUE)
 ccle_all$AUC_IC50_normalized <- scale(ccle_all$AUC_IC50, center = min(ccle_all$AUC_IC50[!is.na(ccle_all$AUC_IC50)]), scale = max(ccle_all$AUC_IC50[!is.na(ccle_all$AUC_IC50)]) - min(ccle_all$AUC_IC50[!is.na(ccle_all$AUC_IC50)]))
@@ -801,10 +918,10 @@ ggplot(data = auc_test) +
   facet_wrap(~ Database, ncol = 3, scales = "free_y")
 ```
 
-# Session information
+# SESSION INFORMATION
 
 --------------------------------------------------------------------------------
 
-```{r}
+```{r session_info}
 print(sessionInfo())
 ```
