@@ -86,7 +86,7 @@ This comprehensive cancer cell line information was curated by both Daniel Chary
 ```{r dan_ccl_database}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 ccl_lineage_converter <- unique(ccl_converter[, c("Broad_ID", "grouped_general_doid", "group_general_lineage_name")])
-lineage_converter <- unique(select(lineage_converter, grouped_general_doid, group_general_lineage_name))
+lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 ```
 
@@ -458,8 +458,9 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
              fill = c("palegreen3", "slategray3", "paleturquoise3"))
 ```
 
-**RUN THIS IN TEH EVENING**
-```{r, eval=FALSE}
+## Histology distributions
+
+```{r histology_dists_data, eval=FALSE}
 ccle_hists <- unique(select(ccle_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
 ccle_hists$Dataset <- "CCLE"
@@ -469,12 +470,26 @@ ctrp_hists$Dataset <- "CTRP"
 gdsc_hists <- unique(select(gdsc_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
 gdsc_hists$Perc <- gdsc_hists$n / sum(gdsc_hists$n) * 100
 gdsc_hists$Dataset <- "GDSC"
+crispr_hists <- unique(select(crispr_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
+crispr_hists$Perc <- crispr_hists$n / sum(crispr_hists$n) * 100
+crispr_hists$Dataset <- "CRISPR"
 
-drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists)
+drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists, crispr_hists) %>% drop_na(Primary.Disease)
+drug_hists$Dataset <- factor(drug_hists$Dataset, levels = c("CCLE", "CTRP", "GDSC", "CRISPR"))
 drug_hists$Primary.Disease <- as.character(drug_hists$Primary.Disease)
+drug_hists$Primary.Disease <- gsub(" cancer", "", drug_hists$Primary.Disease)
+# saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
+```
 
+```{r histology_dists, fig.height=4.5, fig.width=4}
+drug_hists <- readRDS("./data_munging/rds/histology_distributions.rds")
+png(filename = "./plots/manuscript/histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
 ggplot(drug_hists, aes(x = Dataset, y = n, fill = Primary.Disease)) +
-  geom_bar(stat = "identity", color = "black")
+  geom_bar(stat = "identity", color = "black") +
+  scale_y_continuous(breaks = seq(0, 850, by = 50), labels = seq(0, 850, by = 50)) +
+  guides(fill = guide_legend(title = "Histology", ncol = 1)) +
+  labs(y = "Count")
+dev.off()
 ```
 
 ## G2P summary heatmap
@@ -828,7 +843,7 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
 ```{r drug_KS_tests, eval=TRUE, warning=FALSE, fig.height=6, fig.width=12}
 # g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
-saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
+# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
 g2p_corr_all <- readRDS("./data_munging/rds/g2p_corr_all.rds")
 g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
 
