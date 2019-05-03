@@ -393,6 +393,7 @@ crispr_muts$PointMutation <- ifelse(is.na(crispr_muts$PointMutation), 1, crispr_
 crispr_muts_summ <- crispr_muts %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
 ## Merge test results back into full dataset, which restores information lost in the summarization
 crispr_data <- merge(crispr_muts_summ, crispr_muts, by = "Gene")
+crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
 ## Add Color column
 crispr_data$Color <- ifelse(crispr_data$Mutation_Status == 0, "thistle", "darkorchid")
 crispr_data$Color <- factor(crispr_data$Color)
@@ -403,18 +404,21 @@ crispr_data <- merge(crispr_data, cn_melt, by = c("Gene", "Broad_ID"), all.x = T
 # Gene expression (RPKM)
 ge_crispr <- filter(ge_melt, Gene %in% as.character(unique(crispr_melt$Gene)))
 crispr_data <- merge(crispr_data, ge_crispr, by = c("Gene", "Broad_ID"), all.x = TRUE)
-saveRDS(crispr_data, "./../htscreens_giant_files/crispr_data_19Q1.rds", compress = "xz")
-```
 
-```{r load_crispr_filter, eval=TRUE}
-crispr_data <- readRDS("./../htscreens_giant_files/crispr_data_19Q1.rds")
+saveRDS(crispr_data, "./data_munging/rds/crispr_data_19Q1.rds", compress = "xz")
 
 # Filter G2P CRISPR for point mutations
 crispr_ptmuts <- filter(crispr_data, PointMutation == 1)
 crispr_ptmuts <- subset(crispr_ptmuts, select = -c(PointMutation))
 crispr_ptmuts <- filter(crispr_ptmuts, Gene %in% g2p_genes)
-crispr_ptmuts$Gene <- factor(crispr_ptmuts$Gene)
 crispr_ptmuts$Primary.Disease <- factor(crispr_ptmuts$Primary.Disease)
+crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
+saveRDS(crispr_ptmuts, "./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
+```
+
+```{r load_crispr_filter, eval=TRUE}
+crispr_data <- readRDS("./data_munging/rds/crispr_data_19Q1.rds")
+crispr_ptmuts <- readRDS("./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds")
 ```
 
 # DATA SUMMARY FIGURES
@@ -625,6 +629,42 @@ gdsc_signif_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 
 ## Plots
 
+```{r crispr_mut_gene_plot, fig.height=4, fig.width=8}
+crispr_signif_gene$Gene <- factor(crispr_signif_gene$Gene, levels = g2p_genes)
+crispr_ptmuts$Gene <- factor(crispr_ptmuts$Gene, levels = g2p_genes)
+
+crispr_gene_mut_plot <- ggplot(data = crispr_ptmuts) +
+  facet_wrap(~ Gene, nrow = 2, drop = FALSE) +
+  scale_color_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
+  geom_jitter(aes(x = Mutation_Status, y = Score, color = Mutation_Status), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_boxplot(aes(x = Mutation_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
+  geom_text(data = crispr_signif_gene, aes(x = 1.5, y = 1.75, label = p.signif.adj)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  theme(legend.position = "top", legend.direction = "horizontal") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  labs(y = "CERES Score")
+crispr_gene_mut_plot
+
+# ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
+```
+
+```{r crispr_mut_lin_plot, fig.height=12, fig.width=8}
+crispr_signif_lineage$Gene <- factor(crispr_signif_lineage$Gene, levels = g2p_genes)
+
+crispr_gene_lin_plot <- ggplot(data = crispr_ptmuts) +
+  facet_wrap(~ Primary.Disease, nrow = 7, scales = "free_x") +
+  scale_color_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
+  geom_point(aes(x = Gene, y = Score, color = Mutation_Status), alpha = 0.5, size = 0.6) +
+  geom_text(data = crispr_signif_lineage, aes(x = Gene, y = 1.75, label = p.signif.adj)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  ylab("CERES Score") +
+  scale_x_discrete(name = "Mutation Status", labels = c("0" = "WT", "1" = "Mut"))
+crispr_gene_lin_plot
+
+# ggsave("./plots/manuscript/crispr_gene_lineage_plot.png", crispr_gene_lin_plot, width = 16, height = 20, units = "in")
+```
 
 
 # SPEARMAN (CN, GE)
