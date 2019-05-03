@@ -86,7 +86,7 @@ This comprehensive cancer cell line information was curated by both Daniel Chary
 ```{r dan_ccl_database}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 ccl_lineage_converter <- unique(ccl_converter[, c("Broad_ID", "grouped_general_doid", "group_general_lineage_name")])
-lineage_converter <- unique(select(lineage_converter, grouped_general_doid, group_general_lineage_name))
+lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 ```
 
@@ -393,6 +393,7 @@ crispr_muts$PointMutation <- ifelse(is.na(crispr_muts$PointMutation), 1, crispr_
 crispr_muts_summ <- crispr_muts %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
 ## Merge test results back into full dataset, which restores information lost in the summarization
 crispr_data <- merge(crispr_muts_summ, crispr_muts, by = "Gene")
+crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
 ## Add Color column
 crispr_data$Color <- ifelse(crispr_data$Mutation_Status == 0, "thistle", "darkorchid")
 crispr_data$Color <- factor(crispr_data$Color)
@@ -403,18 +404,21 @@ crispr_data <- merge(crispr_data, cn_melt, by = c("Gene", "Broad_ID"), all.x = T
 # Gene expression (RPKM)
 ge_crispr <- filter(ge_melt, Gene %in% as.character(unique(crispr_melt$Gene)))
 crispr_data <- merge(crispr_data, ge_crispr, by = c("Gene", "Broad_ID"), all.x = TRUE)
-saveRDS(crispr_data, "./../htscreens_giant_files/crispr_data_19Q1.rds", compress = "xz")
-```
 
-```{r load_crispr_filter, eval=TRUE}
-crispr_data <- readRDS("./../htscreens_giant_files/crispr_data_19Q1.rds")
+saveRDS(crispr_data, "./data_munging/rds/crispr_data_19Q1.rds", compress = "xz")
 
 # Filter G2P CRISPR for point mutations
 crispr_ptmuts <- filter(crispr_data, PointMutation == 1)
 crispr_ptmuts <- subset(crispr_ptmuts, select = -c(PointMutation))
 crispr_ptmuts <- filter(crispr_ptmuts, Gene %in% g2p_genes)
-crispr_ptmuts$Gene <- factor(crispr_ptmuts$Gene)
 crispr_ptmuts$Primary.Disease <- factor(crispr_ptmuts$Primary.Disease)
+crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
+saveRDS(crispr_ptmuts, "./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
+```
+
+```{r load_crispr_filter, eval=TRUE}
+crispr_data <- readRDS("./data_munging/rds/crispr_data_19Q1.rds")
+crispr_ptmuts <- readRDS("./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds")
 ```
 
 # DATA SUMMARY FIGURES
@@ -458,8 +462,9 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
              fill = c("palegreen3", "slategray3", "paleturquoise3"))
 ```
 
-**RUN THIS IN TEH EVENING**
-```{r, eval=FALSE}
+## Histology distributions
+
+```{r histology_dists_data, eval=FALSE}
 ccle_hists <- unique(select(ccle_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
 ccle_hists$Dataset <- "CCLE"
@@ -469,21 +474,38 @@ ctrp_hists$Dataset <- "CTRP"
 gdsc_hists <- unique(select(gdsc_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
 gdsc_hists$Perc <- gdsc_hists$n / sum(gdsc_hists$n) * 100
 gdsc_hists$Dataset <- "GDSC"
+crispr_hists <- unique(select(crispr_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
+crispr_hists$Perc <- crispr_hists$n / sum(crispr_hists$n) * 100
+crispr_hists$Dataset <- "CRISPR"
 
-drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists)
+drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists, crispr_hists) %>% drop_na(Primary.Disease)
+drug_hists$Dataset <- factor(drug_hists$Dataset, levels = c("CCLE", "CTRP", "GDSC", "CRISPR"))
 drug_hists$Primary.Disease <- as.character(drug_hists$Primary.Disease)
+drug_hists$Primary.Disease <- gsub(" cancer", "", drug_hists$Primary.Disease)
+# saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
+```
 
+```{r histology_dists, fig.height=4.5, fig.width=4}
+drug_hists <- readRDS("./data_munging/rds/histology_distributions.rds")
+png(filename = "./plots/manuscript/histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
 ggplot(drug_hists, aes(x = Dataset, y = n, fill = Primary.Disease)) +
-  geom_bar(stat = "identity", color = "black")
+  geom_bar(stat = "identity", color = "black") +
+  scale_y_continuous(breaks = seq(0, 850, by = 50), labels = seq(0, 850, by = 50)) +
+  guides(fill = guide_legend(title = "Histology", ncol = 1)) +
+  labs(y = "Count")
+dev.off()
 ```
 
 ## G2P summary heatmap
 
-```{r dg_heatmap, fig.height=6, fig.width=8}
+```{r dg_heatmap, fig.height=6, fig.width=8, warning=FALSE}
 g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
 g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
 g2p_dg_counts[g2p_dg_counts == 0] <- NA
+
+g2p_gene_order <- colnames(g2p_dg_counts)
+g2p_drug_order <- rownames(g2p_dg_counts)
 
 # Create annotation layer
 hta_data <- data.frame(Drug = rownames(g2p_dg_counts), CCLE = NA, CTRP = NA, GDSC = NA)
@@ -531,13 +553,21 @@ ht <- Heatmap(g2p_dg_counts,
               row_names_gp = gpar(fontsize = 10),
               column_names_side = "bottom",
               column_names_gp = gpar(fontsize = 10),
+              show_column_names = FALSE,
+              bottom_annotation = HeatmapAnnotation(
+                  text = anno_text(colnames(g2p_dg_counts),
+                                   rot = 45,
+                                   gp = gpar(fontsize = 10),
+                                   offset = unit(1, "npc"),
+                                   just = "right"),
+                  annotation_height = unit(0.45, "in")),
               row_title = "Drugs",
               row_title_gp = gpar(fontface = "bold", fontsize = 14),
               column_title = "Genes", 
               column_title_gp = gpar(fontface = "bold", fontsize = 14),
               column_title_side = "bottom")
 
-# png(filename = "./plots/manuscript/g2p_summary_heatmap.png", width = 12, height = 10, units = "in", res = 500)
+# png(filename = "./plots/manuscript/g2p_summary_heatmap.png", width = 10, height = 9, units = "in", res = 500)
 draw(hta + ht, gap = unit(5, "mm"), heatmap_legend_side = "top")
 # dev.off()
 ```
@@ -588,29 +618,147 @@ crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene
 crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
 ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
+ccle_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ccle_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_druggene.rds")
 ccle_signif_lineage <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
 
 ctrp_signif_gene <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ctrp_signif_g2p_gene.rds")
+ctrp_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ctrp_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = "Drug_Gene", outfile = "./data_munging/rds/ctrp_signif_g2p_druggene.rds")
 ctrp_signif_lineage <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 
 gdsc_signif_gene <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/gdsc_signif_g2p_gene.rds")
+gdsc_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = "Drug_Gene", outfile = "./data_munging/rds/gdsc_signif_g2p_druggene.rds")
 gdsc_signif_lineage <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
 ```{r load_wilcoxon_rds}
 crispr_signif_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_lineage.rds")
+
 ccle_signif_gene <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
+ccle_signif_g2p_druggene <- readRDS("./data_munging/rds/ccle_signif_g2p_druggene.rds")
 ccle_signif_lineage <- readRDS("./data_munging/rds/ccle_signif_g2p_lineage.rds")
+
 ctrp_signif_gene <- readRDS("./data_munging/rds/ctrp_signif_g2p_gene.rds")
+ctrp_signif_g2p_druggene <- readRDS("./data_munging/rds/ctrp_signif_g2p_druggene.rds")
 ctrp_signif_lineage <- readRDS("./data_munging/rds/ctrp_signif_g2p_lineage.rds")
+
 gdsc_signif_gene <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
+gdsc_signif_g2p_druggene <- readRDS("./data_munging/rds/gdsc_signif_g2p_druggene.rds")
 gdsc_signif_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
 ## Plots
 
+```{r crispr_mut_gene_plot, fig.height=4, fig.width=8}
+crispr_signif_gene$Gene <- factor(crispr_signif_gene$Gene, levels = g2p_genes)
+crispr_ptmuts$Gene <- factor(crispr_ptmuts$Gene, levels = g2p_genes)
 
+crispr_gene_mut_plot <- ggplot(data = crispr_ptmuts) +
+  facet_wrap(~ Gene, nrow = 2, drop = FALSE) +
+  scale_color_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
+  geom_jitter(aes(x = Mutation_Status, y = Score, color = Mutation_Status), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_boxplot(aes(x = Mutation_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
+  geom_text(data = crispr_signif_gene, aes(x = 1.5, y = 1.75, label = p.signif.adj)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  theme(legend.position = "top", legend.direction = "horizontal") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  labs(y = "CERES Score")
+crispr_gene_mut_plot
+
+# ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
+```
+
+```{r crispr_mut_lin_plot, fig.height=12, fig.width=8}
+crispr_signif_lineage$Gene <- factor(crispr_signif_lineage$Gene, levels = g2p_genes)
+
+crispr_gene_lin_plot <- ggplot(data = crispr_ptmuts) +
+  facet_wrap(~ Primary.Disease, nrow = 7, scales = "free_x") +
+  scale_color_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
+  geom_point(aes(x = Gene, y = Score, color = Mutation_Status), alpha = 0.5, size = 0.6) +
+  geom_text(data = crispr_signif_lineage, aes(x = Gene, y = 1.75, label = p.signif.adj)) +
+  geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
+  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  ylab("CERES Score") +
+  scale_x_discrete(name = "Mutation Status", labels = c("0" = "WT", "1" = "Mut"))
+crispr_gene_lin_plot
+
+# ggsave("./plots/manuscript/crispr_gene_lineage_plot.png", crispr_gene_lin_plot, width = 16, height = 20, units = "in")
+```
+
+```{r heatmap_function}
+MakeMutHeatmap <- function(signif_g2p_druggene, row_names, col_title, color, legend_title) {
+  signif_g2p_druggene$Drug <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[1])
+  signif_g2p_druggene$Gene <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[2])
+  
+  signif_grid <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+  signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+  signif_grid <- signif_grid[complete.cases(signif_grid), ]
+  signif_grid[signif_grid > 0.05] <- NA
+  
+  signif_grid_annot <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+  signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+  signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
+  signif_grid_annot[signif_grid_annot == "No"] <- ""
+  signif_grid_annot[signif_grid_annot == "Yes"] <- "*"
+  
+  col_fun <- colorRamp2(c(0, 0.05), c(color, "gray97"))
+  # Legend properties list
+  ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70",   at = seq(0, 0.05, by = 0.01), labels = seq(0, 0.05, by = 0.01))
+  ht <- Heatmap(signif_grid,
+                col = col_fun,
+                na_col = "gray97",
+                rect_gp = gpar(col = "gray70"),
+                heatmap_legend_param = ht_legend_list,
+                cluster_rows = FALSE, 
+                cluster_columns = FALSE, 
+                show_row_names = as.logical(row_names),
+                row_names_side = "left",
+                row_names_gp = gpar(fontsize = 10),
+                column_names_side = "bottom",
+                column_names_gp = gpar(fontsize = 10),
+                show_column_names = FALSE,
+                bottom_annotation = HeatmapAnnotation(
+                  text = anno_text(colnames(signif_grid),
+                                   rot = 45,
+                                   gp = gpar(fontsize = 11),
+                                   offset = unit(1, "npc"),
+                                   just = "right"),
+                  annotation_height = unit(0.85, "in")),
+                  # annotation_height = max_text_width(colnames(signif_grid))),
+                row_title = "Genes",
+                row_title_gp = gpar(fontface = "bold", fontsize = 14),
+                column_title = col_title, 
+                column_title_gp = gpar(fontface = "bold", fontsize = 14),
+                column_title_side = "bottom",
+                cell_fun = function(j, i, x, y, width, height, fill) { grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20)) })
+  return(ht)
+}
+```
+
+```{r mut_heatmaps, eval=FALSE}
+ht_ccle <- MakeMutHeatmap(signif_g2p_druggene = ccle_signif_g2p_druggene, legend_title = "P-value", row_names = TRUE, color = "darkgreen", col_title = "Drugs")
+png(filename = "./plots/manuscript/ccle_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
+draw(ht_ccle, heatmap_legend_side = "top")
+dev.off()
+
+ht_ctrp <- MakeMutHeatmap(signif_g2p_druggene = ctrp_signif_g2p_druggene, legend_title = "P-value", row_names = TRUE, color = "steelblue4", col_title = "Drugs")
+png(filename = "./plots/manuscript/ctrp_mut_heatmap.png", width = 9.5, height = 10, units = "in", res = 500)
+draw(ht_ctrp, heatmap_legend_side = "top")
+dev.off()
+
+ht_gdsc <- MakeMutHeatmap(signif_g2p_druggene = gdsc_signif_g2p_druggene, legend_title = "P-value", row_names = TRUE, color = "turquoise4", col_title = "Drugs")
+png(filename = "./plots/manuscript/gdsc_mut_heatmap.png", width = 5, height = 10, units = "in", res = 500)
+draw(ht_gdsc, heatmap_legend_side = "top")
+dev.off()
+
+ht_ccle2 <- MakeMutHeatmap(signif_g2p_druggene = ccle_signif_g2p_druggene, legend_title = "CCLE p-value                                                                               ", row_names = TRUE, color = "darkgreen", col_title = "")
+ht_ctrp2 <- MakeMutHeatmap(signif_g2p_druggene = ctrp_signif_g2p_druggene, legend_title = "CTRP p-value                                                                              ", row_names = FALSE, color = "steelblue4", col_title = "Drugs")
+ht_gdsc2 <- MakeMutHeatmap(signif_g2p_druggene = gdsc_signif_g2p_druggene, legend_title = "GDSC p-value", row_names = FALSE, color = "turquoise4", col_title = "")
+png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 10, units = "in", res = 500)
+draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+dev.off()
+```
 
 # SPEARMAN (CN, GE)
 
@@ -828,7 +976,7 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
 ```{r drug_KS_tests, eval=TRUE, warning=FALSE, fig.height=6, fig.width=12}
 # g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
-saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
+# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
 g2p_corr_all <- readRDS("./data_munging/rds/g2p_corr_all.rds")
 g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
 
