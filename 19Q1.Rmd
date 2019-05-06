@@ -589,23 +589,21 @@ adj_signif <- function(df, alpha) {
 
 WilcoxonTestDF <- function(dataframe, grouping, outfile) {
   require(ggpubr)
-  if(grouping == "Drug_Gene_Lin") {
+  if("Drug_Gene_Lin" %in% grouping) {
     # Filter out DGLs with too few samples in at least one mutation status category
-    count <- ctrp_ptmuts %>% count(Drug_Gene_Lin, Mutation_Status)
-    count2 <- count %>% count(Drug_Gene_Lin)
-    count3 <- merge(count, count2, by = "Drug_Gene_Lin", suffixes = c("_sub3", "_1mut")) %>% filter(n_1mut == 2)
-    count3$n_sub3 <- ifelse(count3$n_sub3 >= 3, TRUE, FALSE)
-    count4 <- count3 %>% filter(n_sub3) %>% count(Drug_Gene_Lin) %>% filter(n == 2)
-    dataframe <- filter(dataframe, Drug_Gene_Lin %in% unique(count4$Drug_Gene_Lin))
-    dataframe$Drug_Gene_Lin <- factor(dataframe$Drug_Gene_Lin)
+    count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation_Status) %>% filter(n >= 3)
+    count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
+    dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
+    dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
+    dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
   }
   signif <- compare_means(Score ~ Mutation_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
   signif <- adj_signif(signif, alpha = 0.05)
   signif <- signif[order(signif$p),]
-  if(grouping == "Drug_Gene") {
+  if("Drug_Gene" %in% grouping) {
     signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_druggenes, "Yes", "No")
   }
-  if(grouping == "Drug_Gene_Lin") {
+  if("Drug_Gene_Lin" %in% grouping) {
     signif$InG2P <- ifelse(signif$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
   }
   saveRDS(signif, outfile)
@@ -614,20 +612,30 @@ WilcoxonTestDF <- function(dataframe, grouping, outfile) {
 ```
 
 ```{r wilcoxon_tests, eval=FALSE}
+crispr_ptmuts <- unfactorize(crispr_ptmuts)
 crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
-ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
-ccle_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ccle_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = "Drug_Gene", outfile = "./data_munging/rds/ccle_signif_g2p_druggene.rds")
-ccle_signif_lineage <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
+ccle_ptmuts_filt <- filter(ccle_ptmuts, Drug %in% g2p_drugs)
+ccle_ptmuts_filt$Gene <- factor(ccle_ptmuts_filt$Gene, ordered = FALSE)
+ccle_ptmuts_filt <- unfactorize(ccle_ptmuts_filt)
+ccle_signif_gene <- WilcoxonTestDF(dataframe = ccle_ptmuts, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_gene.rds")
+ccle_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ccle_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_druggene.rds")
+ccle_signif_lineage <- WilcoxonTestDF(dataframe = ccle_ptmuts_filt, grouping = c("Drug", "Gene", "Primary.Disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_lineage.rds")
 
-ctrp_signif_gene <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/ctrp_signif_g2p_gene.rds")
-ctrp_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ctrp_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = "Drug_Gene", outfile = "./data_munging/rds/ctrp_signif_g2p_druggene.rds")
-ctrp_signif_lineage <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
+ctrp_ptmuts_filt <- filter(ctrp_ptmuts, Drug %in% g2p_drugs)
+ctrp_ptmuts_filt$Gene <- factor(ctrp_ptmuts_filt$Gene, ordered = FALSE)
+ctrp_ptmuts_filt <- unfactorize(ctrp_ptmuts_filt)
+ctrp_signif_gene <- WilcoxonTestDF(dataframe = ctrp_ptmuts, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_gene.rds")
+ctrp_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ctrp_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_druggene.rds")
+ctrp_signif_lineage <- WilcoxonTestDF(dataframe = ctrp_ptmuts_filt, grouping = c("Drug", "Gene", "Primary.Disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
 
-gdsc_signif_gene <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene", outfile = "./data_munging/rds/gdsc_signif_g2p_gene.rds")
-gdsc_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = "Drug_Gene", outfile = "./data_munging/rds/gdsc_signif_g2p_druggene.rds")
-gdsc_signif_lineage <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = "Drug_Gene_Lin", outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
+gdsc_ptmuts_filt <- filter(gdsc_ptmuts, Drug %in% g2p_drugs)
+gdsc_ptmuts_filt$Gene <- factor(gdsc_ptmuts_filt$Gene, ordered = FALSE)
+gdsc_ptmuts_filt <- unfactorize(gdsc_ptmuts_filt)
+gdsc_signif_gene <- WilcoxonTestDF(dataframe = gdsc_ptmuts, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_gene.rds")
+gdsc_signsif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(gdsc_ptmuts, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_druggene.rds")
+gdsc_signif_lineage <- WilcoxonTestDF(dataframe = gdsc_ptmuts_filt, grouping = c("Drug", "Gene", "Primary.Disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
 ```{r load_wilcoxon_rds}
@@ -656,6 +664,7 @@ crispr_ptmuts$Gene <- factor(crispr_ptmuts$Gene, levels = g2p_genes)
 crispr_gene_mut_plot <- ggplot(data = crispr_ptmuts) +
   facet_wrap(~ Gene, nrow = 2, drop = FALSE) +
   scale_color_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
+  scale_x_discrete(name = "Mutation Status", labels = c("0" = "WT", "1" = "Mut")) +
   geom_jitter(aes(x = Mutation_Status, y = Score, color = Mutation_Status), width = 0.2, alpha = 0.5, size = 0.6) +
   geom_boxplot(aes(x = Mutation_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
   geom_text(data = crispr_signif_gene, aes(x = 1.5, y = 1.75, label = p.signif.adj)) +
@@ -663,7 +672,7 @@ crispr_gene_mut_plot <- ggplot(data = crispr_ptmuts) +
   theme(legend.position = "top", legend.direction = "horizontal") +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   labs(y = "CERES Score")
-crispr_gene_mut_plot
+# crispr_gene_mut_plot
 
 # ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
 ```
@@ -686,10 +695,10 @@ crispr_gene_lin_plot
 # ggsave("./plots/manuscript/crispr_gene_lineage_plot.png", crispr_gene_lin_plot, width = 16, height = 20, units = "in")
 ```
 
-```{r heatmap_function}
+```{r mut_heatmap_function}
 MakeMutHeatmap <- function(signif_g2p_druggene, row_names, col_title, color, legend_title) {
-  signif_g2p_druggene$Drug <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[1])
-  signif_g2p_druggene$Gene <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[2])
+  # signif_g2p_druggene$Drug <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[1])
+  # signif_g2p_druggene$Gene <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[2])
   
   signif_grid <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
   signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -764,13 +773,11 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-## Drugscreens
-
 ```{r drug_spear_calc, warning=FALSE}
 g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 
 # CCLE
-ccle_cor_res <- ccle_ptmuts %>% group_by(Drug_Gene) %>%summarize(
+ccle_cor_res <- ccle_ptmuts %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
                 GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
                 GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
                 CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
@@ -781,7 +788,7 @@ ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
 ccle_cor_res$Dataset <- "CCLE"
 
 # CTRP
-ctrp_cor_res <- ctrp_ptmuts %>% group_by(Drug_Gene) %>%summarize(
+ctrp_cor_res <- ctrp_ptmuts %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
                 GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
                 GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
                 CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
@@ -792,7 +799,7 @@ ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
 ctrp_cor_res$Dataset <- "CTRP"
 
 # GDSC
-gdsc_cor_res <- gdsc_ptmuts %>% group_by(Drug_Gene) %>%summarize(
+gdsc_cor_res <- gdsc_ptmuts %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
                 GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
                 GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
                 CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
@@ -804,16 +811,21 @@ gdsc_cor_res$Dataset <- "GDSC"
 
 # All
 g2p_cor <- rbind(ccle_cor_res, ctrp_cor_res, gdsc_cor_res)
+
+saveRDS(g2p_cor, "./data_munging/rds/drug_cor.rds")
 ```
 
-
-## CRISPR
+```{r load_drug_spear}
+g2p_cor <- readRDS("./data_munging/rds/drug_cor.rds")
+```
 
 Spearman correlations for gene expression and copy number:
 ```{r crispr_spear_calc, warning=FALSE}
 crispr_spear_ge <- transform(crispr_ptmuts %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
 crispr_spear_cn <- transform(crispr_ptmuts %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
 ```
+
+## Plots
 
 Create CRISPR two-column, KRAS-inset plot for CN and GE:
 ```{r crispr_spear_plot, fig.height=6, fig.width=12}
@@ -879,6 +891,63 @@ crispr_spearman_corr_plot
 
 # ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
 ```
+
+```{r corr_heatmap_function}
+MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color, legend_title) {
+  # drug_cor_res$Drug <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[1])
+  # drug_cor_res$Gene <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[2])
+  
+  signif_grid <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+  signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+  signif_grid <- signif_grid[complete.cases(signif_grid), ]
+  signif_grid[signif_grid > 0.05] <- NA
+  
+  # signif_grid_annot <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+  # signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+  # signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
+  # signif_grid_annot[signif_grid_annot == "No"] <- ""
+  # signif_grid_annot[signif_grid_annot == "Yes"] <- "*"
+  
+  col_fun <- colorRamp2(c(0, 0.05), c(color, "gray97"))
+  # Legend properties list
+  ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70",   at = seq(0, 0.05, by = 0.01), labels = seq(0, 0.05, by = 0.01))
+  ht <- Heatmap(signif_grid,
+                col = col_fun,
+                na_col = "gray97",
+                rect_gp = gpar(col = "gray70"),
+                heatmap_legend_param = ht_legend_list,
+                cluster_rows = FALSE, 
+                cluster_columns = FALSE, 
+                show_row_names = as.logical(row_names),
+                row_names_side = "left",
+                row_names_gp = gpar(fontsize = 10),
+                column_names_side = "bottom",
+                column_names_gp = gpar(fontsize = 10),
+                show_column_names = FALSE,
+                bottom_annotation = HeatmapAnnotation(
+                  text = anno_text(colnames(signif_grid),
+                                   rot = 45,
+                                   gp = gpar(fontsize = 11),
+                                   offset = unit(1, "npc"),
+                                   just = "right"),
+                  annotation_height = unit(0.85, "in")),
+                  # annotation_height = max_text_width(colnames(signif_grid))),
+                row_title = "Genes",
+                row_title_gp = gpar(fontface = "bold", fontsize = 14),
+                column_title = col_title, 
+                column_title_gp = gpar(fontface = "bold", fontsize = 14),
+                column_title_side = "bottom",
+                # cell_fun = function(j, i, x, y, width, height, fill) { grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20)) }
+                )
+  return(ht)
+}
+```
+
+```{r drug_spear_plot}
+
+```
+
+
 
 # DGL KS TESTS
 
@@ -976,8 +1045,8 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
 ```{r drug_KS_tests, eval=TRUE, warning=FALSE, fig.height=6, fig.width=12}
 # g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
-# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_corr_all.rds")
-g2p_corr_all <- readRDS("./data_munging/rds/g2p_corr_all.rds")
+# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_dgl_corr.rds")
+g2p_corr_all <- readRDS("./data_munging/rds/g2p_dgl_corr.rds")
 g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
 
 g2p_corr_4plot <- filter(g2p_corr_all, G2P_Drug_Gene == "Yes")
