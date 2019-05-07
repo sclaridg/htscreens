@@ -773,7 +773,7 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-```{r drug_spear_calc, warning=FALSE}
+```{r drug_spear_calc, warning=FALSE, eval=FALSE}
 g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 
 # CCLE
@@ -893,26 +893,46 @@ crispr_spearman_corr_plot
 ```
 
 ```{r corr_heatmap_function}
-MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color, legend_title) {
+MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, legend_title, metric) {
   # drug_cor_res$Drug <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[1])
   # drug_cor_res$Gene <- sapply(strsplit(signif_g2p_druggene$Drug_Gene, "_", fixed = TRUE), function(x) x[2])
+  if(toupper(metric) == "CN" | toupper(metric) == "COPY NUMBER") {
+    signif_grid <- dcast(drug_cor_res, Gene ~ Drug, value.var = "CN_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+    signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+    signif_grid <- signif_grid[complete.cases(signif_grid), ]
+    signif_grid[signif_grid >= 0.05] <- ""
+    signif_grid[signif_grid != ""] <- "*"
+    
+    corr_grid <- dcast(drug_cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+    corr_grid <- corr_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(corr_grid))]
+    corr_grid <- corr_grid[complete.cases(corr_grid), ]
+  }
   
-  signif_grid <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-  signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-  signif_grid <- signif_grid[complete.cases(signif_grid), ]
-  signif_grid[signif_grid > 0.05] <- NA
+  if(toupper(metric) == "GE" | toupper(metric) == "GENE EXPRESSION") {
+    signif_grid <- dcast(drug_cor_res, Gene ~ Drug, value.var = "GE_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+    signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+    signif_grid <- signif_grid[complete.cases(signif_grid), ]
+    signif_grid[signif_grid >= 0.05] <- ""
+    signif_grid[signif_grid != ""] <- "*"
+    
+    corr_grid <- dcast(drug_cor_res, Gene ~ Drug, value.var = "GE_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+    corr_grid <- corr_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(corr_grid))]
+    corr_grid <- corr_grid[complete.cases(corr_grid), ]
+  }
   
-  # signif_grid_annot <- dcast(signif_g2p_druggene, Gene ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-  # signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-  # signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
-  # signif_grid_annot[signif_grid_annot == "No"] <- ""
-  # signif_grid_annot[signif_grid_annot == "Yes"] <- "*"
+  annot_grid <- dcast(drug_cor_res, Gene ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+  annot_grid <- annot_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+  annot_grid <- annot_grid[complete.cases(annot_grid), ]
+  annot_grid[annot_grid == "No"] <- ""
+  annot_grid[annot_grid == "Yes"] <- "*"
   
-  col_fun <- colorRamp2(c(0, 0.05), c(color, "gray97"))
+  col_fun <- colorRamp2(color_range, c("red3", "white", "green4"))
+  
   # Legend properties list
-  ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70",   at = seq(0, 0.05, by = 0.01), labels = seq(0, 0.05, by = 0.01))
-  ht <- Heatmap(signif_grid,
+  ht_legend_list <- list(title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70", at = seq(color_range[1], color_range[3], by = 0.2), labels = seq(color_range[1], color_range[3], by = 0.2))
+  ht <- Heatmap(corr_grid,
                 col = col_fun,
+                name = legend_title,
                 na_col = "gray97",
                 rect_gp = gpar(col = "gray70"),
                 heatmap_legend_param = ht_legend_list,
@@ -936,15 +956,62 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color, legend_ti
                 row_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title = col_title, 
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
-                column_title_side = "bottom",
-                # cell_fun = function(j, i, x, y, width, height, fill) { grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20)) }
+                column_title_side = "top",
+                cell_fun = function(j, i, x, y, width, height, fill) { grid.text(signif_grid[i, j], x, y, gp = gpar(fontsize = 20)) }
                 )
   return(ht)
 }
 ```
 
-```{r drug_spear_plot}
+```{r drug_spear_plots, eval=FALSE}
+# Copy number
+ccle_cor <- unfactorize(filter(g2p_cor, Dataset == "CCLE"))
+ccle_cn_ht <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), legend_title = "CCLE Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/ccle_cn_heatmap.png", width = 3, height = 10, units = "in", res = 500)
+draw(ccle_cn_ht, heatmap_legend_side = "top")
+dev.off()
 
+ctrp_cor <- unfactorize(filter(g2p_cor, Dataset == "CTRP"))
+ctrp_cn_ht <- MakeCorrHeatmap(drug_cor_res = ctrp_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.35, 0, 0.35), legend_title = "CTRP Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/ctrp_cn_heatmap.png", width = 9.5, height = 10, units = "in", res = 500)
+draw(ctrp_cn_ht, heatmap_legend_side = "top")
+dev.off()
+
+gdsc_cor <- unfactorize(filter(g2p_cor, Dataset == "GDSC"))
+gdsc_cn_ht <- MakeCorrHeatmap(drug_cor_res = gdsc_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), legend_title = "GDSC Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/gdsc_cn_heatmap.png", width = 5, height = 10, units = "in", res = 500)
+draw(gdsc_cn_ht, heatmap_legend_side = "top")
+dev.off()
+
+ccle_cn_ht2 <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.35, 0, 0.35), legend_title = "Copy num. Spearman correlation", metric = "CN")
+ctrp_cn_ht2 <- MakeCorrHeatmap(drug_cor_res = ctrp_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.35, 0, 0.35), legend_title = "Copy num. Spearman correlation", metric = "CN")
+gdsc_cn_ht2 <- MakeCorrHeatmap(drug_cor_res = gdsc_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.35, 0, 0.35), legend_title = "Copy num. Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/drug_cn_heatmap.png", width = 13, height = 10, units = "in", res = 500)
+draw(ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+dev.off()
+
+# Gene expression
+ccle_ge_ht <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), legend_title = "CCLE Spearman correlation", metric = "GE")
+png(filename = "./plots/manuscript/ccle_ge_heatmap.png", width = 3, height = 10, units = "in", res = 500)
+draw(ccle_ge_ht, heatmap_legend_side = "top")
+dev.off()
+
+ctrp_ge_ht <- MakeCorrHeatmap(drug_cor_res = ctrp_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), legend_title = "CTRP Spearman correlation", metric = "GE")
+png(filename = "./plots/manuscript/ctrp_ge_heatmap.png", width = 9.5, height = 10, units = "in", res = 500)
+draw(ctrp_ge_ht, heatmap_legend_side = "top")
+dev.off()
+
+gdsc_ge_ht <- MakeCorrHeatmap(drug_cor_res = gdsc_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), legend_title = "GDSC Spearman correlation", metric = "GE")
+png(filename = "./plots/manuscript/gdsc_ge_heatmap.png", width = 5, height = 10, units = "in", res = 500)
+draw(gdsc_ge_ht, heatmap_legend_side = "top")
+dev.off()
+
+ccle_ge_ht2 <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ctrp_ge_ht2 <- MakeCorrHeatmap(druwg_cor_res = ctrp_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
+gdsc_ge_ht2 <- MakeCorrHeatmap(drug_cor_res = gdsc_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
+png(filename = "./plots/manuscript/drug_ge_heatmap.png", width = 13, height = 10, units = "in", res = 500)
+draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+dev.off()
 ```
 
 
