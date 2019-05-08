@@ -169,6 +169,7 @@ maf_df <- maf_df[maf_df$Variant_Classification != "Silent",]
 # Add Mutation_Status column
 maf_df$Mutation_Status <- 1
 maf_df$PointMutation <- with(maf_df, ifelse(Reference_Allele == 1 | is.na(Reference_Allele), TRUE, ifelse(Reference_Allele == 0 & Tumor_Seq_Allele1 == 1, 1, 0)))
+maf_df <- unfactorize(maf_df)
 
 saveRDS(maf_df, "./data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
@@ -181,6 +182,7 @@ colnames(cn) <- gsub(" .*", "", colnames(cn))
 colnames(cn)[1] <- "Broad_ID"
 # Melt
 cn_melt <- melt(data = cn, id.vars = "Broad_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Gene", value.name = "CN")
+cn_melt <- unfactorize(cn_melt)
 
 saveRDS(cn_melt, "./data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```
@@ -189,10 +191,12 @@ saveRDS(cn_melt, "./data_munging/19Q1/cn_melt_19Q1.rds", compress = "xz")
 ```{r gene_expression, eval=FALSE}
 ge <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q1_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
-colnames(ge) <- gsub(" .*", "", colnames(ge_19Q1))
+colnames(ge) <- gsub(" .*", "", colnames(ge))
 colnames(ge)[1] <- "Broad_ID"
 # Melt
-ge_melt <- melt(ge, id.vars = "Broad_ID", measure.vars = colnames(ge_19Q1)[2:ncol(ge_19Q1)], variable.name = "Gene", value.name = "TPM")
+ge_melt <- melt(ge, id.vars = "Broad_ID", measure.vars = colnames(ge)[2:ncol(ge)], variable.name = "Gene", value.name = "TPM")
+ge_melt$TPM <- log2(ge_melt$TPM + 1)
+ge_melt <- unfactorize(ge_melt)
 
 saveRDS(ge_melt, "./data_munging/19Q1/ge_melt_19Q1.rds", compress = "xz")
 ```
@@ -226,7 +230,7 @@ MergeOmicsG2P <- function(database, outfile) {
     data <-  merge(filt, grid, by = "Cell_line", all.y = TRUE)
     print("Merged grid.")
     # Merge metadata
-    data <-  merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = c("Cell_line", "Histology", "CCLE_Name", "Broad_ID"), all.x = TRUE)
+    data <-  merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = c("Cell_line", "Histology", "CCLE_Name", "Broad_ID"), all.y = TRUE)
     ## Add columns for G2P drug-gene and drug-gene-lineage sorting
     data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
     data$G2P_Drug_Gene <- ifelse(data$Drug_Gene %in% g2p_druggenes, "Yes", "No")
@@ -241,35 +245,22 @@ MergeOmicsG2P <- function(database, outfile) {
     # Get all G2P gene-cell line combinations
     data <-  filter(data, Gene %in% g2p_genes)
     # Merge cell line metadata
-    data <- merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = "Broad_ID", all.x = TRUE)
+    data <- merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, Broad_ID, Primary.Disease), by = "Broad_ID", all.y = TRUE)
     data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
     data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$Primary.Disease)
     print("Merged metadata.")
   }
   
   # Merge mutation calls
-  data <- merge(data, maf_df_filt, by = c("Gene", "Broad_ID"), all.x = TRUE)
+  data <- unfactorize(data)
+  data <- merge(data, maf_df_ptmuts, by = c("Gene", "Broad_ID"), all.x = TRUE)
   data$Mutation_Status <- ifelse(is.na(data$Mutation_Status), 0, data$Mutation_Status)
   ## Identify point mutations
-  data$PointMutation <- ifelse(is.na(data$PointMutation), 1, data$PointMutation)
+  # data$PointMutation <- ifelse(is.na(data$PointMutation), 1, data$PointMutation)
   ## Summarize number of mutant and Wildtype cell lines
   data_muts_summ <- data %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
   ## Merge test results back into full dataset, which restores information lost in the summarization
   data <- merge(data_muts_summ, data, by = "Gene")
-  ## Add color columns for plotting
-  if(database == "CCLE") {
-    data$Color <- ifelse(data$Mutation_Status == 0, "palegreen3", "springgreen4")
-  }
-  if(database == "CTRP") {
-    data$Color <- ifelse(data$Mutation_Status == 0, "slategray3", "steelblue4")
-  }
-  if(database == "GDSC") {
-    data$Color <- ifelse(data$Mutation_Status == 0, "paleturquoise3", "turquoise4")
-  }
-  if(database == "CRISPR") {
-    data$Color <- ifelse(data$Mutation_Status == 0, "thistle", "darkorchid")
-  }
-  data$Color <- factor(data$Color)
   print("Merged mutation calls.")
 
   # Merge GE data
@@ -281,7 +272,7 @@ MergeOmicsG2P <- function(database, outfile) {
   print("Merged copy number data.")
   
   # Drop cell lines not in DepMap
-  data <- filter(data, !is.na(Broad_ID))
+  data <- filter(data, !is.na(Broad_ID) & !(Broad_ID %in% c("ACH-001182", "ACH-001451")))
   
   # Factorize gene
   data$Gene <- factor(data$Gene)
@@ -291,21 +282,23 @@ MergeOmicsG2P <- function(database, outfile) {
   return(data)
 }
 
-FilterForPointMuts <- function(dataframe, outfile) {
-  # Filter for point mutations
-  ptmuts <- filter(dataframe, PointMutation == 1)
-  # Remove columns that lead to duplicate mutation entries
-  ptmuts <- subset(ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, PointMutation))
-  ptmuts$Gene <- ordered(ptmuts$Gene, levels = g2p_genes)
-  ptmuts <- unique(ptmuts)
-  saveRDS(ptmuts, outfile, compress = "xz")
-  return(ptmuts)
-}
+# FilterForPointMuts <- function(dataframe, outfile) {
+#   # Filter for point mutations
+#   ptmuts <- filter(dataframe, PointMutation == 1)
+#   # Remove columns that lead to duplicate mutation entries
+#   ptmuts <- subset(ptmuts, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, PointMutation))
+#   ptmuts$Gene <- ordered(ptmuts$Gene, levels = g2p_genes)
+#   ptmuts <- unique(ptmuts)
+#   saveRDS(ptmuts, outfile, compress = "xz")
+#   return(ptmuts)
+# }
 ```
 
 ## Drug screens
 
 `r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
+
+**RE-FILTER FOR PTMUTS**
 ```{r merge_filter_drug_data, eval=FALSE}
 # Load in Pozdeyev et al. (2016) data
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
@@ -324,23 +317,16 @@ auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
 auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
 
 # Omics metadata
-maf_df_filt <- filter(maf_df, Gene %in% g2p_genes)
+maf_df_ptmuts <- unique(filter(maf_df, Gene %in% g2p_genes & PointMutation == 1) %>% select(-c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, PointMutation)))
 ge_filt <- filter(ge_melt, Gene %in% g2p_genes)
 cn_filt <- filter(cn_melt, Gene %in% g2p_genes)
 
-ccle <- MergeOmicsG2P(database = "CCLE", outfile = "./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
-ctrp <- MergeOmicsG2P(database = "CTRP", outfile = "./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes.rds")
-gdsc <- MergeOmicsG2P(database = "GDSC", outfile = "./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
-
-ccle_ptmuts <- FilterForPointMuts(dataframe = ccle, outfile = "./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds")
-ctrp_ptmuts <- FilterForPointMuts(dataframe = ctrp, outfile = "./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
-gdsc_ptmuts <- FilterForPointMuts(dataframe = gdsc, outfile = "./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
+ccle_ptmuts <- MergeOmicsG2P(database = "CCLE", outfile = "./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds")
+ctrp_ptmuts <- MergeOmicsG2P(database = "CTRP", outfile = "./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
+gdsc_ptmuts <- MergeOmicsG2P(database = "GDSC", outfile = "./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
 ```
 
 ```{r load_drug_rds, eval=TRUE}
-ccle <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes.rds")
-ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes.rds")
-gdsc <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes.rds")
 ccle_ptmuts <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds")
 ctrp_ptmuts <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
 gdsc_ptmuts <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
@@ -367,7 +353,7 @@ for(drug in g2p_drugs) {
 ## CRISPR
 
 Merge all CRISPR genes:
-```{r merge_crispr_data, eval=FALSE}
+```{r merge_crispr_data, eval=TRUE}
 crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
@@ -380,14 +366,9 @@ crispr_melt <- melt(crispr_all, id.vars = "Broad_ID", measure.vars = colnames(cr
 crispr_melt <- merge(crispr_melt, ccl_meta, by = "Broad_ID", all.x = TRUE)
 
 # Merge mutation annotations
-maf_filt_crispr <- filter(maf_df, Gene %in% as.character(unique(crispr_melt$Gene)))
-maf_filt_crispr <- subset(maf_filt_crispr, select = -c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1))
-maf_filt_crispr <- unique(maf_filt_crispr)
+maf_filt_crispr <- unique(filter(maf_df, Gene %in% as.character(unique(crispr_melt$Gene)) & PointMutation == 1) %>% select(-c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, PointMutation)))
 crispr_muts <- merge(crispr_melt, maf_filt_crispr, by = c("Gene","Broad_ID"), all.x = TRUE)
-crispr_muts$Gene <- factor(crispr_muts$Gene)
 crispr_muts$Mutation_Status <- ifelse(is.na(crispr_muts$Mutation_Status), 0, crispr_muts$Mutation_Status)
-## Identify point mutations and wildtypes for testing
-crispr_muts$PointMutation <- ifelse(is.na(crispr_muts$PointMutation), 1, crispr_muts$PointMutation)
 
 # Summarize number of mutant and Wildtype cell lines
 crispr_muts_summ <- crispr_muts %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
@@ -405,29 +386,31 @@ crispr_data <- merge(crispr_data, cn_melt, by = c("Gene", "Broad_ID"), all.x = T
 ge_crispr <- filter(ge_melt, Gene %in% as.character(unique(crispr_melt$Gene)))
 crispr_data <- merge(crispr_data, ge_crispr, by = c("Gene", "Broad_ID"), all.x = TRUE)
 
-saveRDS(crispr_data, "./data_munging/rds/crispr_data_19Q1.rds", compress = "xz")
+saveRDS(crispr_data, "./data_munging/rds/crispr_data_19Q1_ptmuts.rds", compress = "xz")
 
 # Filter G2P CRISPR for point mutations
-crispr_ptmuts <- filter(crispr_data, PointMutation == 1)
-crispr_ptmuts <- subset(crispr_ptmuts, select = -c(PointMutation))
-crispr_ptmuts <- filter(crispr_ptmuts, Gene %in% g2p_genes)
-crispr_ptmuts$Primary.Disease <- factor(crispr_ptmuts$Primary.Disease)
-crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
-saveRDS(crispr_ptmuts, "./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
+# crispr_ptmuts <- filter(crispr_data, PointMutation == 1)
+# crispr_ptmuts <- subset(crispr_ptmuts, select = -c(PointMutation))
+# crispr_ptmuts <- filter(crispr_ptmuts, Gene %in% g2p_genes)
+# crispr_ptmuts$Primary.Disease <- factor(crispr_ptmuts$Primary.Disease)
+# crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
+# saveRDS(crispr_ptmuts, "./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds", compress = "xz")
 ```
 
 ```{r load_crispr_filter, eval=TRUE}
-crispr_data <- readRDS("./data_munging/rds/crispr_data_19Q1.rds")
-crispr_ptmuts <- readRDS("./data_munging/rds/crispr_data_19Q1_g2pgenes_ptmuts.rds")
+# crispr_data <- readRDS("./data_munging/rds/crispr_data_19Q1.rds")
+crispr_ptmuts <- readRDS("./data_munging/rds/crispr_data_19Q1_ptmuts.rds")
 ```
 
 # DATA SUMMARY FIGURES
 
 --------------------------------------------------------------------------------
 
+## Mutation
+
 ## Cell line and drug overlaps
 
-```{r ccl_venn, eval=FALSE}
+```{r ccl_venn, eval=TRUE}
 ccle_ccls <- unique(ccle_ptmuts$Broad_ID)
 ctrp_ccls <- unique(ctrp_ptmuts$Broad_ID)
 gdsc_ccls <- unique(gdsc_ptmuts$Broad_ID)
@@ -435,7 +418,7 @@ crispr_ccls <- unique(crispr_ptmuts$Broad_ID)
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
-             filename = "./plots/manuscript/venn_ccls.png",
+             filename = "./plots/manuscript/all_venn_ccls.png",
              output = TRUE, imagetype = "png",
              height = 2000, width = 2000, resolution = 500,
              lwd = 1, cex = 1,
@@ -443,16 +426,26 @@ venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
              cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
              # cat.dist = c(0.06, 0.06, 0.035),
              fill = c("springgreen4", "steelblue4", "turquoise4", "darkorchid"))
+
+venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls),
+             filename = "./plots/manuscript/drug_venn_ccls.png",
+             output = TRUE, imagetype = "png",
+             height = 2000, width = 2000, resolution = 500,
+             lwd = 1, cex = 1.4,
+             category.names = c("CCLE", "CTRP", "GDSC"),
+             cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
+             cat.dist = c(0.06, 0.06, 0.035),
+             fill = c("springgreen4", "steelblue4", "turquoise4"))
 ```
 
-```{r drug_venn, eval=FALSE}
+```{r drug_venn, eval=TRUE}
 ccle_drugs <- unique(ccle_ptmuts$Drug)
 ctrp_drugs <- unique(ctrp_ptmuts$Drug)
 gdsc_drugs <- unique(gdsc_ptmuts$Drug)
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
-             filename = "./plots/manuscript/venn_drugs.png",
+             filename = "./plots/manuscript/drug_venn_drugs.png",
              output = TRUE, imagetype = "png",
              height = 2000, width = 2000, resolution = 500,
              lwd = 1, cex = 1.4,
@@ -464,7 +457,7 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
 
 ## Histology distributions
 
-```{r histology_dists_data, eval=FALSE}
+```{r histology_dists_data, eval=TRUE}
 ccle_hists <- unique(select(ccle_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
 ccle_hists$Dataset <- "CCLE"
@@ -482,12 +475,12 @@ drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists, crispr_hists) %>% drop_n
 drug_hists$Dataset <- factor(drug_hists$Dataset, levels = c("CCLE", "CTRP", "GDSC", "CRISPR"))
 drug_hists$Primary.Disease <- as.character(drug_hists$Primary.Disease)
 drug_hists$Primary.Disease <- gsub(" cancer", "", drug_hists$Primary.Disease)
-# saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
+saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
 ```
 
 ```{r histology_dists, fig.height=4.5, fig.width=4}
 drug_hists <- readRDS("./data_munging/rds/histology_distributions.rds")
-png(filename = "./plots/manuscript/histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
+png(filename = "./plots/manuscript/all_histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
 ggplot(drug_hists, aes(x = Dataset, y = n, fill = Primary.Disease)) +
   geom_bar(stat = "identity", color = "black") +
   scale_y_continuous(breaks = seq(0, 850, by = 50), labels = seq(0, 850, by = 50)) +
@@ -495,6 +488,28 @@ ggplot(drug_hists, aes(x = Dataset, y = n, fill = Primary.Disease)) +
   labs(y = "Count")
 dev.off()
 ```
+
+```{r, eval=TRUE}
+ccle_ccls <- unique(ccle_ptmuts$Broad_ID)
+ctrp_ccls <- unique(ctrp_ptmuts$Broad_ID)
+gdsc_ccls <- unique(gdsc_ptmuts$Broad_ID)
+crispr_ccls <- unique(crispr_ptmuts$Broad_ID)
+
+ccls <- data.frame(Broad_ID = union(ccle_ccls, union(ctrp_ccls, gdsc_ccls)))
+all_ccls <- merge(ccls, ccl_meta, by = "Broad_ID")
+all_ccls$Primary.Disease <- gsub(" cancer", "", all_ccls$Primary.Disease)
+
+
+png(filename = "./plots/manuscript/drug_histology_distributions.png", width = 8, height = 4, units = "in", res = 500)
+ggplot(all_ccls, aes(x = fct_infreq(factor(Primary.Disease)), fill = Primary.Disease)) +
+  geom_bar(color = "black") +
+  scale_y_continuous(breaks = seq(0, 220, by = 40), labels = seq(0, 220, by = 40)) +
+  guides(fill = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  labs(y = "Number of Cell Lines", x = "Histology", caption = paste0(formatC(nrow(all_ccls), format = "d", big.mark = ","), " cell lines represented."))
+dev.off()
+```
+
 
 ## G2P summary heatmap
 
@@ -567,9 +582,9 @@ ht <- Heatmap(g2p_dg_counts,
               column_title_gp = gpar(fontface = "bold", fontsize = 14),
               column_title_side = "bottom")
 
-# png(filename = "./plots/manuscript/g2p_summary_heatmap.png", width = 10, height = 9, units = "in", res = 500)
+png(filename = "./plots/manuscript/g2p_summary_heatmap.png", width = 10, height = 9, units = "in", res = 500)
 draw(hta + ht, gap = unit(5, "mm"), heatmap_legend_side = "top")
-# dev.off()
+dev.off()
 ```
 
 
@@ -611,7 +626,7 @@ WilcoxonTestDF <- function(dataframe, grouping, outfile) {
 }
 ```
 
-```{r wilcoxon_tests, eval=FALSE}
+```{r wilcoxon_tests, eval=TRUE}
 crispr_ptmuts <- unfactorize(crispr_ptmuts)
 crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
@@ -667,32 +682,32 @@ crispr_gene_mut_plot <- ggplot(data = crispr_ptmuts) +
   scale_x_discrete(name = "Mutation Status", labels = c("0" = "WT", "1" = "Mut")) +
   geom_jitter(aes(x = Mutation_Status, y = Score, color = Mutation_Status), width = 0.2, alpha = 0.5, size = 0.6) +
   geom_boxplot(aes(x = Mutation_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
-  geom_text(data = crispr_signif_gene, aes(x = 1.5, y = 1.75, label = p.signif.adj)) +
+  geom_text(data = crispr_signif_gene, aes(x = 1.5, y = 1.75, label = p.signif)) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
   theme(legend.position = "top", legend.direction = "horizontal") +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   labs(y = "CERES Score")
-# crispr_gene_mut_plot
+crispr_gene_mut_plot
 
-# ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
+ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
 ```
 
-```{r crispr_mut_lin_plot, fig.height=12, fig.width=8}
+```{r crispr_mut_lin_plot}
 crispr_signif_lineage$Gene <- factor(crispr_signif_lineage$Gene, levels = g2p_genes)
 
 crispr_gene_lin_plot <- ggplot(data = crispr_ptmuts) +
-  facet_wrap(~ Primary.Disease, nrow = 7, scales = "free_x") +
+  facet_wrap(~ Primary.Disease, nrow = 6, scales = "free_x") +
   scale_color_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
   geom_point(aes(x = Gene, y = Score, color = Mutation_Status), alpha = 0.5, size = 0.6) +
-  geom_text(data = crispr_signif_lineage, aes(x = Gene, y = 1.75, label = p.signif.adj)) +
+  geom_text(data = crispr_signif_lineage, aes(x = Gene, y = 1.6, label = p.signif), angle = 90, vjust = 0.8, nudge_y = 0.1, size = 3) +
   geom_hline(yintercept = 0, lty = 2, color = "darkgray") +
-  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 10)) +
+  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4, size = 7)) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   ylab("CERES Score") +
   scale_x_discrete(name = "Mutation Status", labels = c("0" = "WT", "1" = "Mut"))
 crispr_gene_lin_plot
 
-# ggsave("./plots/manuscript/crispr_gene_lineage_plot.png", crispr_gene_lin_plot, width = 16, height = 20, units = "in")
+ggsave("./plots/manuscript/crispr_gene_lineage_plot.png", crispr_gene_lin_plot, width = 16, height = 18, units = "in")
 ```
 
 ```{r mut_heatmap_function}
@@ -745,7 +760,7 @@ MakeMutHeatmap <- function(signif_g2p_druggene, row_names, col_title, color, leg
 }
 ```
 
-```{r mut_heatmaps, eval=FALSE}
+```{r mut_heatmaps, eval=TRUE}
 ht_ccle <- MakeMutHeatmap(signif_g2p_druggene = ccle_signif_g2p_druggene, legend_title = "P-value", row_names = TRUE, color = "darkgreen", col_title = "Drugs")
 png(filename = "./plots/manuscript/ccle_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
@@ -773,7 +788,7 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-```{r drug_spear_calc, warning=FALSE, eval=FALSE}
+```{r drug_spear_calc, warning=FALSE, eval=TRUE}
 g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 
 # CCLE
@@ -889,7 +904,7 @@ crispr_cn_spearman_corr_plot <- ggplot(data = crispr_spear_cn, aes(x = Gene, y =
 crispr_spearman_corr_plot <- plot_grid(crispr_ge_spearman_corr_plot, crispr_cn_spearman_corr_plot, align = "h")
 crispr_spearman_corr_plot
 
-# ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
+ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
 ```
 
 ```{r corr_heatmap_function}
@@ -963,7 +978,7 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, leg
 }
 ```
 
-```{r drug_spear_plots, eval=FALSE}
+```{r drug_spear_plots, eval=TRUE}
 # Copy number
 ccle_cor <- unfactorize(filter(g2p_cor, Dataset == "CCLE"))
 ccle_cn_ht <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), legend_title = "CCLE Spearman correlation", metric = "CN")
@@ -1111,10 +1126,10 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
 ```{r drug_KS_tests, eval=TRUE, warning=FALSE, fig.height=6, fig.width=12}
-# g2p_corr_all <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
-# saveRDS(g2p_corr_all, "./data_munging/rds/g2p_dgl_corr.rds")
-g2p_corr_all <- readRDS("./data_munging/rds/g2p_dgl_corr.rds")
-g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_corr_all, table_type = "mutation")
+g2p_dgl_corr <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
+saveRDS(g2p_dgl_corr, "./data_munging/rds/g2p_dgl_corr.rds")
+g2p_dgl_corr <- readRDS("./data_munging/rds/g2p_dgl_corr.rds")
+g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_dgl_corr, table_type = "mutation")
 
 g2p_corr_4plot <- filter(g2p_corr_all, G2P_Drug_Gene == "Yes")
 g2p_corr_stats <- G2PCorrStatsTables(corr_df = g2p_corr_4plot, table_type = "KS")
@@ -1143,7 +1158,7 @@ g2p_ks_res_plot_spearman <- ggplot(data = filter(g2p_corr_4plot, Correlation_Met
        y = expression("Spearman Correlation Coefficient"~(r[s])))
 g2p_ks_res_plot_spearman
 
-# ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 500, width = 12, height = 6, units = "in")
+ggsave("./plots/manuscript/g2p_spearman_ks_res_plot.png", g2p_ks_res_plot_spearman, device = "png", dpi = 500, width = 12, height = 6, units = "in")
 ```
 
 # SANDBOX
