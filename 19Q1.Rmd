@@ -327,12 +327,12 @@ gdsc_ptmuts <- MergeOmicsG2P(database = "GDSC", outfile = "./data_munging/rds/gd
 ```
 
 ```{r load_drug_rds, eval=TRUE}
-ccle_ptmuts <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds")
-ctrp_ptmuts <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes_ptmuts.rds")
-gdsc_ptmuts <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds")
+ccle_ptmuts <- readRDS("./data_munging/rds/ccle_data_19Q1_g2pgenes_ptmuts.rds") %>% drop_na(Drug)
+ctrp_ptmuts <- readRDS("./../htscreens_giant_files/ctrp_data_19Q1_g2pgenes_ptmuts.rds") %>% drop_na(Drug)
+gdsc_ptmuts <- readRDS("./data_munging/rds/gdsc_data_19Q1_g2pgenes_ptmuts.rds") %>% drop_na(Drug)
 
 # Testing
-test_ccle <- ccle_ptmuts %>% count(Gene, Mutation_Status)
+test_ccle <- ccle_ptmuts %>% count(Gene, Drug)
 test_ctrp <- ctrp_ptmuts %>% count(Gene, Mutation_Status)
 test_gdsc <- gdsc_ptmuts %>% count(Gene, Mutation_Status)
 ```
@@ -353,7 +353,7 @@ for(drug in g2p_drugs) {
 ## CRISPR
 
 Merge all CRISPR genes:
-```{r merge_crispr_data, eval=TRUE}
+```{r merge_crispr_data, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q1/gene_effect_corrected_20190305.csv.gz", sep = ",", header  = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
@@ -374,7 +374,7 @@ crispr_muts$Mutation_Status <- ifelse(is.na(crispr_muts$Mutation_Status), 0, cri
 crispr_muts_summ <- crispr_muts %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
 ## Merge test results back into full dataset, which restores information lost in the summarization
 crispr_data <- merge(crispr_muts_summ, crispr_muts, by = "Gene")
-crispr_ptmuts$Mutation_Status <- factor(crispr_ptmuts$Mutation_Status)
+crispr_data$Mutation_Status <- factor(crispr_data$Mutation_Status)
 ## Add Color column
 crispr_data$Color <- ifelse(crispr_data$Mutation_Status == 0, "thistle", "darkorchid")
 crispr_data$Color <- factor(crispr_data$Color)
@@ -410,7 +410,7 @@ crispr_ptmuts <- readRDS("./data_munging/rds/crispr_data_19Q1_ptmuts.rds")
 
 ## Cell line and drug overlaps
 
-```{r ccl_venn, eval=TRUE}
+```{r ccl_venn, eval=FALSE}
 ccle_ccls <- unique(ccle_ptmuts$Broad_ID)
 ctrp_ccls <- unique(ctrp_ptmuts$Broad_ID)
 gdsc_ccls <- unique(gdsc_ptmuts$Broad_ID)
@@ -438,7 +438,7 @@ venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls),
              fill = c("springgreen4", "steelblue4", "turquoise4"))
 ```
 
-```{r drug_venn, eval=TRUE}
+```{r drug_venn, eval=FALSE}
 ccle_drugs <- unique(ccle_ptmuts$Drug)
 ctrp_drugs <- unique(ctrp_ptmuts$Drug)
 gdsc_drugs <- unique(gdsc_ptmuts$Drug)
@@ -457,7 +457,7 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
 
 ## Histology distributions
 
-```{r histology_dists_data, eval=TRUE}
+```{r histology_dists_data, eval=FALSE}
 ccle_hists <- unique(select(ccle_ptmuts, Broad_ID, Primary.Disease)) %>% count(Primary.Disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
 ccle_hists$Dataset <- "CCLE"
@@ -489,7 +489,7 @@ ggplot(drug_hists, aes(x = Dataset, y = n, fill = Primary.Disease)) +
 dev.off()
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 ccle_ccls <- unique(ccle_ptmuts$Broad_ID)
 ctrp_ccls <- unique(ctrp_ptmuts$Broad_ID)
 gdsc_ccls <- unique(gdsc_ptmuts$Broad_ID)
@@ -626,7 +626,7 @@ WilcoxonTestDF <- function(dataframe, grouping, outfile) {
 }
 ```
 
-```{r wilcoxon_tests, eval=TRUE}
+```{r wilcoxon_tests, eval=FALSE}
 crispr_ptmuts <- unfactorize(crispr_ptmuts)
 crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
 crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
@@ -760,7 +760,7 @@ MakeMutHeatmap <- function(signif_g2p_druggene, row_names, col_title, color, leg
 }
 ```
 
-```{r mut_heatmaps, eval=TRUE}
+```{r mut_heatmaps, eval=FALSE}
 ht_ccle <- MakeMutHeatmap(signif_g2p_druggene = ccle_signif_g2p_druggene, legend_title = "P-value", row_names = TRUE, color = "darkgreen", col_title = "Drugs")
 png(filename = "./plots/manuscript/ccle_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
@@ -788,7 +788,7 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-```{r drug_spear_calc, warning=FALSE, eval=TRUE}
+```{r drug_spear_calc, warning=FALSE, eval=FALSE}
 g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 
 # CCLE
@@ -978,7 +978,7 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, leg
 }
 ```
 
-```{r drug_spear_plots, eval=TRUE}
+```{r drug_spear_plots, eval=FALSE}
 # Copy number
 ccle_cor <- unfactorize(filter(g2p_cor, Dataset == "CCLE"))
 ccle_cn_ht <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), legend_title = "CCLE Spearman correlation", metric = "CN")
@@ -1022,7 +1022,7 @@ draw(gdsc_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
 ccle_ge_ht2 <- MakeCorrHeatmap(drug_cor_res = ccle_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
-ctrp_ge_ht2 <- MakeCorrHeatmap(druwg_cor_res = ctrp_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ctrp_ge_ht2 <- MakeCorrHeatmap(drug_cor_res = ctrp_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
 gdsc_ge_ht2 <- MakeCorrHeatmap(drug_cor_res = gdsc_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), legend_title = "Gene expr. Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/drug_ge_heatmap.png", width = 13, height = 10, units = "in", res = 500)
 draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
@@ -1125,13 +1125,13 @@ G2PCorrStatsTables<- function(corr_df, table_type) {
 ```
 
 Kolmogorov-Smirnov tests comparing DGLs that are in a G2P DGL and not.
-```{r drug_KS_tests, eval=TRUE, warning=FALSE, fig.height=6, fig.width=12}
-g2p_dgl_corr <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
-saveRDS(g2p_dgl_corr, "./data_munging/rds/g2p_dgl_corr.rds")
+```{r drug_KS_tests, eval=FALSE, warning=FALSE, fig.height=6, fig.width=12}
+# g2p_dgl_corr <- G2PCorrTable(ccle_ptmuts_df = ccle_ptmuts, ctrp_ptmuts_df = ctrp_ptmuts, gdsc_ptmuts_df = gdsc_ptmuts)
+# saveRDS(g2p_dgl_corr, "./data_munging/rds/g2p_dgl_corr.rds")
 g2p_dgl_corr <- readRDS("./data_munging/rds/g2p_dgl_corr.rds")
 g2p_mut_stats <- G2PCorrStatsTables(corr_df = g2p_dgl_corr, table_type = "mutation")
 
-g2p_corr_4plot <- filter(g2p_corr_all, G2P_Drug_Gene == "Yes")
+g2p_corr_4plot <- filter(g2p_dgl_corr, G2P_Drug_Gene == "Yes")
 g2p_corr_stats <- G2PCorrStatsTables(corr_df = g2p_corr_4plot, table_type = "KS")
 g2p_corr_4plot$p <- NULL
 g2p_corr_4plot$Mut_Signif <- NULL
