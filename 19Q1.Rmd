@@ -42,11 +42,13 @@ library(crunch)
 library(ggpubr)
 library(ggrepel)
 library(ggsignif)
+library(jsonlite)
 library(kableExtra)
 library(naniar)
 library(openxlsx)
 library(reshape2)
 library(scales)
+library(stringr)
 library(tidyverse)
 library(VennDiagram)
 
@@ -114,7 +116,19 @@ ccl_meta <- subset(ccl_meta, CCLE_Name != "KMH2_THYROID" & CCLE_Name != "MS1_SKI
 
 ## G2P
 
-```{r g2p_interpretations}
+```{r g2p_parsing_functions}
+ExtractBiomarkerType <- function(json_string) {
+  json_string <- as.character(json_string)
+  biomarker_type <- ((str_extract(string = json_string, pattern = "biomarker_type.+") %>% strsplit(split = ","))[[1]][1] %>% str_extract(pattern = "u'.+") %>% str_match("'(.*?)'"))[,2]
+  return(biomarker_type)
+}
+```
+
+```{r g2p_parsing, eval=FALSE}
+# g2p_json <- "./../htscreens_giant_files/g2p_all.json"
+# g2p_all <- fromJSON(sprintf("[%s]", paste(readLines(g2p_json), collapse = ",")), flatten = TRUE)
+# saveRDS(g2p_all, "./../htscreens_giant_files/g2p_all_flattened_json.rds", compress = "xz")
+
 g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
 g2p[, 1:2] <- NULL
 g2p$Drug <- tolower(g2p$Drug)
@@ -122,13 +136,36 @@ g2p[g2p == -1] <- NA
 g2p$Ref[g2p$Ref == "None"] <- NA
 g2p$Alt[g2p$Alt == "None"] <- NA
 g2p <- subset(g2p, grepl("^CID", g2p$DrugID))
+g2p$Direction <- ifelse(g2p$Direction == 1 | g2p$Direction == "", NA, as.character(g2p$Direction))
+g2p$Gene <- ifelse(is.na(g2p$Gene) & g2p$Drug == "daunorubicin", "MLL", as.character(g2p$Gene))
+g2p <- g2p[, c("Drug", "DrugID", "Direction", "Gene", "Ref", "Alt", "Start", "End", "Chromosome", "Feature.Names", "Mutation", "JSON", "Evidence.Level", "Phenotype.Description", "Phenotype.Family", "Phenotype.ID", "Sequence.ID", "grouped_general_doid")]
+g2p <- add_column(g2p, biomarker_type = tolower(sapply(g2p$JSON, ExtractBiomarkerType, simplify = TRUE)), .after = "Feature.Names")
+g2p <- add_column(g2p, biomarker_type_curated = as.character(894), .after = "biomarker_type")
+g2p$biomarker_type_curated <-
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = ",")), NA,
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "del")), "deletion",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "ins|dup")), "insertion",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "oncogenic mutation|mutant")), "mutation",
+  ifelse(g2p$Feature.Names == "KRAS G12fs*3", "deletion",
+  ifelse(g2p$biomarker_type == "intron variant", "intron variant",
+  ifelse(g2p$biomarker_type == "microsatellite", "microsatellite",
+  ifelse(g2p$biomarker_type == "positive", "positive",
+  ifelse(g2p$biomarker_type == "rearrange", "rearrangement",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "fusion|FUSION|Fusion")), "fusion", 
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z0-9]-[A-Z0-9]")), "fusion",
+  ifelse(g2p$biomarker_type == "synonymous", "synonymous",
+  ifelse(g2p$biomarker_type == "biallelic inactivation", "biallelic inactivation",       
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+[A-WYZ]")), "missense",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([X]|[*])")), "nonsense", NA)))))))))))))))
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
 g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
 g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
-g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
 g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
 
-g2p_dgls <-  unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)])
+write.csv(g2p, "./data_munging/g2p_db_edited.csv")
+
+g2p_dgls <-  unique (g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)])
 g2p_druggenes <- unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)])
 g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
 g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
@@ -138,11 +175,28 @@ g2p_drugs
 g2p_genes
 g2p_lins
 
+!is.na(str_match(string = "ALK L1198F", pattern = "[A-Z][0-9]+[A-WYZ]"))
+
 # Order and genes taken from pink heatmap from Daniel's analyses
 # g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
 ```
 
+```{r g2p}
+g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE)
+
+g2p_dgls <-  unique (g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)])
+g2p_druggenes <- unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)])
+g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+```
+
+
 ```{r testing, eval=FALSE}
+g2p$JSON[1]
+test <- filter(g2p, is.na(Gene))
+test$JSON[2]
+
 unique(g2p$group_general_lineage_name)
 levels(g2p$group_general_lineage_name)
 
