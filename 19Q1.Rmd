@@ -131,10 +131,14 @@ ExtractBiomarkerType <- function(json_string) {
 
 g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
 g2p[, 1:2] <- NULL
+g2p <- unfactorize(g2p)
 g2p$Drug <- tolower(g2p$Drug)
 g2p[g2p == -1] <- NA
+g2p$Gene <- ifelse(is.na(g2p$Gene) & g2p$Drug == "daunorubicin", "MLL", as.character(g2p$Gene))
+g2p$Direction <- ifelse(g2p$Direction == 1 | g2p$Direction == "", NA, as.character(g2p$Direction))
 g2p$Ref[g2p$Ref == "None" | g2p$Ref == "-" | is.na(g2p$Ref)] <- ""
 g2p$Alt[g2p$Alt == "None" | g2p$Alt == "-" | is.na(g2p$Alt)] <- ""
+g2p <- g2p[, c("Drug", "DrugID", "Direction", "Gene", "Ref", "Alt", "Start", "End", "Chromosome", "Feature.Names", "Mutation", "JSON", "Evidence.Level", "Phenotype.Description", "Phenotype.Family", "Phenotype.ID", "Sequence.ID", "grouped_general_doid")]
 g2p <- add_column(g2p, Ref_Length = nchar(as.character(g2p$Ref)), .after = "Ref")
 g2p <- add_column(g2p, Alt_Length = nchar(as.character(g2p$Alt)), .after = "Alt")
 g2p <- add_column(g2p, Variant_Length = NA, .after = "Alt_Length")
@@ -144,45 +148,40 @@ g2p$Variant_Length <-
   ifelse(g2p$Alt_Length == 3 & g2p$Ref_Length == 3, 3,
   ifelse(g2p$Ref_Length == g2p$Alt_Length & g2p$Ref_Length > 3, g2p$Ref_Length,
   ifelse(g2p$Ref_Length != g2p$Alt_Length, abs(g2p$Ref_Length - g2p$Alt_Length), NA)))))
-g2p <- add_column(g2p, Variant_Type = NA, .after = "Alt")
+g2p <- add_column(g2p, Variant_Type = NA, .after = "Alt_Length")
 g2p$Variant_Type <-
   ifelse(g2p$Alt_Length == 1 & g2p$Ref_Length == 1, "SNP",
   ifelse(g2p$Alt_Length == 2 & g2p$Ref_Length == 2, "DNP",
   ifelse(g2p$Alt_Length == 3 & g2p$Ref_Length == 3, "TNP",
   ifelse(g2p$Ref_Length == g2p$Alt_Length & g2p$Ref_Length > 3, "ONP",
   ifelse(g2p$Ref_Length > g2p$Alt_Length, "DEL",
-  ifelse(g2p$Ref_Length < g2p$Alt_Length, "INS", NA))))))
+  ifelse(g2p$Ref_Length < g2p$Alt_Length, "INS", "None"))))))
 g2p <- subset(g2p, grepl("^CID", g2p$DrugID))
-g2p$Direction <- ifelse(g2p$Direction == 1 | g2p$Direction == "", NA, as.character(g2p$Direction))
-g2p$Gene <- ifelse(is.na(g2p$Gene) & g2p$Drug == "daunorubicin", "MLL", as.character(g2p$Gene))
-g2p <- g2p[, c("Drug", "DrugID", "Direction", "Gene", "Ref", "Alt", "Start", "End", "Chromosome", "Feature.Names", "Mutation", "JSON", "Evidence.Level", "Phenotype.Description", "Phenotype.Family", "Phenotype.ID", "Sequence.ID", "grouped_general_doid")]
 g2p <- add_column(g2p, biomarker_type = tolower(sapply(g2p$JSON, ExtractBiomarkerType, simplify = TRUE)), .after = "Feature.Names")
 g2p <- add_column(g2p, biomarker_type_curated = NA, .after = "biomarker_type")
-g2p$biomarker_type_curated <-
-  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z0-9]+-[A-Z0-9]+^[>|)]")), "fusion",
-  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+[A-WYZ]")) | !is.na(str_match(string = g2p$biomarker_type, pattern = "missense")), "Missense_Mutation",
+biomarker_type_curated <-
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "splice")) | !is.na(str_match(string = g2p$biomarker_type, pattern = "splice")), "Splice_Site",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "Amplification|amplification")), "amplification",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^PDGFRA [(]")) | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "mutant|mutation|mut")), "mutation",
   ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "fusion")) | !is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "fusion")), "fusion", 
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "biallelic inactivation")), "biallelic inactivation",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "amplification")), "amplification",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "mutant|mutation")), "mutation",
-  ifelse(g2p$Feature.Names == "KRAS G12G" | g2p$Feature.Names == "KRAS G13G", "synonymous",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+")) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")), "fusion",
   ifelse(g2p$Variant_Type == "DEL" & g2p$Variant_Length %% 3 == 0, "In_Frame_Del",
   ifelse(g2p$Variant_Type == "DEL" & g2p$Variant_Length %% 3 != 0, "Frame_Shift_Del",
   ifelse(g2p$Variant_Type == "INS" & g2p$Variant_Length %% 3 == 0, "In_Frame_Ins",
   ifelse(g2p$Variant_Type == "INS" & g2p$Variant_Length %% 3 != 0, "Frame_Shift_Ins",
-  ifelse(g2p$biomarker_type == "inframe_deletion", "In_Frame_Del",
-  ifelse(g2p$biomarker_type == "inframe_insertion" | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "inframe insertion")), "In_Frame_Ins",
-  ifelse(g2p$Feature.Names %in% c("EGFR E746_A750del", "EGFR exon 19 deletions", "Exon 19 deletion/insertion", "Exon 19 deletion"), "In_Frame_Ins",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "EGFR E746_A750del")), "In_Frame_Del",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "EGFR H773>PNPY")), "In_Frame_Ins",
+  ifelse(g2p$Feature.Names == "KRAS G12G" | g2p$Feature.Names == "KRAS G13G", "synonymous",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+[A-WYZ]")) | !is.na(str_match(string = g2p$biomarker_type, pattern = "missense")), "Missense_Mutation",
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([X]|[*])")), "Nonsense_Mutation",
-  ifelse(g2p$Feature.Names == "KRAS G12fs*3" | g2p$Feature.Names == "EGFR E746fs*15", "deletion",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "amplification")), "amplification",
-  ifelse(g2p$biomarker_type == "microsatellite", "microsatellite",
-  ifelse(g2p$biomarker_type == "positive" | !is.na(str_match(string = g2p$Feature.Names, pattern = "positive")), "positive",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "positive")), "positive",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "expression")), "expression",
   ifelse(g2p$biomarker_type == "rearrange", "rearrangement",
   ifelse(g2p$biomarker_type == "intron variant", "Intron",
-  ifelse(!is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "mut")), "mutation", g2p$biomarker_type_curated)))))))))))))))))))))))
-
+  ifelse(g2p$biomarker_type == "inframe_deletion" | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "inframe deletion")), "In_Frame_Del",
+  ifelse(g2p$biomarker_type == "inframe_insertion" | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "inframe insertion")), "In_Frame_Ins",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "biallelic inactivation")), "biallelic inactivation", NA)))))))))))))))))))))
+g2p$biomarker_type_curated <- biomarker_type_curated[,1]
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
 g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
 g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
@@ -191,15 +190,15 @@ g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_
 
 # write.csv(g2p, "./data_munging/g2p_db_edited.csv")
 
-g2p_dgls <-  unique (g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)])
-g2p_druggenes <- unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)])
-g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
-g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
-g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
-g2p_druggenes
-g2p_drugs
-g2p_genes
-g2p_lins
+# g2p_dgls <-  unique (g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)])
+# g2p_druggenes <- unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)])
+# g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
+# g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
+# g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+# g2p_druggenes
+# g2p_drugs
+# g2p_genes
+# g2p_lins
 
 # Order and genes taken from pink heatmap from Daniel's analyses
 # g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
@@ -214,7 +213,6 @@ g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[
 g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
 g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
 ```
-
 
 ```{r testing, eval=FALSE}
 g2p$JSON[1]
@@ -251,6 +249,15 @@ maf_df <- unfactorize(maf_df)
 
 saveRDS(maf_df, "./data_munging/19Q1/maf_df_19Q1.rds", compress = "xz")
 ```
+
+DepMap 19Q2 fusion calls:
+```{r fusion_calls, eval=FALSE}
+fusions <- read.delim("./data_munging/19Q2/CCLE_fusions.csv.gz", header = TRUE, sep = ",")
+fusions$LeftGene <- gsub(" .*", "", fusions$LeftGene)
+fusions$RightGene <- gsub(" .*", "", fusions$RightGene)
+fusions$ <- gsub(" .*", "", fusions$RightGene)
+```
+
 
 DepMap WES CN Data:
 ```{r copy_number, eval=FALSE}
@@ -378,7 +385,6 @@ MergeOmicsG2P <- function(database, outfile) {
 
 `r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
 
-**RE-FILTER FOR PTMUTS**
 ```{r merge_filter_drug_data, eval=FALSE}
 # Load in Pozdeyev et al. (2016) data
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
@@ -444,6 +450,7 @@ crispr_melt <- melt(crispr_all, id.vars = "Broad_ID", measure.vars = colnames(cr
 
 # Merge cell line metadata
 crispr_melt <- merge(crispr_melt, ccl_meta, by = "Broad_ID", all.x = TRUE)
+test_crispr <- unique(select(crispr_melt, Broad_ID, Histology)) %>% count(Histology)
 
 # Merge mutation annotations
 maf_filt_crispr <- unique(filter(maf_df, Gene %in% as.character(unique(crispr_melt$Gene)) & PointMutation == 1) %>% select(-c(Variant_Classification, Reference_Allele, Tumor_Seq_Allele1, PointMutation)))
