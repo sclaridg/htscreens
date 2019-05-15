@@ -1,0 +1,335 @@
+---
+title: "19Q2"
+author: "Sally Claridge"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: cerulean
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+    code_folding: hide
+    pandoc_args: [
+      "+RTS", "-K2048m",
+      "-RTS"
+    ]
+---
+
+Analysis of the [Broad's Avana CRISPR](https://depmap.org/portal/download/) (Broad Institute Cancer Dependency Map 2018, Meyers et al. 2017), the [Cancer Therapeutics Response Portal](https://ocg.cancer.gov/programs/ctd2/data-portal) (CTRP) drug screen dataset (v2) (Basu et al., 2013; M. G. Rees et al., 2016; B. Seashore-Ludlow et al., 2015), the [Genomics of Drug Sensitivity in Cancer](https://www.cancerrxgene.org/downloads) (GDSC) drug screen dataset (Garnett et al., 2012; Yang et al., 2012) , and the [Cancer Cell Line Encyclopedia](https://portals.broadinstitute.org/ccle) (CCLE) drug screen dataset (J. Barretina et al., 2012; T. C. C. L. E. Consortium & Consortium, 2015).
+
+The Avana screen produced results using [CERES](https://depmap.org/ceres/) (Meyers et al. 2017) ([GitHub](https://github.com/cancerdatasci/ceres)), which generates gene dependency scores from sgRNA depletion scores from gene essentiality screens and eliminates bias arising from the effect of copy number variation on Cas9 DNA cleavage. The lower the CERES score, the higher the likelihood that the gene is essential in the associated cell line. Scores are scaled per cell line such that a score of 0 is the median effect of nonessential genes and -1 is the median effect of common core essential genes.
+
+Annotation files for mutation status, copy number, and gene expression of the CCLE, GDSC, and CTRP datasets (Consortium and Consortium 2015, Barretina et al. 2012) were downloaded from the [DepMap Data Portal](https://depmap.org/portal/download/). Note that the group that conducted the GDSC screen also collected their own genomic annotation information for mutation status, copy number, and gene expression, but we did not use it.
+
+# SET UP
+
+--------------------------------------------------------------------------------
+
+```{r setup, include=FALSE}
+set.seed(1234)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# num_cores <- parallel::detectCores()
+options(mc.cores = parallel::detectCores(), expressions = 5e5)
+```
+
+```{r libraries}
+library(circlize)
+library(ComplexHeatmap)
+library(cowplot)
+library(crunch)
+library(ggpubr)
+library(ggrepel)
+library(ggsignif)
+library(jsonlite)
+library(kableExtra)
+library(naniar)
+library(openxlsx)
+library(reshape2)
+library(scales)
+library(stringr)
+library(tidyverse)
+library(VennDiagram)
+
+theme_set(theme_light())
+```
+
+```{r general_functions}
+unfactorize <- function(df){
+  for(i in which(sapply(df, class) == "factor")) {
+    df[[i]] = as.character(df[[i]])
+  }
+  return(df)
+}
+```
+
+# DATA
+
+--------------------------------------------------------------------------------
+
+## Cell line metadata
+
+**D. Charytonowicz cell line converter**
+
+This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
+```{r dan_ccl_database}
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+ccl_lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
+lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
+ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
+```
+
+**DepMap metadata**
+
+DepMap 19Q2 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
+```{r depmap_metadata}
+ccl_meta <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+ccl_meta <- select(ccl_meta, DepMap_ID, stripped_cell_line_name, CCLE_name, disease)
+colnames(ccl_meta) <- c("DepMap_ID", "Cell_line", "CCLE_name", "disease")
+# Remove two rows that contain cell lines with two different histologies
+# The histologies that are kept are verified through matching in Cellosaurus and Cell Model Passports
+# KMH2, haematopoietic_and_lymphoid: https://web.expasy.org/cellosaurus/CVCL_1330, https://cellmodelpassports.sanger.ac.uk/passports/SIDM01018
+# MS1, lung: https://web.expasy.org/cellosaurus/CVCL_1429, https://cellmodelpassports.sanger.ac.uk/passports/SIDM00245
+ccl_meta <- subset(ccl_meta, CCLE_name != "KMH2_THYROID" & CCLE_name != "MS1_SKIN")
+ccl_meta <- subset(ccl_meta, !grepl("MERGED", CCLE_name, fixed = TRUE))
+ccl_diseases <- as.character(unique(ccl_meta$disease))[as.character(unique(ccl_meta$disease)) != " "]
+CCLE_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_name, ignore.case = TRUE))
+ccl_meta <- add_column(ccl_meta, CCLE_histology = CCLE_histology, .after = "CCLE_name")
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & Histology %in% ccl_diseases, as.character(Histology), as.character(disease)))
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == "ovary", "ovarian",
+                                   ifelse(disease == " " & Histology == "vulva", "vulva",
+                                   ifelse(disease == " " & Histology == "stomach", "gastric",
+                                   ifelse(disease == " " & Histology == "upper_aerodigestive_tract", "upper_aerodigestive_tract",
+                                   ifelse(disease == " " & Histology == "large_intestine", "colorectal",
+                                   ifelse(disease == " " & Histology == "biliary_tract", "bile_duct",
+                                   ifelse(disease == " " & Histology == "oesophagus", "esophagus",
+                                   ifelse(disease == " " & Histology == "testis", "embryo", disease)))))))))
+```
+
+## G2P
+
+```{r g2p}
+g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE, row.names = 1)
+g2p$Drug_Gene_Lin <- gsub(pattern = " cancer", "", g2p$Drug_Gene_Lin)
+
+g2p_dgls <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
+g2p_druggenes <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
+g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+```
+
+## Omics
+
+For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
+
+Mutation calls (coding region, germline filtered):
+```{r mutation_status, eval=FALSE}
+maf_raw <- read.delim("./data_munging/19Q2/CCLE_mutations_20190514.csv.gz", header = TRUE, sep = ",")
+maf_raw[, 1:2] <- NULL
+colnames(maf_raw)[colnames(maf_raw) == "Hugo_Symbol"] <- "Gene"
+maf_raw <- unfactorize(maf_raw)
+# Select columns
+maf <- subset(maf_raw, select = c("Gene", "DepMap_ID", "Variant_Classification", "Variant_Type"))
+maf <- maf[!is.na(maf$Variant_Classification),]
+maf <- maf[maf$Variant_Classification %in% unique(g2p$biomarker_type_curated),]
+maf$Mutation <- 1
+maf_df <- dcast(maf, Gene + DepMap_ID ~ Variant_Classification, fun.aggregate = mean, fill = 0)
+maf_df_summ <- colSums(maf_df[, 3:ncol(maf_df)])
+
+saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2.rds", compress = "xz")
+```
+
+DepMap 19Q2 fusion calls derived using the [STAR-Fusion pipeline](https://github.com/STAR-Fusion/STAR-Fusion/wiki). Column descriptions:
+
+- *JunctionReads*: the number of RNA-Seq fragments containing a read that aligns as a split read at the site of the putative fusion junction
+- *SpanningFrags*: the number of RNA-Seq fragments that encompass the fusion junction such that one read of the pair aligns to a different gene than the other paired-end read of that fragment
+    - Those predictions that have very few JunctionReads and/or SpanningReads are going to be enriched for false positives. Note, depending on the site of the fusion breakpoint and length of the reads, it may not be possible to have SpanningFragments and all evidence may show up in the form of JunctionReads
+- *FFPM (fusion fragments per million total reads)*: normalized measure of the fusion-supporting RNA-seq fragmentS; a filter of 0.1 sum FFPM (meaning at least 1 fusion-supporting RNA-seq fragment per 10M total reads) tends to be effective at excluding fusion artifacts, and is the current default for filtering fusions from the final output
+- *LargeAnchorSupport*: whether there are split reads that provide 'long' (set to length of 25 bases) alignments on both sides of the putative breakpoint
+    - Those fusions supported only by split reads (no spanning fragments) and lack LargeAnchorSupport are often highly suspicious and tend to be false positives
+    - Those with LargeAnchorSupport are labeled as 'YES_LDAS' (where LDAS = long double anchor support)
+- *SpliceType*: whether the proposed breakpoint occurs at reference exon junctions as provided by the reference transcript structure annotations (ex. gencode)
+- *LeftBreakEntropy* and *RightBreakEntropy*: the Shannon entropy of the 15 exonic bases flanking the breakpoint.
+    - The maximum entropy is 2, representing highest complexity, and the lowest would be zero (involving a 15 base mononucleotide run)
+    - Low entropy sites should generally be treated as less confident breakpoints.
+
+```{r fusion_calls, eval=TRUE}
+fusions <- read.delim("./data_munging/19Q2/CCLE_fusions.csv.gz", header = TRUE, sep = ",")
+fusions$LeftGene <- gsub(" .*", "", fusions$LeftGene)
+fusions$RightGene <- gsub(" .*", "", fusions$RightGene)
+fusions$X.FusionName <- gsub("--", "-", fusions$X.FusionName)
+fusions <- select(fusions, DepMap_ID, X.FusionName)
+fusions <- as.data.frame(lapply(fusions, function(x) gsub("IGH@|IGH-@", "IGH", x)))
+colnames(fusions) <- c("DepMap_ID", "FusionPair")
+fusions <- merge(fusions, ccl_meta, by = "DepMap_ID", all.x = TRUE)
+```
+
+DepMap WES CN Data:
+```{r copy_number, eval=FALSE}
+cn <- read.delim("./data_munging/19Q2/CCLE_gene_cn_20190514.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
+# Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
+colnames(cn) <- gsub(" .*", "", colnames(cn))
+colnames(cn)[1] <- "DepMap_ID"
+# Melt
+cn_melt <- melt(data = cn, id.vars = "DepMap_ID", measure.vars = colnames(cn[2:ncol(cn)]), variable.name = "Gene", value.name = "CN")
+cn_melt <- unfactorize(cn_melt)
+
+saveRDS(cn_melt, "./data_munging/19Q2/cn_melt_19Q2.rds", compress = "xz")
+```
+
+19Q2, CCLE RNAseq gene expression data:
+```{r gene_expression, eval=FALSE}
+ge <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q2_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+# Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
+colnames(ge) <- gsub(" .*", "", colnames(ge))
+colnames(ge)[1] <- "DepMap_ID"
+# Melt
+ge_melt <- melt(ge, id.vars = "DepMap_ID", measure.vars = colnames(ge)[2:ncol(ge)], variable.name = "Gene", value.name = "TPM")
+ge_melt$TPM <- log2(ge_melt$TPM + 1)
+ge_melt <- unfactorize(ge_melt)
+
+saveRDS(ge_melt, "./data_munging/19Q2/ge_melt_19Q2.rds", compress = "xz")
+```
+
+Load Rds:
+```{r load_omics_rds}
+maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
+cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
+ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
+```
+
+# MERGE OMICS
+
+--------------------------------------------------------------------------------
+
+```{r omics_functions}
+MergeOmicsG2P <- function(database, maf_df, ge_df, cn_df, outfile) {
+  # Merge mutation status, CN, and GE omics data with drugscreen results and metadata
+  if(database %in% c("CCLE", "CTRP", "GDSC")) {
+    filt <- auc %>% filter(Database == database) %>% select(Cell_line, Histology, TCGA_classification, CCLE_Name, DepMap_ID, Drug, AUC_IC50)
+    print(paste0("Processing ", database, " data."))
+    colnames(filt)[colnames(filt) == "AUC_IC50"] <- "Score"
+
+    # Get all G2P gene-cell line combinations
+    grid <- expand.grid("Cell_line" = unique(filt$Cell_line), "Gene" = g2p_genes)
+    data <-  merge(filt, grid, by = "Cell_line", all.y = TRUE)
+    print("Merged grid.")
+    # Merge metadata
+    data <-  merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, DepMap_ID, Primary.Disease), by = c("Cell_line", "Histology", "CCLE_Name", "DepMap_ID"), all.y = TRUE)
+    ## Add columns for G2P drug-gene and drug-gene-lineage sorting
+    data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
+    data$G2P_Drug_Gene <- ifelse(data$Drug_Gene %in% g2p_druggenes, "Yes", "No")
+    data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$Primary.Disease)
+    data$G2P_Drug_Gene_Lin <- ifelse(data$Drug_Gene_Lin %in% g2p_dgls, "Yes", "No")
+    print("Merged metadata.")
+    # Merge mutation calls
+    data <- unfactorize(data)
+    data <- merge(data, maf_df, by = c("Gene", "DepMap_ID"), all.x = TRUE)
+    data$Mutation_Status <- ifelse(is.na(data$Mutation_Status), 0, data$Mutation_Status)
+  }
+  if(database == "CRISPR") {
+    print(paste0("Processing ", database, " data."))
+    # Melt CRISPR dataset for merging
+    data <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
+    # Get all G2P gene-cell line combinations
+    data <-  filter(data, Gene %in% g2p_genes)
+    # Merge cell line metadata
+    data <- merge(data, select(ccl_meta, Cell_line, Histology, CCLE_Name, DepMap_ID, Primary.Disease), by = "DepMap_ID", all.y = TRUE)
+    data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
+    data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$Primary.Disease)
+    print("Merged metadata.")
+    # Merge mutation calls
+    data <- unfactorize(data)
+    data <- merge(data, maf_df, by = c("Gene", "DepMap_ID"), all.x = TRUE)
+    data$Mutation_Status <- ifelse(is.na(data$Mutation_Status), 0, data$Mutation_Status)
+  }
+  
+  ## Summarize number of mutant and Wildtype cell lines
+  data_muts_summ <- data %>% group_by(Gene) %>% summarize(N_Wildtype = length(Mutation_Status) - sum(Mutation_Status == 1), N_Mutant = sum(Mutation_Status == 1))
+  ## Merge test results back into full dataset, which restores information lost in the summarization
+  data <- merge(data_muts_summ, data, by = "Gene")
+  print("Merged mutation calls.")
+  # Merge GE data
+  data <- merge(data, ge_df, by = c("Gene", "DepMap_ID"), all.x = TRUE)
+  print("Merged gene expression data.")
+  # Merge CN data
+  data <- merge(data, cn_df, by = c("Gene", "DepMap_ID"), all.x = TRUE)
+  print("Merged copy number data.")
+  # Drop cell lines not in DepMap
+  data <- filter(data, !is.na(DepMap_ID) & !(DepMap_ID %in% c("ACH-001182", "ACH-001451")))
+  # Save and return dataframe
+  data <- unfactorize(data)
+  saveRDS(data, outfile, compress = "xz")
+  return(data)
+}
+```
+
+## Drug screens
+
+`r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
+
+**MERGE WITHOUT G2P AND PTMUT FILTER (5/15)**
+```{r merge_filter_drug_data, eval=FALSE}
+# Load in Pozdeyev et al. (2016) data
+ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
+ctrp_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
+gdsc_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/GDSC_drug_response_metrics.csv.gz", sep = ",")
+
+auc <- bind_rows(ccle_all, ctrp_all, gdsc_all)
+
+# Harmonize Pozdeyev cell line names with DepMap
+auc$Drug <- tolower(auc$Drug_name)
+auc$Cell_line <- toupper(gsub("-", "", auc$Cell_line))
+auc$Cell_line <- ifelse(auc$Cell_line == "K052", "KO52", auc$Cell_line)
+auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
+auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
+auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
+auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
+
+ccle <- MergeOmicsG2P(database = "CCLE", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, outfile = "./data_munging/rds/ccle_data_19Q2.rds")
+# ctrp <- MergeOmicsG2P(database = "CTRP", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
+# gdsc <- MergeOmicsG2P(database = "GDSC", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, outfile = "./data_munging/rds/gdsc_data_19Q2.rds")
+```
+
+```{r}
+ccle_missense <- filter(ccle, Variant_Classification == "Missense_Mutation")
+ccle_missense_grid <- expand.grid("Gene" = unique(ccle_missense$Gene), "DepMap_ID" = unique(ccle_missense$DepMap_ID))
+ccle_missense_grid$Variant_Classification <- NA
+ccle_missense <- merge(ccle_missense, ccle_missense_grid, by = c("Gene", "DepMap_ID", "Variant_Classification"), all = TRUE)
+```
+
+
+```{r load_drug_rds, eval=TRUE}
+ccle_ptmuts <- readRDS("./data_munging/rds/ccle_data_19Q2_g2pgenes_ptmuts.rds") %>% drop_na(Drug)
+ctrp_ptmuts <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2_g2pgenes_ptmuts.rds") %>% drop_na(Drug)
+gdsc_ptmuts <- readRDS("./data_munging/rds/gdsc_data_19Q2_g2pgenes_ptmuts.rds") %>% drop_na(Drug)
+
+# Testing
+test_ccle <- ccle_ptmuts %>% count(Drug)
+test_ctrp <- ctrp_ptmuts %>% count(Drug)
+sum(!is.na(str_match(test_ctrp$Drug, "ratio")))
+test_gdsc <- gdsc_ptmuts %>% count(Drug)
+```
+
+How many datasets screen each G2P drug?
+```{r drug_testing, eval=FALSE}
+drug_summ <- data.frame(Drug = character(), Dataset_Count = integer(), stringsAsFactors = FALSE)
+
+for(drug in g2p_drugs) {
+  counter = 0
+  if(drug %in% as.character(unique(ccle$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(ctrp$Drug))) { counter <- counter + 1 }
+  if(drug %in% as.character(unique(gdsc$Drug))) { counter <- counter + 1 }
+  drug_summ <- rbind(drug_summ, data.frame(Drug = drug, Dataset_Count = counter))
+}
+```
+
+# SESSION INFORMATION
+
+--------------------------------------------------------------------------------
+
+```{r session_info}
+print(sessionInfo())
+```
