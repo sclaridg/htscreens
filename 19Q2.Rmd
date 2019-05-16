@@ -162,6 +162,8 @@ biomarker_type_curated <-
   ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "codon|positive|biallelic inactivation|del|ins|dup|mut|frameshift|missense|variant|[0-9]+fs|>")), "Mutation",
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^KIT$|^BRCA$")), "Mutation", NA)))))))
 g2p$biomarker_type_curated <- biomarker_type_curated[,1]
+
+# Add association columns
 g2p[g2p == ""] <- NA
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
 g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
@@ -175,11 +177,12 @@ g2p$Gene_Lin <- ifelse(is.na(g2p$Drug) | !is.na(g2p$Gene) | !is.na(g2p$group_gen
 g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE, row.names = 1)
 g2p$Drug_Gene_Lin <- gsub(pattern = " cancer", "", g2p$Drug_Gene_Lin)
 
-g2p_dgls <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
-g2p_druggenes <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
-g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
-g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
-g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+g2p_dgl <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
+g2p_dg <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
+g2p_gl <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Gene_Lin)]))
+g2p_drugs <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[3]))
 ```
 
 ## Omics
@@ -193,12 +196,11 @@ maf_raw[, 1:2] <- NULL
 colnames(maf_raw)[colnames(maf_raw) == "Hugo_Symbol"] <- "Gene"
 maf_raw <- unfactorize(maf_raw)
 # Select columns
-maf <- subset(maf_raw, select = c("Gene", "DepMap_ID", "Variant_Classification"))
-maf <- maf[!is.na(maf$Variant_Classification),]
-maf <- maf[maf$Variant_Classification %in% unique(g2p$biomarker_type_curated),]
+maf <- subset(maf_raw, select = c("Gene", "DepMap_ID"))
 maf$Mutation <- 1
-maf_df <- dcast(maf, Gene + DepMap_ID ~ Variant_Classification, fun.aggregate = mean, fill = 0)
-maf_df_summ <- colSums(maf_df[, 3:ncol(maf_df)])
+maf_grid <- expand.grid("Gene" = unique(maf$Gene), "DepMap_ID" = unique(maf$DepMap_ID))
+maf_df <- merge(maf, maf_grid, by = c("Gene", "DepMap_ID"), all = TRUE)
+maf_df[is.na(maf_df)] <- 0
 
 saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2.rds", compress = "xz")
 ```
