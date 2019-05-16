@@ -75,6 +75,7 @@ unfactorize <- function(df){
 This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 ```{r dan_ccl_database}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
 ccl_lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
 lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
@@ -96,28 +97,92 @@ ccl_meta <- subset(ccl_meta, !grepl("MERGED", CCLE_name, fixed = TRUE))
 ccl_diseases <- as.character(unique(ccl_meta$disease))[as.character(unique(ccl_meta$disease)) != " "]
 CCLE_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_name, ignore.case = TRUE))
 ccl_meta <- add_column(ccl_meta, CCLE_histology = CCLE_histology, .after = "CCLE_name")
-ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & Histology %in% ccl_diseases, as.character(Histology), as.character(disease)))
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & CCLE_histology %in% ccl_diseases, as.character(CCLE_histology), as.character(disease)))
 ccl_meta$disease <- with(ccl_meta, ifelse(disease == "ovary", "ovarian",
-                                   ifelse(disease == " " & Histology == "vulva", "vulva",
-                                   ifelse(disease == " " & Histology == "stomach", "gastric",
-                                   ifelse(disease == " " & Histology == "upper_aerodigestive_tract", "upper_aerodigestive_tract",
-                                   ifelse(disease == " " & Histology == "large_intestine", "colorectal",
-                                   ifelse(disease == " " & Histology == "biliary_tract", "bile_duct",
-                                   ifelse(disease == " " & Histology == "oesophagus", "esophagus",
-                                   ifelse(disease == " " & Histology == "testis", "embryo", disease)))))))))
+                                   ifelse(disease == " " & CCLE_histology == "vulva", "vulva",
+                                   ifelse(disease == " " & CCLE_histology == "stomach", "gastric",
+                                   ifelse(disease == " " & CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive_tract",
+                                   ifelse(disease == " " & CCLE_histology == "large_intestine", "colorectal",
+                                   ifelse(disease == " " & CCLE_histology == "biliary_tract", "bile_duct",
+                                   ifelse(disease == " " & CCLE_histology == "oesophagus", "esophagus",
+                                   ifelse(disease == " " & CCLE_histology == "testis", "embryo", disease)))))))))
 ```
 
 ## G2P
+
+```{r g2p_parsing_functions}
+ExtractBiomarkerType <- function(json_string) {
+  json_string <- as.character(json_string)
+  biomarker_type <- ((str_extract(string = json_string, pattern = "biomarker_type.+") %>% strsplit(split = ","))[[1]][1] %>% str_extract(pattern = "u'.+") %>% str_match("'(.*?)'"))[,2]
+  biomarker_type <- ifelse(is.na(biomarker_type), "", biomarker_type)
+  return(biomarker_type)
+}
+```
+
+```{r g2p_parsing, eval=FALSE}
+g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
+g2p[, 1:2] <- NULL
+g2p <- unfactorize(g2p)
+g2p$Drug <- tolower(g2p$Drug)
+g2p[g2p == -1] <- ""
+g2p$Gene <- ifelse(is.na(g2p$Gene) & g2p$Drug == "daunorubicin", "MLL", as.character(g2p$Gene))
+g2p$Direction <- ifelse(g2p$Direction == 1 | g2p$Direction == "", NA, as.character(g2p$Direction))
+g2p$Ref[g2p$Ref == "None" | g2p$Ref == "-" | is.na(g2p$Ref)] <- ""
+g2p$Alt[g2p$Alt == "None" | g2p$Alt == "-" | is.na(g2p$Alt)] <- ""
+g2p <- g2p[, c("Drug", "DrugID", "Direction", "Gene", "Ref", "Alt", "Start", "End", "Chromosome", "Feature.Names", "Mutation", "JSON", "Evidence.Level", "Phenotype.Description", "Phenotype.Family", "Phenotype.ID", "Sequence.ID", "grouped_general_doid")]
+g2p <- add_column(g2p, Ref_Length = nchar(as.character(g2p$Ref)), .after = "Ref")
+g2p <- add_column(g2p, Alt_Length = nchar(as.character(g2p$Alt)), .after = "Alt")
+g2p <- add_column(g2p, Variant_Length = NA, .after = "Alt_Length")
+g2p$Variant_Length <-
+  ifelse(g2p$Alt_Length == 1 & g2p$Ref_Length == 1, 1,
+  ifelse(g2p$Alt_Length == 2 & g2p$Ref_Length == 2, 2,
+  ifelse(g2p$Alt_Length == 3 & g2p$Ref_Length == 3, 3,
+  ifelse(g2p$Ref_Length == g2p$Alt_Length & g2p$Ref_Length > 3, g2p$Ref_Length,
+  ifelse(g2p$Ref_Length != g2p$Alt_Length, abs(g2p$Ref_Length - g2p$Alt_Length), NA)))))
+g2p <- add_column(g2p, Variant_Type = NA, .after = "Alt_Length")
+g2p$Variant_Type <-
+  ifelse(g2p$Alt_Length == 1 & g2p$Ref_Length == 1, "SNP",
+  ifelse(g2p$Alt_Length == 2 & g2p$Ref_Length == 2, "DNP",
+  ifelse(g2p$Alt_Length == 3 & g2p$Ref_Length == 3, "TNP",
+  ifelse(g2p$Ref_Length == g2p$Alt_Length & g2p$Ref_Length > 3, "ONP",
+  ifelse(g2p$Ref_Length > g2p$Alt_Length, "DEL",
+  ifelse(g2p$Ref_Length < g2p$Alt_Length, "INS", "None"))))))
+g2p <- subset(g2p, !grepl("^SID|^CHEMBL", g2p$DrugID))
+g2p <- subset(g2p, !grepl("germline|homozygosity", tolower(g2p$Feature.Names)))
+g2p <- add_column(g2p, biomarker_type = tolower(sapply(g2p$JSON, ExtractBiomarkerType, simplify = TRUE)), .after = "Feature.Names")
+g2p <- add_column(g2p, biomarker_type_curated = NA, .after = "biomarker_type")
+
+# Manually assign biomarker_types based on a combination of biomarker_type derived from the JSON string and patterns in the Feature.Names
+biomarker_type_curated <- 
+  ifelse(!is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "copy number variant|amplification")) | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "copy number variant|amplification")), "Amplification/CNV",
+  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION")) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([A-Z]|[*])|[0-9A-Z]+ [A-Z][0-9]+|[A-Z][0-9]+$")), "Mutation",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation")), "Expression",
+  ifelse(!is.na(str_match(string = g2p$biomarker_type, pattern = "intron|insertion|deletion|mutant")), "Mutation",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "codon|positive|biallelic inactivation|del|ins|dup|mut|frameshift|missense|variant|[0-9]+fs|>")), "Mutation",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^KIT$|^BRCA$")), "Mutation", NA)))))))
+g2p$biomarker_type_curated <- biomarker_type_curated[,1]
+
+# Add association columns
+g2p[g2p == ""] <- NA
+g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
+g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
+g2p$Gene_Lin <- ifelse(is.na(g2p$Drug) | !is.na(g2p$Gene) | !is.na(g2p$group_general_lineage_name), paste0(g2p$Gene, "_", g2p$group_general_lineage_name), NA)
+
+# write.csv(g2p, "./data_munging/g2p_db_edited.csv")
+```
 
 ```{r g2p}
 g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE, row.names = 1)
 g2p$Drug_Gene_Lin <- gsub(pattern = " cancer", "", g2p$Drug_Gene_Lin)
 
-g2p_dgls <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
-g2p_druggenes <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
-g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
-g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
-g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+g2p_dgl <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
+g2p_dg <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
+g2p_gl <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Gene_Lin)]))
+g2p_drugs <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[1]))
+g2p_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[3]))
 ```
 
 ## Omics
@@ -131,12 +196,11 @@ maf_raw[, 1:2] <- NULL
 colnames(maf_raw)[colnames(maf_raw) == "Hugo_Symbol"] <- "Gene"
 maf_raw <- unfactorize(maf_raw)
 # Select columns
-maf <- subset(maf_raw, select = c("Gene", "DepMap_ID", "Variant_Classification", "Variant_Type"))
-maf <- maf[!is.na(maf$Variant_Classification),]
-maf <- maf[maf$Variant_Classification %in% unique(g2p$biomarker_type_curated),]
+maf <- subset(maf_raw, select = c("Gene", "DepMap_ID"))
 maf$Mutation <- 1
-maf_df <- dcast(maf, Gene + DepMap_ID ~ Variant_Classification, fun.aggregate = mean, fill = 0)
-maf_df_summ <- colSums(maf_df[, 3:ncol(maf_df)])
+maf_grid <- expand.grid("Gene" = unique(maf$Gene), "DepMap_ID" = unique(maf$DepMap_ID))
+maf_df <- merge(maf, maf_grid, by = c("Gene", "DepMap_ID"), all = TRUE)
+maf_df[is.na(maf_df)] <- 0
 
 saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2.rds", compress = "xz")
 ```
@@ -167,6 +231,12 @@ fusions <- merge(fusions, ccl_meta, by = "DepMap_ID", all.x = TRUE)
 ```
 
 DepMap WES CN Data:
+
+- gene_cn - NumericalMatrix
+- Gene level copy number data, log2 transformed with a pseudo count 1. This is generated by mapping genes onto the segment level calls.
+- Rows: cell lines (Broad IDs)
+- Columns: genes (HGNC symbol and Entrez ID)
+
 ```{r copy_number, eval=FALSE}
 cn <- read.delim("./data_munging/19Q2/CCLE_gene_cn_20190514.csv.gz", sep = ",", check.names = FALSE, header = TRUE)
 # Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
@@ -180,14 +250,20 @@ saveRDS(cn_melt, "./data_munging/19Q2/cn_melt_19Q2.rds", compress = "xz")
 ```
 
 19Q2, CCLE RNAseq gene expression data:
+
+- expression - NumericalMatrix
+- RNAseq TPM gene expression data for just protein coding genes using RSEM. Log2 transformed, using a pseudo-count of 1.
+- Rows: cell lines (Broad IDs)
+- Columns: genes (HGNC symbol and Entrez ID)
+
 ```{r gene_expression, eval=FALSE}
-ge <- read.delim("./../htscreens_giant_files/CCLE_depMap_19Q2_TPM_20190305.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
+ge <- read.delim("./data_munging/19Q2/CCLE_expression_20190514.csv.gz", header = TRUE, sep = ",", check.names = FALSE)
 # Remove Entrez gene IDs from colnames, format is "Gene (Entrez ID)"
 colnames(ge) <- gsub(" .*", "", colnames(ge))
 colnames(ge)[1] <- "DepMap_ID"
 # Melt
 ge_melt <- melt(ge, id.vars = "DepMap_ID", measure.vars = colnames(ge)[2:ncol(ge)], variable.name = "Gene", value.name = "TPM")
-ge_melt$TPM <- log2(ge_melt$TPM + 1)
+# ge_melt$TPM <- log2(ge_melt$TPM + 1)
 ge_melt <- unfactorize(ge_melt)
 
 saveRDS(ge_melt, "./data_munging/19Q2/ge_melt_19Q2.rds", compress = "xz")
