@@ -75,7 +75,7 @@ unfactorize <- function(df){
 This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 ```{r dan_ccl_database}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-colnames(ccl_converter)[colnames(ccl_converter) == "DepMap_ID"] <- "DepMap_ID"
+colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
 ccl_lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
 lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
@@ -343,9 +343,7 @@ MergeOmicsG2P <- function(database, maf_df, ge_df, cn_df, gene_list, outfile) {
 ## Drug screens
 
 `r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
-
-**MERGE WITHOUT G2P AND PTMUT FILTER (5/15)**
-```{r merge_filter_drug_data, eval=FALSE}
+```{r merge_drug_data, eval=FALSE}
 # Load in Pozdeyev et al. (2016) data
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
 ctrp_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
@@ -401,6 +399,22 @@ for(drug in g2p_drugs) {
 }
 ```
 
+## CRISPR
+
+```{r merge_crispr_data, eval=TRUE}
+crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+# Remove Entrez gene IDs from colnames
+colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
+colnames(crispr_all)[1] <- "DepMap_ID"
+
+# Melt CRISPR dataset for merging
+# crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
+
+crispr <- MergeOmicsG2P(database = "CRISPR", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
+write.csv.gz(crispr %>% drop_na(Score), "./data_munging/19Q2/crispr_data_19Q2.csv.gz")
+```
+
+
 # EXPLORATORY FIGURES
 
 --------------------------------------------------------------------------------
@@ -409,22 +423,22 @@ for(drug in g2p_drugs) {
 
 ## Cell line and drug overlaps
 
-```{r ccl_venn, eval=FALSE}
+```{r ccl_venn, eval=TRUE}
 ccle_ccls <- unique(ccle$DepMap_ID)
 ctrp_ccls <- unique(ctrp$DepMap_ID)
 gdsc_ccls <- unique(gdsc$DepMap_ID)
-# crispr_ccls <- unique(crispr_ccls$DepMap_ID)
+crispr_ccls <- unique(crispr_ccls$DepMap_ID)
 
-# futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
-# venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
-#              filename = "./plots/manuscript/all_venn_ccls.png",
-#              output = TRUE, imagetype = "png",
-#              height = 2000, width = 2000, resolution = 500,
-#              lwd = 1, cex = 1,
-#              category.names = c("CCLE", "CTRP", "GDSC", "CRISPR"),
-#              cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
-#              # cat.dist = c(0.06, 0.06, 0.035),
-#              fill = c("springgreen4", "steelblue4", "turquoise4", "darkorchid"))
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
+             filename = "./plots/manuscript/all_venn_ccls.png",
+             output = TRUE, imagetype = "png",
+             height = 2000, width = 2000, resolution = 500,
+             lwd = 1, cex = 1,
+             category.names = c("CCLE", "CTRP", "GDSC", "CRISPR"),
+             cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
+             # cat.dist = c(0.06, 0.06, 0.035),
+             fill = c("springgreen4", "steelblue4", "turquoise4", "darkorchid"))
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls),
              filename = "./plots/manuscript/drug_venn_ccls.png",
@@ -457,7 +471,7 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
 ## Histology distributions
 
 **RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
-```{r histology_dists_data, eval=FALSE}
+```{r histology_dists_data, eval=TRUE}
 ccle_hists <- unique(select(ccle, DepMap_ID, disease)) %>% count(disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
 ccle_hists$Dataset <- "CCLE"
@@ -479,19 +493,19 @@ saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
 ```
 
 **RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
-```{r histology_dists, fig.height=4.5, fig.width=4, eval=FALSE}
+```{r histology_dists, fig.height=4.5, fig.width=4, eval=TRUE}
 drug_hists <- readRDS("./data_munging/rds/histology_distributions.rds")
-# png(filename = "./plots/manuscript/all_histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
+png(filename = "./plots/manuscript/all_histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
 ggplot(drug_hists, aes(x = Dataset, y = n, fill = disease)) +
   geom_bar(stat = "identity", color = "black") +
   scale_y_continuous(breaks = seq(0, 850, by = 50), labels = seq(0, 850, by = 50)) +
   guides(fill = guide_legend(title = "Histology", ncol = 1)) +
   labs(y = "Count")
-# dev.off()
+dev.off()
 ```
 
 **RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ccle_ccls <- unique(ccle$DepMap_ID)
 ctrp_ccls <- unique(ctrp$DepMap_ID)
 gdsc_ccls <- unique(gdsc$DepMap_ID)
@@ -517,7 +531,7 @@ dev.off()
 g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
 g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
-g2p_dg_counts[g2p_dg_counts == 0] <- NA
+# g2p_dg_counts[g2p_dg_counts == 0] <- NA
 
 g2p_gene_order <- colnames(g2p_dg_counts)
 g2p_drug_order <- rownames(g2p_dg_counts)
@@ -552,7 +566,7 @@ hta <- Heatmap(hta_data,
                width = unit(1.5, "in"))
 
 # Define color scale
-col_fun <- colorRamp2(c(0, 100), c("mistyrose", "purple4"))
+col_fun <- colorRamp2(c(0, 1, 100), c("gray97", "mistyrose", "purple4"))
 # Legend properties list
 ht_legend_list <- list(legend_direction = "horizontal", legend_width = unit(2.5, "in"), border = "gray70")
 ht <- Heatmap(g2p_dg_counts, 
@@ -589,30 +603,67 @@ dev.off()
 
 ## Clustered AUC heatmap
 
-```{r}
-ccle_auc_grid <- dcast(filter(ccle_ptmuts, Drug %in% g2p_drugs), Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
-ctrp_auc_grid <- dcast(filter(ctrp_ptmuts, Drug %in% g2p_drugs), Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
-gdsc_auc_grid <- dcast(filter(gdsc_ptmuts, Drug %in% g2p_drugs), Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
+```{r auc_clustered_ht, eval=FALSE}
+ccle_auc_grid <- dcast(ccle, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
+ctrp_auc_grid <- dcast(ctrp, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
+gdsc_auc_grid <- dcast(gdsc, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 
+ccle_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ccle_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+ctrp_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ctrp_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+gdsc_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(gdsc_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+
+ht_legend_list <- list(direction = "horizontal")
+
+ccle_col_fun <- colorRamp2(c(0, 1), c("gray97", "darkgreen"))
+ccle_auc_ha <- HeatmapAnnotation(Lineage = ccle_lineages_ha$disease, annotation_legend_param = list(Lineage = list(direction = "horizontal", nrow = 5)))
 ccle_auc_ht <- Heatmap(ccle_auc_grid,
+                       na_col = "black",
+                       col = ccle_col_fun,
+                       top_annotation = ccle_auc_ha,
+                       heatmap_legend_param = ht_legend_list,
                        name = "AUC",
                        show_column_names = FALSE, 
-                       column_title = "CCLE",
-                       column_title_side = "top")
-ctrp_auc_ht <- Heatmap(ctrp_auc_grid,
-                       name = "AUC",
-                       show_column_names = FALSE, 
-                       column_title = "CTRP",
-                       column_title_side = "top")
-gdsc_auc_ht <- Heatmap(gdsc_auc_grid,
-                       name = "AUC",
-                       show_column_names = FALSE, 
-                       column_title = "GDSC",
+                       row_title = "Drugs and Small Molecules",
+                       column_title = "Cancer Cell Lines",
                        column_title_side = "top")
 
-draw(ccle_auc_ht)
-draw(ctrp_auc_ht)
-draw(gdsc_auc_ht)
+ctrp_col_fun <- colorRamp2(c(0, 1), c("gray97", "steelblue4"))
+ctrp_auc_ha <- HeatmapAnnotation(Lineage = ctrp_lineages_ha$disease, annotation_legend_param = list(Lineage = list(direction = "horizontal", nrow = 3)))
+ctrp_auc_ht <- Heatmap(ctrp_auc_grid,
+                       na_col = "black",
+                       col = ctrp_col_fun,
+                       top_annotation = ctrp_auc_ha,
+                       heatmap_legend_param = ht_legend_list,
+                       name = "AUC",
+                       show_column_names = FALSE, 
+                       row_title = "Drugs and Small Molecules",
+                       column_title = "Cancer Cell Lines",
+                       column_title_side = "top")
+
+gdsc_col_fun <- colorRamp2(c(0, 1), c("gray97", "turquoise4"))
+gdsc_auc_ha <- HeatmapAnnotation(Lineage = gdsc_lineages_ha$disease, annotation_legend_param = list(Lineage = list(direction = "horizontal", nrow = 3)))
+gdsc_auc_ht <- Heatmap(gdsc_auc_grid,
+                       na_col = "black",
+                       col = gdsc_col_fun,
+                       top_annotation = gdsc_auc_ha,
+                       heatmap_legend_param = ht_legend_list,
+                       name = "AUC",
+                       show_column_names = FALSE, 
+                       row_title = "Drugs and Small Molecules",
+                       column_title = "Cancer Cell Lines",
+                       column_title_side = "top")
+
+png(filename = "./plots/manuscript/ccle_clustered_heatmap.png", width = 10, height = 8, units = "in", res = 500)
+draw(ccle_auc_ht, merge_legend = TRUE, heatmap_legend_side = "top", annotation_legend_side = "top")
+dev.off()
+
+png(filename = "./plots/manuscript/ctrp_clustered_heatmap.png", width = 22, height = 40, units = "in", res = 500)
+draw(ctrp_auc_ht, merge_legend = TRUE, heatmap_legend_side = "top", annotation_legend_side = "top")
+dev.off()
+
+png(filename = "./plots/manuscript/gdsc_clustered_heatmap.png", width = 18, height = 20, units = "in", res = 500)
+draw(gdsc_auc_ht, merge_legend = TRUE, heatmap_legend_side = "top", annotation_legend_side = "top")
+dev.off()
 ```
 
 
@@ -654,53 +705,107 @@ WilcoxonTestDF <- function(dataframe, grouping, outfile) {
 }
 ```
 
-```{r wilcoxon_tests, eval=FALSE}
+```{r wilcoxon_tests, eval=TRUE}
 # crispr_ptmuts <- unfactorize(crispr_ptmuts)
 # # crispr_signif_all_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_gene.rds")
 # crispr_ptmuts_filt <- filter(crispr_ptmuts, Gene %in% g2p_genes)
 # crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts_filt, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
 # crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts_filt, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
-ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
-ccle_filt <- unfactorize(ccle_filt)
-ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_dg.rds")
-ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
-ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
+# ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+# ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
+# ccle_filt <- unfactorize(ccle_filt)
+# ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_dg.rds")
+# ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
+# ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
 
-# ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs)
-# ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
-# ctrp_filt <- unfactorize(ctrp_filt)
-# ctrp_signif_gene <- WilcoxonTestDF(dataframe = ctrp, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_gene.rds")
-# ctrp_signif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_druggene.rds")
-# ctrp_signif_lineage <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "Primary.Disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ctrp_signif_g2p_lineage.rds")
-# 
-# gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs)
-# gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
-# gdsc_filt <- unfactorize(gdsc_filt)
-# gdsc_signif_gene <- WilcoxonTestDF(dataframe = gdsc, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_gene.rds")
-# gdsc_signsif_g2p_druggene <- WilcoxonTestDF(dataframe = filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_genes), grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_druggene.rds")
-# gdsc_signif_lineage <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "Primary.Disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/gdsc_signif_g2p_lineage.rds")
+ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
+ctrp_filt <- unfactorize(ctrp_filt)
+ctrp_signif_dg <- WilcoxonTestDF(dataframe = ctrp, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_dg.rds")
+ctrp_signif_g2p_dg <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_dg.rds")
+ctrp_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ctrp_signif_g2p_dgl.rds")
+
+gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
+gdsc_filt <- unfactorize(gdsc_filt)
+gdsc_signif_dg <- WilcoxonTestDF(dataframe = gdsc, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_dg.rds")
+gdsc_signif_g2p_dg <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_dg.rds")
+gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 ```
 
 ```{r load_wilcoxon_rds}
 # crispr_signif_gene <- readRDS("./data_munging/rds/crispr_signif_g2p_gene.rds")
 # crispr_signif_lineage <- readRDS("./data_munging/rds/crispr_signif_g2p_lineage.rds")
 
-ccle_signif_gene <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
-ccle_signif_g2p_druggene <- readRDS("./data_munging/rds/ccle_signif_g2p_druggene.rds")
-ccle_signif_lineage <- readRDS("./data_munging/rds/ccle_signif_g2p_lineage.rds")
-
-ctrp_signif_gene <- readRDS("./data_munging/rds/ctrp_signif_g2p_gene.rds")
-ctrp_signif_g2p_druggene <- readRDS("./data_munging/rds/ctrp_signif_g2p_druggene.rds")
-ctrp_signif_lineage <- readRDS("./data_munging/rds/ctrp_signif_g2p_lineage.rds")
-
-gdsc_signif_gene <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
-gdsc_signif_g2p_druggene <- readRDS("./data_munging/rds/gdsc_signif_g2p_druggene.rds")
-gdsc_signif_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
+# ccle_signif_gene <- readRDS("./data_munging/rds/ccle_signif_g2p_gene.rds")
+# ccle_signif_g2p_druggene <- readRDS("./data_munging/rds/ccle_signif_g2p_druggene.rds")
+# ccle_signif_lineage <- readRDS("./data_munging/rds/ccle_signif_g2p_lineage.rds")
+# 
+# ctrp_signif_gene <- readRDS("./data_munging/rds/ctrp_signif_g2p_gene.rds")
+# ctrp_signif_g2p_druggene <- readRDS("./data_munging/rds/ctrp_signif_g2p_druggene.rds")
+# ctrp_signif_lineage <- readRDS("./data_munging/rds/ctrp_signif_g2p_lineage.rds")
+# 
+# gdsc_signif_gene <- readRDS("./data_munging/rds/gdsc_signif_g2p_gene.rds")
+# gdsc_signif_g2p_druggene <- readRDS("./data_munging/rds/gdsc_signif_g2p_druggene.rds")
+# gdsc_signif_lineage <- readRDS("./data_munging/rds/gdsc_signif_g2p_lineage.rds")
 ```
 
+# SPEARMAN (CN, GE)
 
+--------------------------------------------------------------------------------
+
+```{r drug_spear_calc, warning=FALSE, eval=TRUE}
+g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
+
+# CCLE
+ccle_cor_res <- ccle %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
+ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
+ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
+ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
+ccle_cor_res$Dataset <- "CCLE"
+
+# CTRP
+ctrp_cor_res <- ctrp %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
+ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y = TRUE)
+ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
+ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
+ctrp_cor_res$Dataset <- "CTRP"
+
+# GDSC
+gdsc_cor_res <- gdsc %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
+gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y = TRUE)
+gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
+gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
+gdsc_cor_res$Dataset <- "GDSC"
+
+# All
+g2p_cor <- rbind(ccle_cor_res, ctrp_cor_res, gdsc_cor_res)
+
+saveRDS(g2p_cor, "./data_munging/rds/drug_cor.rds")
+```
+
+```{r load_drug_spear}
+g2p_cor <- readRDS("./data_munging/rds/drug_cor.rds")
+```
+
+Spearman correlations for gene expression and copy number:
+```{r crispr_spear_calc, warning=FALSE}
+crispr_spear_ge <- transform(crispr_ptmuts_filt %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
+crispr_spear_cn <- transform(crispr_ptmuts_filt %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
+```
 
 # SESSION INFORMATION
 
