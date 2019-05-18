@@ -401,7 +401,7 @@ for(drug in g2p_drugs) {
 
 ## CRISPR
 
-```{r merge_crispr_data, eval=TRUE}
+```{r merge_crispr_data, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
@@ -411,7 +411,11 @@ colnames(crispr_all)[1] <- "DepMap_ID"
 # crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
 crispr <- MergeOmicsG2P(database = "CRISPR", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
-write.csv.gz(crispr %>% drop_na(Score), "./data_munging/19Q2/crispr_data_19Q2.csv.gz")
+write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
+```
+
+```{r read_crispr_data}
+crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
 ```
 
 
@@ -423,11 +427,11 @@ write.csv.gz(crispr %>% drop_na(Score), "./data_munging/19Q2/crispr_data_19Q2.cs
 
 ## Cell line and drug overlaps
 
-```{r ccl_venn, eval=TRUE}
+```{r ccl_venn, eval=FALSE}
 ccle_ccls <- unique(ccle$DepMap_ID)
 ctrp_ccls <- unique(ctrp$DepMap_ID)
 gdsc_ccls <- unique(gdsc$DepMap_ID)
-crispr_ccls <- unique(crispr_ccls$DepMap_ID)
+crispr_ccls <- unique(crispr$DepMap_ID)
 
 futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
 venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
@@ -471,7 +475,7 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
 ## Histology distributions
 
 **RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
-```{r histology_dists_data, eval=TRUE}
+```{r histology_dists_data, eval=FALSE}
 ccle_hists <- unique(select(ccle, DepMap_ID, disease)) %>% count(disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
 ccle_hists$Dataset <- "CCLE"
@@ -492,8 +496,7 @@ drug_hists$disease <- gsub(" cancer", "", drug_hists$disease)
 saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
 ```
 
-**RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
-```{r histology_dists, fig.height=4.5, fig.width=4, eval=TRUE}
+```{r histology_dists, fig.height=4.5, fig.width=4, eval=FALSE}
 drug_hists <- readRDS("./data_munging/rds/histology_distributions.rds")
 png(filename = "./plots/manuscript/all_histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
 ggplot(drug_hists, aes(x = Dataset, y = n, fill = disease)) +
@@ -505,7 +508,7 @@ dev.off()
 ```
 
 **RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 ccle_ccls <- unique(ccle$DepMap_ID)
 ctrp_ccls <- unique(ctrp$DepMap_ID)
 gdsc_ccls <- unique(gdsc$DepMap_ID)
@@ -705,19 +708,19 @@ WilcoxonTestDF <- function(dataframe, grouping, outfile) {
 }
 ```
 
-```{r wilcoxon_tests, eval=TRUE}
-# crispr_ptmuts <- unfactorize(crispr_ptmuts)
-# # crispr_signif_all_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_gene.rds")
-# crispr_ptmuts_filt <- filter(crispr_ptmuts, Gene %in% g2p_genes)
-# crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_ptmuts_filt, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_gene.rds")
-# crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_ptmuts_filt, grouping = c("Gene", "Primary.Disease"), outfile = "./data_munging/rds/crispr_signif_g2p_lineage.rds")
+```{r wilcoxon_tests, eval=FALSE}
+crispr <- unfactorize(crispr)
+crispr_signif_all_gene <- WilcoxonTestDF(dataframe = crispr, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g.rds")
+crispr_filt <- filter(crispr, Gene %in% g2p_genes)
+crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_filt, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_g.rds")
+crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_filt, grouping = c("Gene", "disease"), outfile = "./data_munging/rds/crispr_signif_g2p_gl.rds")
 
-# ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-# ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
-# ccle_filt <- unfactorize(ccle_filt)
-# ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_dg.rds")
-# ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
-# ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
+ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
+ccle_filt <- unfactorize(ccle_filt)
+ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_dg.rds")
+ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
+ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
 
 ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_genes)
 ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
@@ -755,38 +758,41 @@ gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug"
 
 --------------------------------------------------------------------------------
 
-```{r drug_spear_calc, warning=FALSE, eval=TRUE}
+```{r drug_spear_calc, warning=FALSE, eval=FALSE}
 g2p_druggene_tally <- g2p %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
 
 # CCLE
-ccle_cor_res <- ccle %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
-                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
-                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
-                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
-ccle_cor_res <- merge(g2p_druggene_tally, ccle_cor_res, by = "Drug_Gene", all.y = TRUE)
+ccle_ge_res <- ccle_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>% summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value)
+ccle_cn_res <- ccle_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>% summarize(
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value)
+ccle_cor_res <- merge(g2p_druggene_tally, merge(ccle_ge_res, ccle_cn_res, by = c("Drug", "Gene", "Drug_Gene"), all = TRUE), by = "Drug_Gene", all.y = TRUE)
 ccle_cor_res$n <- ifelse(is.na(ccle_cor_res$n), 0, ccle_cor_res$n)
 ccle_cor_res$InG2P <- ifelse(ccle_cor_res$n != 0, "Yes", "No")
 ccle_cor_res$Dataset <- "CCLE"
 
 # CTRP
-ctrp_cor_res <- ctrp %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
-                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
-                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
-                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
-ctrp_cor_res <- merge(g2p_druggene_tally, ctrp_cor_res, by = "Drug_Gene", all.y = TRUE)
+ctrp_ge_res <- ctrp_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>% summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value)
+ctrp_cn_res <- ctrp_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>% summarize(
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value)
+ctrp_cor_res <- merge(g2p_druggene_tally, merge(ctrp_ge_res, ctrp_cn_res, by = c("Drug", "Gene", "Drug_Gene"), all = TRUE), by = "Drug_Gene", all.y = TRUE)
 ctrp_cor_res$n <- ifelse(is.na(ctrp_cor_res$n), 0, ctrp_cor_res$n)
 ctrp_cor_res$InG2P <- ifelse(ctrp_cor_res$n != 0, "Yes", "No")
 ctrp_cor_res$Dataset <- "CTRP"
 
 # GDSC
-gdsc_cor_res <- gdsc %>% group_by(Drug, Gene, Drug_Gene) %>% summarize(
-                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
-                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
-                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
-                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value)
-gdsc_cor_res <- merge(g2p_druggene_tally, gdsc_cor_res, by = "Drug_Gene", all.y = TRUE)
+gdsc_ge_res <- gdsc_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>% summarize(
+                GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
+                GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value)
+gdsc_cn_res <- gdsc_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>% summarize(
+                CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
+                CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value)
+gdsc_cor_res <- merge(g2p_druggene_tally, merge(gdsc_ge_res, gdsc_cn_res, by = c("Drug", "Gene", "Drug_Gene"), all = TRUE), by = "Drug_Gene", all.y = TRUE)
 gdsc_cor_res$n <- ifelse(is.na(gdsc_cor_res$n), 0, gdsc_cor_res$n)
 gdsc_cor_res$InG2P <- ifelse(gdsc_cor_res$n != 0, "Yes", "No")
 gdsc_cor_res$Dataset <- "GDSC"
@@ -803,8 +809,22 @@ g2p_cor <- readRDS("./data_munging/rds/drug_cor.rds")
 
 Spearman correlations for gene expression and copy number:
 ```{r crispr_spear_calc, warning=FALSE}
-crispr_spear_ge <- transform(crispr_ptmuts_filt %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
-crispr_spear_cn <- transform(crispr_ptmuts_filt %>% group_by(Gene) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
+crispr_spear_ge <- transform(crispr %>% group_by(Gene) %>% drop_na(TPM) %>% summarize(p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate, Metric = "Gene Expression"), Gene = reorder(Gene, corr))
+crispr_spear_cn <- transform(crispr %>% group_by(Gene) %>% drop_na(CN) %>% summarize(p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value, p_log10 = -log10(p), corr = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate, Metric = "Copy Number"), Gene = reorder(Gene, corr))
+c("white", "deepskyblue4")
+
+ggplot(data = filter(crispr_spear_cn, Gene %in% g2p_genes)) +
+  geom_point(aes(x = Gene, y = corr, fill = p_log10), pch = 21) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") +
+  scale_fill_gradientn(colours = c("white", "green4"),
+                       breaks = c(0, 4, 8, 12, 16, 20),
+                       labels = c(0, 4, 8, 12, 16, 20),
+                       limits = c(0, 21)) +
+  geom_text_repel(data = filter(crispr_spear_cn, Gene %in% g2p_genes & p < 0.05) , mapping = aes(x = Gene, y = corr, label = Gene)) +
+  labs(title = "Copy Number",
+       fill = expression(-log[10](p)),
+       x = "Gene",
+       y = expression("Spearman Correlation Coefficient"~(r[s])))
 ```
 
 # SESSION INFORMATION
