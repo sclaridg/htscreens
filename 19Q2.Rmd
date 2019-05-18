@@ -411,7 +411,11 @@ colnames(crispr_all)[1] <- "DepMap_ID"
 # crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
 crispr <- MergeOmicsG2P(database = "CRISPR", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
-write.csv.gz(crispr %>% drop_na(Score), "./data_munging/19Q2/crispr_data_19Q2.csv.gz")
+write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
+```
+
+```{r read_crispr_data}
+crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
 ```
 
 
@@ -704,33 +708,33 @@ WilcoxonTestDF <- function(dataframe, grouping, outfile) {
 }
 ```
 
-```{r wilcoxon_tests, eval=TRUE}
+```{r wilcoxon_tests, eval=FALSE}
 crispr <- unfactorize(crispr)
 crispr_signif_all_gene <- WilcoxonTestDF(dataframe = crispr, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g.rds")
 crispr_filt <- filter(crispr, Gene %in% g2p_genes)
 crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_filt, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g2p_g.rds")
 crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_filt, grouping = c("Gene", "disease"), outfile = "./data_munging/rds/crispr_signif_g2p_gl.rds")
 
-# ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-# ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
-# ccle_filt <- unfactorize(ccle_filt)
-# ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_dg.rds")
-# ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
-# ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
-# 
-# ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-# ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
-# ctrp_filt <- unfactorize(ctrp_filt)
-# ctrp_signif_dg <- WilcoxonTestDF(dataframe = ctrp, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_dg.rds")
-# ctrp_signif_g2p_dg <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_dg.rds")
-# ctrp_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ctrp_signif_g2p_dgl.rds")
-# 
-# gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-# gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
-# gdsc_filt <- unfactorize(gdsc_filt)
-# gdsc_signif_dg <- WilcoxonTestDF(dataframe = gdsc, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_dg.rds")
-# gdsc_signif_g2p_dg <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_dg.rds")
-# gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/gdsc_signif_g2p_dgl.rds")
+ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
+ccle_filt <- unfactorize(ccle_filt)
+ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_dg.rds")
+ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
+ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
+
+ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
+ctrp_filt <- unfactorize(ctrp_filt)
+ctrp_signif_dg <- WilcoxonTestDF(dataframe = ctrp, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_dg.rds")
+ctrp_signif_g2p_dg <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/ctrp_signif_g2p_dg.rds")
+ctrp_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/ctrp_signif_g2p_dgl.rds")
+
+gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
+gdsc_filt <- unfactorize(gdsc_filt)
+gdsc_signif_dg <- WilcoxonTestDF(dataframe = gdsc, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_dg.rds")
+gdsc_signif_g2p_dg <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "Drug_Gene"), outfile = "./data_munging/rds/gdsc_signif_g2p_dg.rds")
+gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), outfile = "./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 ```
 
 ```{r load_wilcoxon_rds}
