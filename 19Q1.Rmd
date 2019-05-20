@@ -207,12 +207,16 @@ g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_
 
 ```{r g2p}
 g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE)
+g2p$biomarker_type_curated <- ifelse(is.na(g2p$biomarker_type_curated), "None", g2p$biomarker_type_curated)
 
 g2p_dgls <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
 g2p_druggenes <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
 g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
 g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
 g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+
+g2p_split <- split(g2p, g2p$biomarker_type_curated)
+g2p_amp <- g2p_split[[1]]
 ```
 
 ```{r testing, eval=FALSE}
