@@ -166,9 +166,7 @@ g2p$biomarker_type_curated <- biomarker_type_curated[,1]
 
 # Edit direction column
 g2p <- add_column(g2p, Direction_Curated = NA, .after = "Direction")
-g2p$Direction_Curated <-
-  ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity||responsive")), "sensitivity",
-         ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist")), "resistance", NA))
+g2p$Direction_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist")), "resistance", ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity||responsive")), "sensitivity", NA))
 
 # Add association columns
 g2p[g2p == ""] <- NA
@@ -193,17 +191,16 @@ g2p_dg_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) 
 g2p_lins <- as.character(unique(g2p$group_general_lineage_name[!is.na(g2p$group_general_lineage_name)]))
 
 g2p$biomarker_type_curated <- ifelse(is.na(g2p$biomarker_type_curated), "None", as.character(g2p$biomarker_type_curated))
-g2p_split <- split(filter(g2p, !is.na(Drug)), g2p$biomarker_type_curated)
+g2p_split <- filter(g2p, !is.na(Drug)) %>% group_split(biomarker_type_curated)
 g2p_amp <- g2p_split[[1]]
 g2p_expr <- g2p_split[[2]]
 g2p_fus <- g2p_split[[3]]
 g2p_fus$FusionPair <- sapply(X = g2p_fus$Feature.Names, function(x) strsplit(as.character(x)," ")[[1]][1])
 g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "Fusions", as.character(g2p_fus$Gene), as.character(g2p_fus$FusionPair))
+g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "BCR-ABL", "BCR-ABL1", as.character(g2p_fus$FusionPair))
 g2p_fus$Drug_FusionPair <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair))
 g2p_mut <- g2p_split[[4]]
 g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g2p_mut$Drug_Gene)], "_", fixed = TRUE), function(x) x[2]))
-g2p_no_biomarker <- g2p_split[[5]]
-
 g2p_nodrug <- filter(g2p, is.na(Drug))
 ```
 
@@ -473,7 +470,7 @@ saveRDS(fus, "./data_munging/rds/fusions_merged.rds")
 
 ```{r}
 fus <- readRDS("./data_munging/rds/fusions_merged.rds") %>% drop_na(Drug)
-fus_summary <- fus %>% count(Database, Drug, FusionPair, Fusion_Status)
+fus_summary <- fuqs %>% count(Database, Drug, FusionPair, Fusion_Status)
 ```
 
 ## CRISPR
@@ -792,6 +789,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, outfile) {
     signif <- signif[order(signif$p),]
     signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_list, "Yes", "No")
   }
+  signif$p_log10 <- as.numeric(formatC(-log10(signif$p), digits = 3, format = "f"))
   saveRDS(signif, outfile)
   return(signif)
 }
@@ -799,12 +797,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, outfile) {
 
 ## Mutation status
 
-```{r}
-test <- unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)]))
-test2 <- unique(as.character(g2p_mut$Drug_Gene_Lin[!is.na(g2p_mut$Drug_Gene_Lin)]))
-```
-
-```{r wilcoxon_tests, eval=FALSE}
+```{r mut_wilcoxon_tests, eval=FALSE}
 crispr <- unfactorize(crispr)
 # crispr_signif_all_gene <- WilcoxonTestDF(dataframe = crispr, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g.rds")
 crispr_filt <- filter(crispr, Gene %in% g2p_genes)
@@ -833,7 +826,7 @@ gdsc_signif_g2p_dg <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug",
 gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), g2p_list = unique(as.character(g2p_mut$Drug_Gene_Lin[!is.na(g2p_mut$Drug_Gene_Lin)])), outfile = "./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 ```
 
-```{r load_wilcoxon_rds}
+```{r load_mut_wilcoxon_rds}
 crispr_signif_g <- readRDS("./data_munging/rds/crispr_signif_g.rds")
 crispr_signif_g2p_g <- readRDS("./data_munging/rds/crispr_signif_g2p_g.rds")
 crispr_signif_lin <- readRDS("./data_munging/rds/crispr_signif_g2p_gl.rds")
@@ -853,23 +846,34 @@ gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 
 ## Fusions
 
-```{r, eval=FALSE}
+```{r fusion_data}
 ccle_fus <- filter(fus, Database == "CCLE")
 ccle_fus <- unfactorize(ccle_fus)
-ccle_signif_fus <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), outfile = "./data_munging/rds/ccle_signif_fusions.rds")
 
 ctrp_fus <- filter(fus, Database == "CTRP")
 ctrp_fus <- unfactorize(ctrp_fus)
-ctrp_signif_fus <- WilcoxonTestDF(dataframe = ctrp_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), outfile = "./data_munging/rds/ctrp_signif_fusions.rds")
 
 gdsc_fus <- filter(fus, Drug %in% g2p_drugs & Database == "GDSC")
 gdsc_fus <- unfactorize(gdsc_fus)
+```
+
+```{r fus_wilcoxon_tests, eval=FALSE}
+ccle_signif_fus <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), outfile = "./data_munging/rds/ccle_signif_fusions.rds")
+
+ctrp_signif_fus <- WilcoxonTestDF(dataframe = ctrp_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), outfile = "./data_munging/rds/ctrp_signif_fusions.rds")
+
 gdsc_signif_fus <- WilcoxonTestDF(dataframe = gdsc_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), outfile = "./data_munging/rds/gdsc_signif_fusions.rds")
 ```
 
-## Plots
+```{r load_fus_wilcoxon_rds}
+ccle_signif_fus <- readRDS("./data_munging/rds/ccle_signif_fusions.rds")
+ctrp_signif_fus <- readRDS("./data_munging/rds/ctrp_signif_fusions.rds")
+gdsc_signif_fus <- readRDS("./data_munging/rds/gdsc_signif_fusions.rds")
+```
 
-```{r fig.height=4, fig.width=8}
+## Boxplots
+
+```{r fig.height=5, fig.width=10}
 crispr_filt <- filter(crispr, Gene %in% g2p_mut_genes)
 crispr_filt$Gene <- factor(crispr_filt$Gene, levels = g2p_mut_genes)
 crispr_filt$Mutation <- as.character(crispr_filt$Mutation)
@@ -892,13 +896,75 @@ crispr_gene_mut_plot
 # ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
 ```
 
-```{r}
-MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, row_title_txt) {
+```{r fusion_boxplots, fig.height=5, fig.width=12}
+# CCLE
+ccle_fus_filt <- filter(ccle_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
+ccle_fus_filt$Drug_f <- factor(ccle_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(ccle_fus$Drug)))
+ccle_signif_fus_filt <- filter(ccle_signif_fus, Drug %in% g2p_drugs)
+ccle_signif_fus_filt$Drug_f <- factor(ccle_signif_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(ccle_signif_fus$Drug)))
+
+ccle_fus_boxplot <- ggplot(data = ccle_fus_filt) +
+  facet_grid(FusionPair ~ Drug_f) +
+  scale_color_manual(name = "Fusion Status", values = c("Yes" = "springgreen4", "No" = "palegreen3")) +
+  geom_jitter(aes(x = Fusion_Status, y = Score, color = Fusion_Status), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_boxplot(aes(x = Fusion_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
+  coord_cartesian(ylim = c(0, 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  geom_text(data = ccle_signif_fus_filt, aes(x = 1.5, y = 1.1, label = p.signif)) +
+  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  labs(y = "AUC", x = "Fusion Status")
+ccle_fus_boxplot
+
+# CTRP
+ctrp_fus_filt <- filter(ctrp_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
+ctrp_fus_filt$Drug_f <- factor(ctrp_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(ctrp_fus$Drug)))
+ctrp_signif_fus_filt <- filter(ctrp_signif_fus, Drug %in% g2p_drugs)
+ctrp_signif_fus_filt$Drug_f <- factor(ctrp_signif_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(ctrp_signif_fus$Drug)))
+
+ctrp_fus_boxplot <- ggplot(data = ctrp_fus_filt) +
+  facet_grid(FusionPair ~ Drug_f) +
+  scale_color_manual(name = "Fusion Status", values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  geom_jitter(aes(x = Fusion_Status, y = Score, color = Fusion_Status), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_boxplot(aes(x = Fusion_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
+  coord_cartesian(ylim = c(0, 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  geom_text(data = ctrp_signif_fus_filt, aes(x = 1.5, y = 1.1, label = p.signif)) +
+  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  labs(y = "AUC", x = "Fusion Status")
+ctrp_fus_boxplot
+
+# GDSC
+gdsc_fus_filt <- filter(gdsc_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
+gdsc_fus_filt$Drug_f <- factor(gdsc_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(gdsc_fus$Drug)))
+gdsc_signif_fus_filt <- filter(gdsc_signif_fus, Drug %in% g2p_drugs)
+gdsc_signif_fus_filt$Drug_f <- factor(gdsc_signif_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(gdsc_signif_fus$Drug)))
+
+gdsc_fus_boxplot <- ggplot(data = gdsc_fus_filt) +
+  facet_grid(FusionPair ~ Drug_f) +
+  scale_color_manual(name = "Fusion Status", values = c("Yes" = "turquoise4", "No" = "paleturquoise3")) +
+  geom_jitter(aes(x = Fusion_Status, y = Score, color = Fusion_Status), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_boxplot(aes(x = Fusion_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
+  coord_cartesian(ylim = c(0, 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  geom_text(data = gdsc_signif_fus_filt, aes(x = 1.5, y = 1.1, label = p.signif)) +
+  theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  labs(y = "AUC", x = "Fusion Status")
+gdsc_fus_boxplot
+```
+
+
+## Heatmaps
+
+```{r wilcoxon_heatmap_function}
+MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, radius) {
   if(!is.na(str_match(string = tolower(feature), pattern = "mut"))) {
-    signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+    signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid > 0.05] <- NA
+    signif_grid[signif_grid < -log10(0.05)] <- NA
     
     signif_grid_annot <- dcast(signif_df, Gene ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -907,10 +973,10 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
   }
   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) {
-    signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
+    signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid > 0.05] <- NA
+    signif_grid[signif_grid < -log10(0.05)] <- NA
     
     signif_grid_annot <- dcast(signif_df, FusionPair ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -918,9 +984,9 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid_annot[signif_grid_annot == "No"] <- ""
     signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
   }
-  col_fun <- colorRamp2(c(0, 0.05), c(color, "gray97"))
+  col_fun <- colorRamp2(c(legend_breaks[1], legend_breaks[length(legend_breaks)]), c("gray97", color))
   # Legend properties list
-  ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70",   at = seq(0, 0.05, by = 0.01), labels = seq(0, 0.05, by = 0.01))
+  ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70", at = legend_breaks, labels = legend_breaks)
   ht <- Heatmap(signif_grid,
                 col = col_fun,
                 na_col = "gray97",
@@ -948,10 +1014,10 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20))
-                  # if(signif_grid_annot[i, j] == "O") {
-                  #   grid.circle(x = x, y = y, r = min(unit.c(width, height))*0.45, gp = gpar(fill = "transparent", col = "black"))
-                  # }
+                  # grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20))
+                  if(signif_grid_annot[i, j] == "O") {
+                    grid.circle(x = x, y = y, r = radius, gp = gpar(fill = "transparent", col = "black"))
+                  }
                 }
                 )
   return(ht)
@@ -959,49 +1025,49 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
 ```
 
 ```{r mut_heatmaps, eval=FALSE}
-ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "P-value", row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes")
+ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes", radius = 0.07)
 png(filename = "./plots/manuscript/ccle_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "P-value", row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes")
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.016)
 png(filename = "./plots/manuscript/ctrp_mut_heatmap.png", width = 9.5, height = 10, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
 
-ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "P-value", row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Genes")
+ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.033)
 png(filename = "./plots/manuscript/gdsc_mut_heatmap.png", width = 5, height = 10, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CCLE p-value                                                                               ", row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes")
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CTRP p-value                                                                              ", row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes")
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "GDSC p-value", row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes")
-png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 10, units = "in", res = 500)
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CCLE -log10(p-value)                                                                     ", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.07)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CTRP -log10(p-value)                                                                    ", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.018)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.035)
+png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 9.5, units = "in", res = 500)
 draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
 
 ```{r fus_heatmaps, eval=FALSE}
-ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "P-value", row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Fusion Pairs")
-png(filename = "./plots/manuscript/ccle_fus_heatmap.png", width = 2.5, height = 3, units = "in", res = 500)
+ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)",  legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.2)
+png(filename = "./plots/manuscript/ccle_fus_heatmap.png", width = 5, height = 3, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "P-value", row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
-png(filename = "./plots/manuscript/ctrp_fus_heatmap.png", width = 6, height = 3, units = "in", res = 500)
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 10, by = 2), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.2)
+png(filename = "./plots/manuscript/ctrp_fus_heatmap.png", width = 13, height = 3, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
 
-ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "P-value", row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
-png(filename = "./plots/manuscript/gdsc_fus_heatmap.png", width = 5, height = 3, units = "in", res = 500)
+ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.2)
+png(filename = "./plots/manuscript/gdsc_fus_heatmap.png", width = 9, height = 3, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CCLE p-value                                                                               ", row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Fusion Pairs")
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CTRP p-value                                                                              ", row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "GDSC p-value", row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Fusion Pairs")
-png(filename = "./plots/manuscript/drug_fus_heatmap.png", width = 13, height = 2.5, units = "in", res = 500)
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CCLE -log10(p-value)                                                                               ", legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.2)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CTRP -log10(p-value)                                                                              ", legend_breaks = seq(0, 10, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.2)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.2)
+png(filename = "./plots/manuscript/drug_fus_heatmap.png", width = 13, height = 2.4, units = "in", res = 500)
 draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
