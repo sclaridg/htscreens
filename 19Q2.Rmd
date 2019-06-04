@@ -155,18 +155,18 @@ g2p <- add_column(g2p, biomarker_type_curated = NA, .after = "biomarker_type")
 
 # Manually assign biomarker_types based on a combination of biomarker_type derived from the JSON string and patterns in the Feature.Names
 biomarker_type_curated <- 
-  ifelse(!is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "copy number variant|amplification")) | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "copy number variant|amplification")), "Amplification/CNV",
-  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION")) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
-  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([A-Z]|[*])|[0-9A-Z]+ [A-Z][0-9]+|[A-Z][0-9]+$")), "Mutation",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation")), "Expression",
-  ifelse(!is.na(str_match(string = g2p$biomarker_type, pattern = "intron|insertion|deletion|mutant")), "Mutation",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "codon|positive|biallelic inactivation|del|ins|dup|mut|frameshift|missense|variant|[0-9]+fs|>")), "Mutation",
-  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^KIT$|^BRCA$")), "Mutation", NA)))))))
+  ifelse(!is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "copy number variant|amplification")[,1]) | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "copy number variant|amplification")), "Amplification/CNV",
+  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION")[,1]) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([A-Z]|[*])|[0-9A-Z]+ [A-Z][0-9]+|[A-Z][0-9]+$")[,1]), "Mutation",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation")[,1]), "Expression",
+  ifelse(!is.na(str_match(string = g2p$biomarker_type, pattern = "intron|insertion|deletion|mutant")[,1]), "Mutation",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "codon|positive|biallelic inactivation|del|ins|dup|mut|frameshift|missense|variant|[0-9]+fs|>")[,1]), "Mutation",
+  ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^KIT$|^BRCA$")[,1]), "Mutation", NA)))))))
 g2p$biomarker_type_curated <- biomarker_type_curated[,1]
 
 # Edit direction column
 g2p <- add_column(g2p, Direction_Curated = NA, .after = "Direction")
-g2p$Direction_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist")), "resistance", ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity|responsive")), "sensitivity", "none"))
+g2p$Direction_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist")[,1]), "resistance", ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity|responsive")[,1]), "sensitivity", "none"))
 
 # Add association columns
 g2p[g2p == ""] <- NA
@@ -214,18 +214,24 @@ maf_raw <- read.delim("./data_munging/19Q2/CCLE_mutations_20190514.csv.gz", head
 maf_raw[, 1:2] <- NULL
 colnames(maf_raw)[colnames(maf_raw) == "Hugo_Symbol"] <- "Gene"
 maf_raw <- unfactorize(maf_raw)
-# Select columns
+
+# Select columns for maf_changes_df
+maf_changes <- select(maf_raw, Gene, DepMap_ID, Protein_Change) %>% drop_na(Protein_Change) %>% filter(Protein_Change != "" & Gene %in% g2p_genes)
+maf_changes <- unique(maf_changes)
+maf_changes$Protein_Change <- gsub(pattern = "^p.", replacement = "", x = maf_changes$Protein_Change)
+maf_changes$Keep <- ifelse(!is.na(str_match(string = maf_changes$Protein_Change, pattern = "[A-Z][0-9]+([A-Z]|[*])")[,1]), "Yes", "No")
+maf_changes_df <- filter(maf_changes, Keep == "Yes")
+maf_changes_df$Keep <- NULL
+maf_changes_df$Gene_Protein_Change <- with(maf_changes_df, paste0(Gene, ":", Protein_Change))
+saveRDS(maf_changes_df, "./data_munging/19Q2/maf_changes_df_19Q2.rds", compress = "xz")
+
+# Select columns for maf_df
 maf <- subset(maf_raw, select = c("Gene", "DepMap_ID"))
 maf$Mutation <- 1
 maf_grid <- expand.grid("Gene" = unique(maf$Gene), "DepMap_ID" = unique(maf$DepMap_ID))
 maf_df <- merge(maf, maf_grid, by = c("Gene", "DepMap_ID"), all = TRUE)
 maf_df[is.na(maf_df)] <- 0
-
 saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2.rds", compress = "xz")
-```
-
-```{r}
-cgi <- read.delim("./../../../Desktop/cgi_biomarkers_latest/cgi_biomarkers_per_variant.tsv", sep = "\t", header = TRUE)
 ```
 
 DepMap 19Q2 fusion calls derived using the [STAR-Fusion pipeline](https://github.com/STAR-Fusion/STAR-Fusion/wiki). Column descriptions:
@@ -305,15 +311,13 @@ ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
 --------------------------------------------------------------------------------
 
 ```{r omics_functions}
-MergeOmicsG2P <- function(database, maf_df, ge_df, cn_df, gene_list, outfile) {
+MergeOmicsG2P <- function(database, dataframe, maf_df, ge_df, cn_df, gene_list, outfile) {
   # Merge mutation status, CN, and GE omics data with drugscreen results and metadata
   if(database %in% c("CCLE", "CTRP", "GDSC")) {
-    filt <- auc %>% filter(Database == database) %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, AUC_IC50)
     print(paste0("Processing ", database, " data."))
-    colnames(filt)[colnames(filt) == "AUC_IC50"] <- "Score"
 
-    grid <- expand.grid("Cell_line" = unique(filt$Cell_line), "Gene" = gene_list)
-    data <-  merge(filt, grid, by = "Cell_line", all.y = TRUE)
+    grid <- expand.grid("Cell_line" = unique(dataframe$Cell_line), "Gene" = gene_list)
+    data <-  merge(dataframe, grid, by = "Cell_line", all.y = TRUE)
     print("Merged grid.")
     # Merge metadata
     data <-  merge(data, select(ccl_meta, Cell_line, CCLE_histology, CCLE_name, DepMap_ID, disease), by = c("Cell_line", "CCLE_histology", "CCLE_name", "DepMap_ID"), all.y = TRUE)
@@ -333,7 +337,7 @@ MergeOmicsG2P <- function(database, maf_df, ge_df, cn_df, gene_list, outfile) {
   if(database == "CRISPR") {
     print(paste0("Processing ", database, " data."))
     # Melt CRISPR dataset for merging
-    data <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
+    data <- melt(dataframe, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
     # Merge cell line metadata
     data <- merge(data, select(ccl_meta, Cell_line, CCLE_histology, CCLE_name, DepMap_ID, disease), by = "DepMap_ID", all.y = TRUE)
     print("Merged metadata.")
@@ -365,16 +369,12 @@ MergeOmicsG2P <- function(database, maf_df, ge_df, cn_df, gene_list, outfile) {
 
 ## Drug screens
 
-`r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
-```{r merge_drug_data, eval=FALSE}
-# Load in Pozdeyev et al. (2016) data
+```{r adjust_drugscreen_data, eval=FALSE}
 ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
 ctrp_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
 gdsc_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/GDSC_drug_response_metrics.csv.gz", sep = ",")
 
-auc <- bind_rows(ccle_all, ctrp_all, gdsc_all)
-
-# Harmonize Pozdeyev cell line names with DepMap
+auc <- bind_rows(ccle_all, ctrp_all, gdsc_all) %>% drop_na(Drug_name)
 auc$Drug <- tolower(auc$Drug_name)
 auc$Cell_line <- toupper(gsub("-", "", auc$Cell_line))
 auc$Cell_line <- ifelse(auc$Cell_line == "K052", "KO52", auc$Cell_line)
@@ -382,20 +382,37 @@ auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
 auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
+colnames(auc)[colnames(auc) == "AUC_IC50"] <- "Score"
+saveRDS(auc, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_auc_all.rds", compress = "xz")
 
-ccle <- MergeOmicsG2P(database = "CCLE", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/ccle_data_19Q2.rds")
+ccle_all <- auc %>% filter(Database == "CCLE") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+saveRDS(ccle_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds", compress = "xz")
+ctrp_all <- auc %>% filter(Database == "CTRP") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+saveRDS(ctrp_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds", compress = "xz")
+gdsc_all <- auc %>% filter(Database == "GDSC") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+saveRDS(gdsc_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds", compress = "xz")
+```
+
+`r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
+```{r merge_drug_data, eval=FALSE}
+ccle_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds")
+ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds")
+gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
+
+ccle <- MergeOmicsG2P(database = "CCLE", dataframe = ccle_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/ccle_data_19Q2.rds")
 write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
 
-ctrp <- MergeOmicsG2P(database = "CTRP", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
+ctrp <- MergeOmicsG2P(database = "CTRP", dataframe = ctrp_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
 write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
 
-gdsc <- MergeOmicsG2P(database = "GDSC", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/gdsc_data_19Q2.rds")
+
+gdsc <- MergeOmicsG2P(database = "GDSC", dataframe = gdsc_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/gdsc_data_19Q2.rds")
 write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
 
 # all_genes <- intersect(unique(maf_df$Gene), intersect(unique(cn_melt$Gene), unique(ge_melt$Gene)))
-# ccle <- MergeOmicsG2P(database = "CCLE", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/ccle_data_19Q2.rds")
-# ctrp <- MergeOmicsG2P(database = "CTRP", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
-# gdsc <- MergeOmicsG2P(database = "GDSC", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/gdsc_data_19Q2.rds")
+# ccle <- MergeOmicsG2P(database = "CCLE", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/ccle_data_allgenes_19Q2.rds")
+# ctrp <- MergeOmicsG2P(database = "CTRP", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/ctrp_data_allgenes_19Q2.rds")
+# gdsc <- MergeOmicsG2P(database = "GDSC", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/gdsc_data_allgenes_19Q2.rds")
 ```
 
 ```{r load_drug_rds, eval=TRUE}
@@ -423,45 +440,30 @@ for(drug in g2p_drugs) {
 ```
 
 Merge fusions:
-```{r, eval=FALSE}
-ccle_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CCLE_drug_response_metrics.csv.gz", sep = ",")
-ctrp_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/CTRP_drug_response_metrics.csv.gz", sep = ",")
-gdsc_all <- read.delim("./../htscreens_giant_files/pozdeyev_data/GDSC_drug_response_metrics.csv.gz", sep = ",")
-
-auc <- bind_rows(ccle_all, ctrp_all, gdsc_all) %>% drop_na(Drug_name)
-
-# Harmonize Pozdeyev cell line names with DepMap
-auc$Drug <- tolower(auc$Drug_name)
-auc$Cell_line <- toupper(gsub("-", "", auc$Cell_line))
-auc$Cell_line <- ifelse(auc$Cell_line == "K052", "KO52", auc$Cell_line)
-auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
-auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
-auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
-auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
-
+```{r merge_fusions, eval=FALSE}
+ccle_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds")
+ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds")
+gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
 fusions_filt <- filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))
 
-ccle_fus <- auc %>% filter(Database == "CCLE") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, AUC_IC50)
-ccle_fus_grid <- expand.grid("DepMap_ID" = unique(ccle_fus$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-ccle_fus <- merge(merge(ccle_fus, ccle_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
+ccle_fus_grid <- expand.grid("DepMap_ID" = unique(ccle_all$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
+ccle_fus <- merge(merge(ccle_all, ccle_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
 ccle_fus$Fusion_Status <- ifelse(!is.na(ccle_fus$LeftGene), "Yes", "No")
 ccle_fus$Drug_FusionPair <- ifelse(is.na(ccle_fus$Drug) | is.na(ccle_fus$FusionPair), NA, paste0(ccle_fus$Drug, "_", ccle_fus$FusionPair))
 ccle_fus$G2P_Drug_FusionPair <- ifelse(ccle_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
 ccle_fus$G2P_Fusion <- ifelse(ccle_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
 ccle_fus$Database <- "CCLE"
 
-ctrp_fus <- auc %>% filter(Database == "CTRP") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, AUC_IC50)
-ctrp_fus_grid <- expand.grid("DepMap_ID" = unique(ctrp_fus$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-ctrp_fus <- merge(merge(ctrp_fus, ctrp_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
+ctrp_fus_grid <- expand.grid("DepMap_ID" = unique(ctrp_all$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
+ctrp_fus <- merge(merge(ctrp_all, ctrp_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
 ctrp_fus$Fusion_Status <- ifelse(!is.na(ctrp_fus$LeftGene), "Yes", "No")
 ctrp_fus$Drug_FusionPair <- ifelse(is.na(ctrp_fus$Drug) | is.na(ctrp_fus$FusionPair), NA, paste0(ctrp_fus$Drug, "_", ctrp_fus$FusionPair))
 ctrp_fus$G2P_Drug_FusionPair <- ifelse(ctrp_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
 ctrp_fus$G2P_Fusion <- ifelse(ctrp_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
 ctrp_fus$Database <- "CTRP"
 
-gdsc_fus <- auc %>% filter(Database == "GDSC") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, AUC_IC50)
-gdsc_fus_grid <- expand.grid("DepMap_ID" = unique(gdsc_fus$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-gdsc_fus <- merge(merge(gdsc_fus, gdsc_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
+gdsc_fus_grid <- expand.grid("DepMap_ID" = unique(gdsc_all$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
+gdsc_fus <- merge(merge(gdsc_all, gdsc_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
 gdsc_fus$Fusion_Status <- ifelse(!is.na(gdsc_fus$LeftGene), "Yes", "No")
 gdsc_fus$Drug_FusionPair <- ifelse(is.na(gdsc_fus$Drug) | is.na(gdsc_fus$FusionPair), NA, paste0(gdsc_fus$Drug, "_", gdsc_fus$FusionPair))
 gdsc_fus$G2P_Drug_FusionPair <- ifelse(gdsc_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
@@ -473,10 +475,29 @@ colnames(fus)[colnames(fus) == "AUC_IC50"] <- "Score"
 saveRDS(fus, "./data_munging/rds/fusions_merged.rds")
 ```
 
-```{r}
+```{r load_fusion_data}
 fus <- readRDS("./data_munging/rds/fusions_merged.rds") %>% drop_na(Drug)
 fus_summary <- fus %>% count(Database, Drug, FusionPair, Fusion_Status)
+
 ```
+
+Merge protein changes: **NEED TO MAKE G2P_prot DATAFRAME (6/4/19)**
+```{r merge_protein_changes, eval=FALSE}
+ccle_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds")
+ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds")
+gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
+maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
+
+ccle_prot_grid <- expand.grid("DepMap_ID" = unique(ccle_all$DepMap_ID), "Protein_Change" = unique(maf_changes_df$Protein_Change))
+ccle_prot <- merge(merge(ccle_all, ccle_prot_grid, by = "DepMap_ID", all = TRUE), maf_changes_df, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "Protein_Change"), all = TRUE)
+ccle_prot$Protein_Change_Status <- ifelse(!is.na(ccle_prot$Protein_Change), "Yes", "No")
+ccle_prot$Drug_Protein_Change <- ifelse(is.na(ccle_prot$Drug) | is.na(ccle_prot$Protein_Change), NA, paste0(ccle_prot$Drug, "_", ccle_prot$Protein_Change))
+# ccle_prot$G2P_Drug_Protein_Change <- ifelse(ccle_prot$Drug_Protein_Change %in% unique(as.character(g2p_prot$Drug_Protein_Change)), "Yes", "No")
+# ccle_prot$G2P_Protein_Change <- ifelse(ccle_prot$Protein_Change %in% unique(as.character(g2p_prot$Protein_Change)), "Yes", "No")
+ccle_prot$Database <- "CCLE"
+
+```
+
 
 ## CRISPR
 
@@ -489,7 +510,7 @@ colnames(crispr_all)[1] <- "DepMap_ID"
 # Melt CRISPR dataset for merging
 # crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
-crispr <- MergeOmicsG2P(database = "CRISPR", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
+crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
 write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
 
@@ -774,6 +795,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, outfile) {
   require(ggpubr)
   if("Drug_Gene_Lin" %in% grouping) {
     # Filter out DGLs with too few samples in at least one mutation status category
+    # Require at least 3 samples in each category to run the test, else filter out that DGL from testing df
     count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
     count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
     dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
@@ -786,6 +808,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, outfile) {
   }
   if("FusionPair" %in% grouping) {
     # Filter out fusions with too few samples in at least one category
+    # Require at least 3 samples in each category to run the test, else filter out that Drug_FusionPair from testing df
     count_n <- dataframe %>% count(Drug, FusionPair, Drug_FusionPair, Fusion_Status) %>% filter(n >= 3)
     count_category <- count_n %>% count(Drug, FusionPair, Drug_FusionPair) %>% filter(n == 2)
     keep <- intersect(count_n$Drug_FusionPair, count_category$Drug_FusionPair)
@@ -797,6 +820,13 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, outfile) {
     signif$InG2P <- ifelse(signif$Drug_FusionPair %in% g2p_list, "Yes", "No")
   }
   if("Drug_Gene" %in% grouping) {
+    # Filter out DGs with too few samples in at least one mutation status category
+    # Require at least 3 samples in each category to run the test, else filter out that DG from testing df
+    count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
+    count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
+    dgl_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
+    dataframe <- filter(dataframe, Drug_Gene %in% dgl_keep)
+    dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
     signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
     signif <- adj_signif(signif, alpha = 0.05)
     signif <- signif[order(signif$p),]
@@ -992,78 +1022,6 @@ gdsc_fus_boxplot
 
 ## Heatmaps
 
-```{r wilcoxon_heatmap_function_EDIT, eval=FALSE}
-MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, radius) {
-  if(!is.na(str_match(string = tolower(feature), pattern = "mut"))) {
-    signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-    signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-    signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
-    
-    signif_grid_annot <- dcast(signif_df, Gene ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-    signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-    signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
-    # signif_grid_annot[signif_grid_annot == "No"] <- ""
-    # signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
-  }
-  if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) {
-    signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
-    signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
-    signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
-    
-    signif_grid_annot <- dcast(signif_df, FusionPair ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
-    signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
-    signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
-    # signif_grid_annot[signif_grid_annot == "No"] <- ""
-    # signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
-  }
-  col_fun <- colorRamp2(c(legend_breaks[1], legend_breaks[length(legend_breaks)]), c("gray97", color))
-  # Legend properties list
-  ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70", at = legend_breaks, labels = legend_breaks)
-  ht <- Heatmap(signif_grid,
-                col = col_fun,
-                na_col = "gray97",
-                rect_gp = gpar(col = "gray70"),
-                heatmap_legend_param = ht_legend_list,
-                cluster_rows = FALSE, 
-                cluster_columns = FALSE, 
-                show_row_names = as.logical(row_names),
-                row_names_side = "left",
-                row_names_gp = gpar(fontsize = 10),
-                column_names_side = "bottom",
-                column_names_gp = gpar(fontsize = 10),
-                show_column_names = FALSE,
-                bottom_annotation = HeatmapAnnotation(
-                  text = anno_text(colnames(signif_grid),
-                                   rot = 45,
-                                   gp = gpar(fontsize = 11),
-                                   offset = unit(1, "npc"),
-                                   just = "right"),
-                  annotation_height = unit(0.85, "in")),
-                  # annotation_height = max_text_width(colnames(signif_grid))),
-                row_title = row_title_txt,
-                row_title_gp = gpar(fontface = "bold", fontsize = 14),
-                column_title = col_title, 
-                column_title_gp = gpar(fontface = "bold", fontsize = 14),
-                column_title_side = "bottom",
-                cell_fun = function(j, i, x, y, width, height, fill) {
-                  # grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20))
-                  if(signif_grid_annot[i, j] == "none") {
-                    grid.circle(x = x, y = y, r = radius, gp = gpar(fill = "transparent", col = "black"))
-                  }
-                  if(signif_grid_annot[i, j] == "sensitivity") {
-                    grid.polygon(x = c(0, 0.5, 1), y = c(0, 1, 0), default.units = "npc", gp = gpar(fill = "transparent", col = "black"))
-                  }
-                  if(signif_grid_annot[i, j] == "resistance") {
-                    grid.polygon(x = c(0.1, 0.1, 0.9, 0.9), y = c(0.1, 0.9, 0.9, 0.1), default.units = "npc", gp = gpar(fill = "transparent", col = "black"))
-                  }
-                }
-                )
-  return(ht)
-}
-```
-
 ```{r wilcoxon_heatmap_function}
 MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, radius) {
   if(!is.na(str_match(string = tolower(feature), pattern = "mut"))) {
@@ -1128,21 +1086,6 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 )
   return(ht)
 }
-```
-
-```{r testing, eval=FALSE}
-grid.newpage()
-grid.polygon(x = c(0.1, 0.1, 0.9, 0.9), y = c(0.1, 0.9, 0.9, 0.1), default.units = "npc",
-             gp = gpar(), draw = TRUE, vp = NULL)
-
-signif_df <- filter(ccle_signif_fus, Drug %in% g2p_drugs)
-signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
-signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-signif_grid <- signif_grid[complete.cases(signif_grid), ]
-signif_grid[signif_grid < -log10(0.05)] <- NA
-signif_grid_annot <- dcast(signif_df, FusionPair ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
-signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
 ```
 
 ```{r mut_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
