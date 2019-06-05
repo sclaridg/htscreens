@@ -166,7 +166,18 @@ g2p$biomarker_type_curated <- biomarker_type_curated[,1]
 
 # Edit direction column
 g2p <- add_column(g2p, Direction_Curated = NA, .after = "Direction")
-g2p$Direction_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist")[,1]), "resistance", ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity|responsive")[,1]), "sensitivity", "none"))
+g2p$Direction_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist|adverse|unfavorable")[,1]), "resistance", ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity|responsive|better")[,1]), "sensitivity", "none"))
+
+# Edit mutation column
+g2p <- add_column(g2p, Mutation_Curated = NA, .after = "Mutation")
+g2p$Mutation_Curated <- gsub("u'|'| |,|\\[|\\]", "", g2p$Mutation)
+g2p$Mutation_Curated <- ifelse(g2p$Mutation_Curated == "", str_match(string = g2p$Feature.Names, pattern = "^[A-Z][0-9]+([A-Z]|[*])| [A-Z][0-9]+([A-Z]|[*])|:[A-Z][0-9]+([A-Z]|[*])")[,1], as.character(g2p$Mutation_Curated))
+g2p$Mutation_Curated <- gsub(":| |c\\..*", "", g2p$Mutation_Curated)
+g2p$Mutation_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Mutation_Curated), pattern = "exon|expression|frameshift|fusion|methylation|mutation")[,1]), NA, as.character(g2p$Mutation_Curated))
+g2p$Mutation_Curated <- gsub("^([0-9]+)([A-Z])$", "\\2\\1\\2", g2p$Mutation_Curated)
+g2p$Mutation_Curated <- gsub("^([A-Z])([0-9]+)$", "\\1\\2\\1", g2p$Mutation_Curated)
+g2p <- add_column(g2p, Gene_Protein_Change = NA, .after = "Mutation_Curated")
+g2p$Gene_Protein_Change <- ifelse(!is.na(g2p$Gene) & !is.na(g2p$Mutation_Curated), paste0(as.character(g2p$Gene), ":", as.character(g2p$Mutation_Curated)), NA)
 
 # Add association columns
 g2p[g2p == ""] <- NA
@@ -219,11 +230,8 @@ maf_raw <- unfactorize(maf_raw)
 maf_changes <- select(maf_raw, Gene, DepMap_ID, Protein_Change) %>% drop_na(Protein_Change) %>% filter(Protein_Change != "" & Gene %in% g2p_genes)
 maf_changes <- unique(maf_changes)
 maf_changes$Protein_Change <- gsub(pattern = "^p.", replacement = "", x = maf_changes$Protein_Change)
-maf_changes$Keep <- ifelse(!is.na(str_match(string = maf_changes$Protein_Change, pattern = "[A-Z][0-9]+([A-Z]|[*])")[,1]), "Yes", "No")
-maf_changes_df <- filter(maf_changes, Keep == "Yes")
-maf_changes_df$Keep <- NULL
-maf_changes_df$Gene_Protein_Change <- with(maf_changes_df, paste0(Gene, ":", Protein_Change))
-saveRDS(maf_changes_df, "./data_munging/19Q2/maf_changes_df_19Q2.rds", compress = "xz")
+maf_changes$Gene_Protein_Change <- with(maf_changes, paste0(Gene, ":", Protein_Change))
+saveRDS(maf_changes, "./data_munging/19Q2/maf_changes_df_19Q2.rds", compress = "xz")
 
 # Select columns for maf_df
 maf <- subset(maf_raw, select = c("Gene", "DepMap_ID"))
@@ -302,9 +310,15 @@ saveRDS(ge_melt, "./data_munging/19Q2/ge_melt_19Q2.rds", compress = "xz")
 Load Rds:
 ```{r load_omics_rds}
 maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
+maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
 ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
 ```
+
+```{r}
+test <- filter(maf_changes_df, Gene_Protein_Change %in% unique(g2p_mut$Gene_Protein_Change))
+```
+
 
 # MERGE OMICS
 
@@ -875,7 +889,8 @@ gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug"
 
 ```{r load_mut_wilcoxon_rds}
 g2p_mut_4merge <- unique(select(g2p_mut, Drug_Gene, Direction_Curated))
-g2p_mut_4merge$Direction_Numeric <- as.numeric(g2p_mut_4merge$Direction_Curated)
+test <- g2p_mut_4merge %>% filter(Direction_Curated != "none") %>% count(Drug_Gene) %>% filter(n == 2)
+extended_mut_ht_dg <- unique(as.character(test$Drug_Gene))
 
 crispr_signif_g <- readRDS("./data_munging/rds/crispr_signif_g.rds")
 crispr_signif_g2p_g <- readRDS("./data_munging/rds/crispr_signif_g2p_g.rds")
@@ -883,18 +898,14 @@ crispr_signif_lin <- readRDS("./data_munging/rds/crispr_signif_g2p_gl.rds")
 
 ccle_signif_dg <- readRDS("./data_munging/rds/ccle_signif_dg.rds")
 ccle_signif_g2p_dg <- readRDS("./data_munging/rds/ccle_signif_g2p_dg.rds")
-# ccle_signif_g2p_dg <- merge(ccle_signif_g2p_dg, g2p_mut_4merge, by = "Drug_Gene", all.x = TRUE)
-# ccle_signif_g2p_dg$Direction_Numeric <- ifelse(is.na(ccle_signif_g2p_dg$Direction_Numeric), 4, as.numeric(ccle_signif_g2p_dg$Direction_Numeric))
 ccle_signif_dgl <- readRDS("./data_munging/rds/ccle_signif_g2p_dgl.rds")
 
 # ctrp_signif_g <- readRDS("./data_munging/rds/ctrp_signif_dg.rds")
 ctrp_signif_g2p_dg <- readRDS("./data_munging/rds/ctrp_signif_g2p_dg.rds")
-# ctrp_signif_g2p_dg <- merge(ctrp_signif_g2p_dg, g2p_mut_4merge, by = "Drug_Gene", all.x = TRUE)
 ctrp_signif_dgl <- readRDS("./data_munging/rds/ctrp_signif_g2p_dgl.rds")
 
 # gdsc_signif_g <- readRDS("./data_munging/rds/gdsc_signif_dg.rds")
 gdsc_signif_g2p_dg <- readRDS("./data_munging/rds/gdsc_signif_g2p_dg.rds")
-# gdsc_signif_g2p_dg <- merge(gdsc_signif_g2p_dg, g2p_mut_4merge, by = "Drug_Gene", all.x = TRUE)
 gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 ```
 
