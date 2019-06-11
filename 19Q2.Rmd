@@ -985,8 +985,13 @@ gdsc_signif_prot <- WilcoxonTestDF(dataframe = gdsc_prot, grouping = c("Gene_Pro
 
 ```{r load_prot_wilcoxon_rds}
 ccle_signif_prot <- readRDS("./data_munging/rds/ccle_signif_protein_changes.rds")
+ccle_signif_prot <- merge(ccle_signif_prot, unique(select(ccle_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
+
 ctrp_signif_prot <- readRDS("./data_munging/rds/ctrp_signif_protein_changes.rds")
+ctrp_signif_prot <- merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
+
 gdsc_signif_prot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes.rds")
+gdsc_signif_prot <- merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
 ```
 
 ## Fusions
@@ -1221,7 +1226,7 @@ png(filename = "./plots/manuscript/ccle_prot_heatmap.png", width = 3, height = 5
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.015)
 png(filename = "./plots/manuscript/ctrp_prot_heatmap.png", width = 9.5, height = 5.5, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
@@ -1230,13 +1235,6 @@ ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot, feature = "protein 
 png(filename = "./plots/manuscript/gdsc_prot_heatmap.png", width = 5, height = 5.5, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
-
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot, feature = "protein changes", legend_title = "CCLE -log10(p-value)                                                                     ", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.03)
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot, feature = "protein changes", legend_title = "CTRP -log10(p-value)                                                                    ", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot, feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.015)
-# png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 9.5, units = "in", res = 500)
-# draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
-# dev.off()
 ```
 
 ```{r fus_heatmaps, eval=FALSE}
