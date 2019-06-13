@@ -1220,6 +1220,28 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side
 dev.off()
 ```
 
+```{r, eval=FALSE}
+ctrp_signif_prot <- readRDS("./data_munging/rds/ctrp_signif_protein_changes.rds")
+ctrp_signif_prot <- merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
+
+signif_df <- ctrp_signif_prot
+
+signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
+signif_grid <- signif_grid[complete.cases(signif_grid), ]
+signif_grid[signif_grid < -log10(0.05)] <- NA
+
+signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0)
+%>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
+signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
+signif_grid_annot[signif_grid_annot == "No"] <- ""
+signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
+
+test <- ctrp_signif_prot %>% count(Gene_Protein_Change, Drug)
+```
+
+
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes", radius = 0.03)
 png(filename = "./plots/manuscript/ccle_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
