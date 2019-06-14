@@ -166,7 +166,11 @@ g2p$biomarker_type_curated <- biomarker_type_curated[,1]
 
 # Edit direction column
 g2p <- add_column(g2p, Direction_Curated = NA, .after = "Direction")
-g2p$Direction_Curated <- ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "resist|adverse|unfavorable")[,1]), "resistance", ifelse(!is.na(str_match(string = tolower(g2p$Direction), pattern = "sensitive|sensitivity|responsive|better")[,1]), "sensitivity", "none"))
+g2p$Direction_Curated <- with(g2p, ifelse(!is.na(str_match(string = tolower(Direction), pattern = "adverse|unfavorable|^resistant")[,1]), "resistance",
+                         ifelse(!is.na(str_match(string = tolower(Direction), pattern = "confers resistance")[,1]), "resistance",
+                         ifelse(!is.na(str_match(string = tolower(Direction), pattern = "sensitive|sensitivity|responsive|better")[,1]), "sensitivity", 
+                         ifelse(is.na(Direction) & Drug == "gefitinib" & Feature.Names == "L858R" & Gene == "EGFR", "sensitivity",
+                         ifelse(is.na(Direction) & Drug == "trametinib" & Feature.Names == "V600E" & Gene == "BRAF", "sensitivity", NA))))))
 
 # Edit mutation column
 g2p <- add_column(g2p, Protein_Change = NA, .after = "Mutation")
@@ -186,7 +190,7 @@ g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
 g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
 g2p$Gene_Lin <- ifelse(is.na(g2p$Drug) | !is.na(g2p$Gene) | !is.na(g2p$group_general_lineage_name), paste0(g2p$Gene, "_", g2p$group_general_lineage_name), NA)
 
-# write.csv(g2p, "./data_munging/g2p_db_edited.csv")
+write.csv(g2p, "./data_munging/g2p_db_edited.csv")
 ```
 
 ```{r g2p}
@@ -820,7 +824,7 @@ dev.off()
 ```
 
 
-# WILCOXON TESTS
+# WILCOXON: PanCan
 
 --------------------------------------------------------------------------------
 
@@ -964,12 +968,15 @@ gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 ```{r protein_change_data}
 ccle_prot <- filter(prot, Database == "CCLE")
 ccle_prot <- unfactorize(ccle_prot)
+ccle_prot_count <- ccle_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 
 ctrp_prot <- filter(prot, Database == "CTRP")
 ctrp_prot <- unfactorize(ctrp_prot)
+ctrp_prot_count <- ctrp_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 
 gdsc_prot <- filter(prot, Drug %in% g2p_drugs & Database == "GDSC")
 gdsc_prot <- unfactorize(gdsc_prot)
+gdsc_prot_count <- gdsc_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 ```
 
 ```{r prot_wilcoxon_tests, eval=FALSE}
@@ -1053,7 +1060,7 @@ crispr_gene_mut_plot
 # ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
 ```
 
-```{r fusion_boxplots, fig.height=5, fig.width=12}
+```{r fusion_boxplots, fig.height=5, fig.width=12, eval=FALSE}
 # CCLE
 ccle_fus_filt <- filter(ccle_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
 ccle_fus_filt$Drug_f <- factor(ccle_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(ccle_fus$Drug)))
@@ -1138,11 +1145,11 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
     signif_grid[signif_grid < -log10(0.05)] <- NA
     
-    signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+    signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
     signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
-    signif_grid_annot[signif_grid_annot == "No"] <- ""
-    signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
+    signif_grid_annot[signif_grid_annot == "resistance"] <- "X"
+    signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
   }
   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) {
     signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
@@ -1190,6 +1197,9 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                   if(signif_grid_annot[i, j] == "O") {
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
+                  if(signif_grid_annot[i, j] == "X") {
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "black", col = "black"))
+                  }
                 }
                 )
   return(ht)
@@ -1220,40 +1230,18 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side
 dev.off()
 ```
 
-```{r, eval=FALSE}
-ctrp_signif_prot <- readRDS("./data_munging/rds/ctrp_signif_protein_changes.rds")
-ctrp_signif_prot <- merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
-
-signif_df <- ctrp_signif_prot
-
-signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
-signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
-signif_grid <- signif_grid[complete.cases(signif_grid), ]
-signif_grid[signif_grid < -log10(0.05)] <- NA
-
-signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0)
-%>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
-signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
-signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
-signif_grid_annot[signif_grid_annot == "No"] <- ""
-signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
-
-test <- ctrp_signif_prot %>% count(Gene_Protein_Change, Drug)
-```
-
-
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
-ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes", radius = 0.03)
+ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.03)
 png(filename = "./plots/manuscript/ccle_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.015)
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.015)
 png(filename = "./plots/manuscript/ctrp_prot_heatmap.png", width = 9.5, height = 5.5, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
 
-ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.015)
+ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.015)
 png(filename = "./plots/manuscript/gdsc_prot_heatmap.png", width = 5, height = 5.5, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
@@ -1284,9 +1272,11 @@ dev.off()
 ```
 
 
-# SPEARMAN (CN, GE)
+# SPEARMAN: PanCan
 
 --------------------------------------------------------------------------------
+
+## GE/CN
 
 ```{r drug_spear_calc, warning=FALSE, eval=FALSE}
 # CCLE
@@ -1510,6 +1500,22 @@ png(filename = "./plots/manuscript/drug_ge_heatmap.png", width = 13, height = 2.
 draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
+
+# WATERFALL/GSEA: PanCAn
+
+--------------------------------------------------------------------------------
+
+Consider looking at GSEA rankings.
+
+# WILCOXON: Lineages
+
+--------------------------------------------------------------------------------
+
+# SPEARMAN: Lineages
+
+--------------------------------------------------------------------------------
+
+## GE/CN
 
 # SESSION INFORMATION
 
