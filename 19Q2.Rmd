@@ -1061,7 +1061,6 @@ saveRDS(gdsc_prot_res, "./data_munging/rds/gdsc_protein_changes_resistance.rds")
 saveRDS(gdsc_prot_sen, "./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
 ```
 
-
 ```{r prot_SvR_wilcoxon_tests, eval=FALSE}
 # CCLE
 ccle_signif_prot_res <- WilcoxonTestDF(dataframe = ccle_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
@@ -1094,6 +1093,13 @@ gdsc_signif_prot_res$Direction_Test <- "Resistance"
 gdsc_signif_prot_sen <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
 gdsc_signif_prot_sen$Direction_Test <- "Sensitivity"
 gdsc_signif_prot_dir <- bind_rows(gdsc_signif_prot_res, gdsc_signif_prot_sen)
+
+ccle_prot_res <- readRDS("./data_munging/rds/ccle_protein_changes_resistance.rds")
+ccle_prot_sen <- readRDS("./data_munging/rds/ccle_protein_changes_sensitivity.rds")
+ctrp_prot_res <- readRDS("./data_munging/rds/ctrp_protein_changes_resistance.rds")
+ctrp_prot_sen <- readRDS("./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
+gdsc_prot_res <- readRDS("./data_munging/rds/gdsc_protein_changes_resistance.rds")
+gdsc_prot_sen <- readRDS("./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
 ```
 
 ### Exact match tests
@@ -1116,9 +1122,13 @@ gdsc_signif_prot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes.rds"
 
 gene_prots <- union(unique(ccle_signif_prot$Gene_Protein_Change), union(unique(ctrp_signif_prot$Gene_Protein_Change), unique(gdsc_signif_prot$Gene_Protein_Change)))
 
-ccle_signif_prot_4plot <- merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change, Direction_Curated)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE)
-ctrp_signif_prot_4plot <- merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change, Direction_Curated)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE)
-gdsc_signif_prot_4plot <- merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change, Direction_Curated)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE)
+# all_directions <- unique(rbind(select(ccle_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ctrp_prot, Gene_Protein_Change, Drug, Direction_Curated), select(gdsc_prot, Gene_Protein_Change, Drug, Direction_Curated)))
+# saveRDS(all_directions, "./data_munging/rds/protein_changes_directions.rds")
+all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
+
+ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
 
 saveRDS(ccle_signif_prot_4plot, "./data_munging/rds/ccle_signif_protein_changes_4plot.rds")
 saveRDS(ctrp_signif_prot_4plot, "./data_munging/rds/ctrp_signif_protein_changes_4plot.rds")
@@ -1332,7 +1342,10 @@ ggsave("./plots/manuscript/gdsc_direction_boxplots.png", gdsc_dir_boxes, device 
 ## Heatmaps
 
 ```{r wilcoxon_heatmap_function}
-MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, radius) {
+MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, radius, na_color) {
+  if(missing(na_color)) {
+    na_color <- "white"
+  }
   if(!is.na(str_match(string = tolower(feature), pattern = "mut"))) {
     signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -1348,12 +1361,13 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) {
     signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
     signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
-    # signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
+    
+    signif_grid_annot1 <- signif_grid
+    signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+    signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
     
     signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
     signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
-    # signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
     signif_grid_annot[signif_grid_annot == "resistance"] <- "X"
     signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
   }
@@ -1374,8 +1388,7 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
   ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(2, "in"), border = "gray70", at = legend_breaks, labels = legend_breaks)
   ht <- Heatmap(signif_grid,
                 col = col_fun,
-                # na_col = "gray97",
-                na_col = "white",
+                na_col = na_color,
                 rect_gp = gpar(col = "gray70"),
                 heatmap_legend_param = ht_legend_list,
                 cluster_rows = FALSE, 
@@ -1400,12 +1413,14 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  # grid.text(signif_grid_annot[i, j], x, y, gp = gpar(fontsize = 20))
+                  if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) {
+                    grid.text(signif_grid_annot1[i, j], x = x - width*0.20, y = y + height*0.07, gp = gpar(fontsize = 17))
+                  }
                   if(signif_grid_annot[i, j] == "O") {
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
                   if(signif_grid_annot[i, j] == "X") {
-                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "black", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
                   }
                 }
                 )
@@ -1453,9 +1468,9 @@ png(filename = "./plots/manuscript/gdsc_prot_heatmap.png", width = 5, height = 5
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)                                                                     ", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", radius = 0.03)
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)                                                                    ", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.015)
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", radius = 0.015)
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)                                                              ", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", radius = 0.03, na_color = "black")
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)                                                                               ", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.015, na_color = "black")
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", radius = 0.015, na_color = "black")
 png(filename = "./plots/manuscript/drug_prot_heatmap.png", width = 13, height = 5, units = "in", res = 500)
 draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
