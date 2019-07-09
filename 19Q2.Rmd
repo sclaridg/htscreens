@@ -593,7 +593,7 @@ colnames(crispr_all)[1] <- "DepMap_ID"
 # crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
 crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
-write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
+# write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
 
 ```{r read_crispr_data}
@@ -603,19 +603,15 @@ crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
 ```{r merge_crispr_fus, eval=FALSE}
 fusions_filt <- filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))
 
-crispr_fus_grid <- expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
-crispr_fus$Fusion_Status <- ifelse(!is.na(crispr_fus$LeftGene), "Yes", "No")
-crispr_fus$Drug_FusionPair <- ifelse(is.na(crispr_fus$Drug) | is.na(crispr_fus$FusionPair), NA, paste0(crispr_fus$Drug, "_", crispr_fus$FusionPair))
-crispr_fus$G2P_Drug_FusionPair <- ifelse(crispr_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
-crispr_fus$G2P_Fusion <- ifelse(crispr_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
-crispr_fus$Database <- "CRISPR"
-
-colnames(crispr_fus)[colnames(crispr_fus) == "AUC_IC50"] <- "Score"
 saveRDS(crispr_fus, "./data_munging/rds/crispr_fusions.rds")
 ```
 
 ```{r merge_crispr_prot, eval=FALSE}
+crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
+# Remove Entrez gene IDs from colnames
+colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
+colnames(crispr_all)[1] <- "DepMap_ID"
+
 maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 maf_changes_filt <- filter(maf_changes_df, Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)))
 
