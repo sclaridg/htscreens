@@ -182,6 +182,7 @@ g2p$Direction_Curated <- with(g2p, ifelse(!is.na(str_match(string = tolower(Dire
 
 # Curate protein change column
 g2p <- add_column(g2p, Protein_Change = NA, .after = "Mutation")
+g2p <- separate_rows(g2p, Mutation, sep = ",")
 g2p$Protein_Change <- gsub("u'|'| |,|\\[|\\]", "", g2p$Mutation)
 g2p$Protein_Change <- ifelse(g2p$Protein_Change == "", str_match(string = g2p$Feature.Names, pattern = "^[A-Z][0-9]+([A-Z]|[*])| [A-Z][0-9]+([A-Z]|[*])|:[A-Z][0-9]+([A-Z]|[*])")[,1], as.character(g2p$Protein_Change))
 g2p$Protein_Change <- gsub(":| |c\\..*", "", g2p$Protein_Change)
@@ -197,7 +198,7 @@ g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, 
 g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
 g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
 g2p$Gene_Lin <- ifelse(is.na(g2p$Drug) | !is.na(g2p$Gene) | !is.na(g2p$group_general_lineage_name), paste0(g2p$Gene, "_", g2p$group_general_lineage_name), NA)
-
+g2p <- unique(g2p)
 write.csv(g2p, "./data_munging/g2p_db_edited.csv")
 ```
 
@@ -632,7 +633,7 @@ crispr_prot$Direction_Grouper <- with(crispr_prot, paste0(Change_Status, "_", Di
 saveRDS(crispr_prot, "./data_munging/rds/crispr_protein_changes.rds")
 ```
 
-```{r}
+```{r, eval = FALSE}
 crispr_fus <- readRDS("./data_munging/rds/crispr_fusions.rds")
 crispr_prot <- readRDS("./data_munging/rds/crispr_protein_changes.rds")
 ```
