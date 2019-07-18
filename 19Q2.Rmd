@@ -70,51 +70,52 @@ unfactorize <- function(df){
 
 ## Cell line metadata
 
-**D. Charytonowicz cell line converter**
+A comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 
-This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
-```{r dan_ccl_database}
+DepMap 19Q2 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
+```{r depmap_metadata, eval=FALSE}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
 ccl_lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
 lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 colnames(ccl_histologies) <- c("Cell_line", "CCLE_histology", "TCGA_classification", "CCLE_name", "DepMap_ID")
-```
 
-**DepMap metadata**
-
-DepMap 19Q2 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
-```{r depmap_metadata, eval=FALSE}
 ccl_meta <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 ccl_meta <- select(ccl_meta, DepMap_ID, stripped_cell_line_name, CCLE_name, disease)
 colnames(ccl_meta) <- c("DepMap_ID", "Cell_line", "CCLE_name", "disease")
-# Remove two rows that contain cell lines with two different histologies
-# The histologies that are kept are verified through matching in Cellosaurus and Cell Model Passports
-# KMH2, haematopoietic_and_lymphoid: https://web.expasy.org/cellosaurus/CVCL_1330, https://cellmodelpassports.sanger.ac.uk/passports/SIDM01018
-# MS1, lung: https://web.expasy.org/cellosaurus/CVCL_1429, https://cellmodelpassports.sanger.ac.uk/passports/SIDM00245
-ccl_meta <- subset(ccl_meta, CCLE_name != "KMH2_THYROID" & CCLE_name != "MS1_SKIN")
 ccl_meta <- subset(ccl_meta, !grepl("MERGED", CCLE_name, fixed = TRUE))
 ccl_diseases <- as.character(unique(ccl_meta$disease))[as.character(unique(ccl_meta$disease)) != " "]
 CCLE_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_name, ignore.case = TRUE))
 ccl_meta <- add_column(ccl_meta, CCLE_histology = CCLE_histology, .after = "CCLE_name")
-ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & CCLE_histology %in% ccl_diseases, as.character(CCLE_histology), as.character(disease)))
-ccl_meta$disease <- with(ccl_meta, ifelse(disease == "ovary", "ovarian",
-                                   ifelse(disease == " " & CCLE_histology == "vulva", "vulva",
-                                   ifelse(disease == " " & CCLE_histology == "stomach", "gastric",
-                                   ifelse(disease == " " & CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive_tract",
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == " ", as.character(CCLE_histology), as.character(disease)))
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & CCLE_histology == "vulva", "vulva",
+                                   ifelse(disease == " " & CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive",
                                    ifelse(disease == " " & CCLE_histology == "large_intestine", "colorectal",
                                    ifelse(disease == " " & CCLE_histology == "biliary_tract", "bile_duct",
                                    ifelse(disease == " " & CCLE_histology == "oesophagus", "esophagus",
-                                   ifelse(disease == " " & CCLE_histology == "testis", "embryo", disease)))))))))
+                                   ifelse(disease == "other" & CCLE_histology == "haematopoietic_and_lymphoid_tissue", "haematopoietic_and_lymphoid", disease)))))))
 
-write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190708.csv")
+ccl_meta <- merge(ccl_meta, ccl_histologies, by = c("Cell_line", "CCLE_histology", "DepMap_ID"), all = TRUE)
+ccl_meta$disease <- with(ccl_meta, ifelse(is.na(disease) & !is.na(CCLE_histology), CCLE_histology, disease))
+ccl_meta$disease <- with(ccl_meta, ifelse(CCLE_histology == "large_intestine", "colorectal", 
+                                   ifelse(CCLE_histology == "haematopoietic_and_lymphoid_tissue", "haematopoietic_and_lymphoid",
+                                   ifelse(CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive",
+                                   ifelse(CCLE_histology == "oesophagus", "esophagus", 
+                                   ifelse(CCLE_histology == "biliary_tract", "bile_duct",
+                                   ifelse(Cell_line == "GT3TKB", "lung",
+                                   ifelse(disease == "stomach" | CCLE_histology == "stomach", "gastric", disease))))))))
+
+write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190717.csv")
 ```
 
 ```{r}
-ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190708.csv", sep = ",", header = TRUE, row.names = 1)
+ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190717.csv", sep = ",", header = TRUE, row.names = 1)
+ccl_meta <- ccl_meta %>% select(DepMap_ID, Cell_line, disease)
+ccl_meta <- filter(ccl_meta, DepMap_ID != "ACH-002397")
 ```
 
+ACH-002397 (KMH2_THYROID) was removed to align with Pozdeyev et al (2016) cell line name harmonization. CTRP only screened KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE, whereas GDSC screend both KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE (i.e. KM-H2) and KMH2_THYROID (i.e. KMH-2). During their harmonization process, Pozdeyev et al only kept KM-H2 from GDSC. Thus, we removed KMH2_THYROID from further analyses.
 
 ## G2P
 
@@ -232,13 +233,6 @@ g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g
 g2p_nodrug <- filter(g2p, is.na(Drug))
 
 g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(group_general_lineage_name, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
-```
-
-```{r}
-g2p_mut_test_n <- g2p_mut_summ %>% count(Drug_Gene) %>% filter(n > 1)
-g2p_mut_test <- filter(g2p_mut, Drug_Gene %in% as.character(g2p_mut_test_n$Drug_Gene))
-test <- g2p %>% drop_na(Drug_Gene, Direction_Curated) %>% count(Drug_Gene, Direction_Curated) %>% count(Drug_Gene) %>% filter(n > 1)
-test_g2p <- filter(g2p, Drug_Gene %in% as.character(test$Drug_Gene))
 ```
 
 ## Omics
@@ -365,14 +359,12 @@ MergeOmicsG2P <- function(database, dataframe, maf_df, ge_df, cn_df, gene_list, 
     data <-  merge(dataframe, grid, by = "Cell_line", all.y = TRUE)
     print("Merged grid.")
     # Merge metadata
-    data <-  merge(data, select(ccl_meta, Cell_line, CCLE_histology, CCLE_name, DepMap_ID, disease), by = c("Cell_line", "CCLE_histology", "CCLE_name", "DepMap_ID"), all.y = TRUE)
+    data <-  merge(data, ccl_meta, by = "DepMap_ID", all.y = TRUE)
     ## Add columns for G2P drug-gene and drug-gene-lineage sorting
     data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
     data$G2P_Drug_Gene <- ifelse(data$Drug_Gene %in% g2p_dg, "Yes", "No")
     data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$disease)
     data$G2P_Drug_Gene_Lin <- ifelse(data$Drug_Gene_Lin %in% g2p_dgl, "Yes", "No")
-    data$Gene_Lin <- paste0(data$Gene, "_", data$Gene, "_", data$disease)
-    data$G2P_Gene_Lin <- ifelse(data$Gene_Lin %in% g2p_gl, "Yes", "No")
     print("Merged metadata.")
     # Merge mutation calls
     data <- unfactorize(data)
@@ -384,7 +376,7 @@ MergeOmicsG2P <- function(database, dataframe, maf_df, ge_df, cn_df, gene_list, 
     # Melt CRISPR dataset for merging
     data <- melt(dataframe, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
     # Merge cell line metadata
-    data <- merge(data, select(ccl_meta, Cell_line, CCLE_histology, CCLE_name, DepMap_ID, disease), by = "DepMap_ID", all.y = TRUE)
+    data <- merge(data, ccl_meta, by = "DepMap_ID", all.y = TRUE)
     print("Merged metadata.")
     # Merge mutation calls
     data <- unfactorize(data)
@@ -426,15 +418,15 @@ auc$Cell_line <- ifelse(auc$Cell_line == "K052", "KO52", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
-auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
+auc <- merge(ccl_meta, auc, by = "Cell_line", all.y = TRUE)
 colnames(auc)[colnames(auc) == "AUC_IC50"] <- "Score"
 saveRDS(auc, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_auc_all.rds", compress = "xz")
 
-ccle_all <- auc %>% filter(Database == "CCLE") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+ccle_all <- auc %>% filter(Database == "CCLE") %>% select(Cell_line, disease, DepMap_ID, Drug, Score)
 saveRDS(ccle_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds", compress = "xz")
-ctrp_all <- auc %>% filter(Database == "CTRP") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+ctrp_all <- auc %>% filter(Database == "CTRP") %>% select(Cell_line, disease, DepMap_ID, Drug, Score)
 saveRDS(ctrp_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds", compress = "xz")
-gdsc_all <- auc %>% filter(Database == "GDSC") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+gdsc_all <- auc %>% filter(Database == "GDSC") %>% select(Cell_line, disease, DepMap_ID, Drug, Score)
 saveRDS(gdsc_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds", compress = "xz")
 ```
 
@@ -831,9 +823,9 @@ ccle_auc_grid <- dcast(ccle, Drug ~ DepMap_ID, value.var = "Score", fun.aggregat
 ctrp_auc_grid <- dcast(ctrp, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 gdsc_auc_grid <- dcast(gdsc, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 
-ccle_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ccle_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
-ctrp_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ctrp_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
-gdsc_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(gdsc_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+ccle_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ccle_auc_grid)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+ctrp_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ctrp_auc_grid)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+gdsc_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(gdsc_auc_grid)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
 
 ht_legend_list <- list(direction = "horizontal")
 
@@ -890,7 +882,7 @@ dev.off()
 ```
 
 
-# WILCOXON: PanCan
+# WILCOXON
 
 --------------------------------------------------------------------------------
 
@@ -1027,19 +1019,47 @@ ccle_signif_dg <- readRDS("./data_munging/rds/ccle_signif_dg.rds")
 ccle_signif_g2p_dg <- readRDS("./data_munging/rds/ccle_signif_g2p_dg.rds")
 ccle_signif_g2p_dg <- merge(ccle_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ccle_signif_dgl <- readRDS("./data_munging/rds/ccle_signif_g2p_dgl.rds")
+ccle_signif_dgl <- merge(ccle_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 
 # ctrp_signif_g <- readRDS("./data_munging/rds/ctrp_signif_dg.rds")
 ctrp_signif_g2p_dg <- readRDS("./data_munging/rds/ctrp_signif_g2p_dg.rds")
 ctrp_signif_g2p_dg <- merge(ctrp_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ctrp_signif_dgl <- readRDS("./data_munging/rds/ctrp_signif_g2p_dgl.rds")
+ctrp_signif_dgl <- merge(ctrp_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 
 # gdsc_signif_g <- readRDS("./data_munging/rds/gdsc_signif_dg.rds")
 gdsc_signif_g2p_dg <- readRDS("./data_munging/rds/gdsc_signif_g2p_dg.rds")
 gdsc_signif_g2p_dg <- merge(gdsc_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
+gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ```
 
-## Protein changes
+```{r}
+ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
+ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
+ccle_filt <- unfactorize(ccle_filt)
+
+ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
+ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
+ctrp_filt <- unfactorize(ctrp_filt)
+
+gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
+gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
+gdsc_filt <- unfactorize(gdsc_filt)
+
+lins <- union(unique(ccle_signif_dgl$disease), union(unique(ctrp_signif_dgl$disease), unique(gdsc_signif_dgl$disease)))
+
+drug_gene_lins <- unique(rbind(select(ccle_signif_dgl, Gene, Drug, disease, Direction_Curated), select(ctrp_signif_dgl, Gene, Drug, disease, Direction_Curated), select(gdsc_signif_dgl, Gene, Drug, disease, Direction_Curated)))
+
+
+ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+
+ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+```
+
+
+### Protein changes
 
 ```{r protein_change_data}
 ccle_prot <- filter(prot, Database == "CCLE")
@@ -1054,86 +1074,6 @@ gdsc_prot <- filter(prot, Database == "GDSC")
 gdsc_prot <- unfactorize(gdsc_prot)
 # gdsc_prot_count <- gdsc_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 ```
-
-### Sen vs. Res tests
-
-```{r SvR_direction_datasets, eval=FALSE}
-# CCLE
-ccle_prot_dir <- unique(select(ccle_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
-## Resistance
-ccle_prot_res <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
-ccle_prot_res$Direction_Grouper <- with(ccle_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
-## Sensitivity
-ccle_prot_sen <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
-ccle_prot_sen$Direction_Grouper <- with(ccle_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
-saveRDS(ccle_prot_res, "./data_munging/rds/ccle_protein_changes_resistance.rds")
-saveRDS(ccle_prot_sen, "./data_munging/rds/ccle_protein_changes_sensitivity.rds")
-
-# CTRP
-ctrp_prot_dir <- unique(select(ctrp_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
-## Resistance
-ctrp_prot_res <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
-ctrp_prot_res$Direction_Grouper <- with(ctrp_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
-## Sensitivity
-ctrp_prot_sen <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
-ctrp_prot_sen$Direction_Grouper <- with(ctrp_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
-saveRDS(ctrp_prot_res, "./data_munging/rds/ctrp_protein_changes_resistance.rds")
-saveRDS(ctrp_prot_sen, "./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
-
-# GDSC
-gdsc_prot_dir <- unique(select(gdsc_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
-## Resistance
-gdsc_prot_res <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
-gdsc_prot_res$Direction_Grouper <- with(gdsc_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
-## Sensitivity
-gdsc_prot_sen <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
-gdsc_prot_sen$Direction_Grouper <- with(gdsc_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
-saveRDS(gdsc_prot_res, "./data_munging/rds/gdsc_protein_changes_resistance.rds")
-saveRDS(gdsc_prot_sen, "./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
-```
-
-```{r prot_SvR_wilcoxon_tests, eval=FALSE}
-# CCLE
-ccle_signif_prot_res <- WilcoxonTestDF(dataframe = ccle_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
-ccle_signif_prot_sen <- WilcoxonTestDF(dataframe = ccle_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
-
-# CTRP
-ctrp_signif_prot_res <- WilcoxonTestDF(dataframe = ctrp_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
-ctrp_signif_prot_sen <- WilcoxonTestDF(dataframe = ctrp_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
-
-# GDSC
-gdsc_signif_prot_res <- WilcoxonTestDF(dataframe = gdsc_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
-gdsc_signif_prot_sen <- WilcoxonTestDF(dataframe = gdsc_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
-```
-
-```{r load_prot_SvR_wilcoxon_tests}
-ccle_signif_prot_res <- readRDS("./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
-ccle_signif_prot_res$Direction_Test <- "Resistance"
-ccle_signif_prot_sen <- readRDS("./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
-ccle_signif_prot_sen$Direction_Test <- "Sensitivity"
-ccle_signif_prot_dir <- bind_rows(ccle_signif_prot_res, ccle_signif_prot_sen)
-
-ctrp_signif_prot_res <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
-ctrp_signif_prot_res$Direction_Test <- "Resistance"
-ctrp_signif_prot_sen <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
-ctrp_signif_prot_sen$Direction_Test <- "Sensitivity"
-ctrp_signif_prot_dir <- bind_rows(ctrp_signif_prot_res, ctrp_signif_prot_sen)
-
-gdsc_signif_prot_res <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
-gdsc_signif_prot_res$Direction_Test <- "Resistance"
-gdsc_signif_prot_sen <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
-gdsc_signif_prot_sen$Direction_Test <- "Sensitivity"
-gdsc_signif_prot_dir <- bind_rows(gdsc_signif_prot_res, gdsc_signif_prot_sen)
-
-ccle_prot_res <- readRDS("./data_munging/rds/ccle_protein_changes_resistance.rds")
-ccle_prot_sen <- readRDS("./data_munging/rds/ccle_protein_changes_sensitivity.rds")
-ctrp_prot_res <- readRDS("./data_munging/rds/ctrp_protein_changes_resistance.rds")
-ctrp_prot_sen <- readRDS("./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
-gdsc_prot_res <- readRDS("./data_munging/rds/gdsc_protein_changes_resistance.rds")
-gdsc_prot_sen <- readRDS("./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
-```
-
-### Exact match tests
 
 ```{r prot_wilcoxon_tests, eval=FALSE}
 ccle_prot <- unfactorize(ccle_prot)
@@ -1286,83 +1226,6 @@ gdsc_fus_boxplot
 # ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12, height = 5, units = "in")
 ```
 
-```{r direction_boxplots}
-# CCLE
-ccle_res_box <- ggplot(data = filter(ccle_prot_res, Drug_Gene %in% ccle_signif_prot_res$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ccle_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Resistance mutation?")
-
-ccle_sen_box <- ggplot(data = filter(ccle_prot_sen, Drug_Gene %in% ccle_signif_prot_sen$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ccle_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Sensitivity mutation?")
-ccle_dir_boxes <- plot_grid(ccle_res_box, ccle_sen_box, labels = c("A", "B"), rel_widths = c(3, 1.1))
-ggsave("./plots/manuscript/ccle_direction_boxplots.png", ccle_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
-
-# CTRP
-ctrp_res_box <- ggplot(data = filter(ctrp_prot_res, Drug_Gene %in% ctrp_signif_prot_res$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ctrp_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Resistance mutation?")
-
-ctrp_sen_box <- ggplot(data = filter(ctrp_prot_sen, Drug_Gene %in% ctrp_signif_prot_sen$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ctrp_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Sensitivity mutation?")
-ctrp_dir_boxes <- plot_grid(ctrp_res_box, ctrp_sen_box, labels = c("A", "B"), ncol = 1)
-ggsave("./plots/manuscript/ctrp_direction_boxplots.png", ctrp_dir_boxes, device = "png", dpi = 450, width = 12, height = 8, units = "in")
-
-# GDSC
-gdsc_res_box <- ggplot(data = filter(gdsc_prot_res, Drug_Gene %in% gdsc_signif_prot_res$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = gdsc_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Resistance mutation?")
-
-gdsc_sen_box <- ggplot(data = filter(gdsc_prot_sen, Drug_Gene %in% gdsc_signif_prot_sen$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = gdsc_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Sensitivity mutation?")
-gdsc_dir_boxes <- plot_grid(gdsc_res_box, gdsc_sen_box, labels = c("A", "B"), rel_widths = c(2, 1.1))
-ggsave("./plots/manuscript/gdsc_direction_boxplots.png", gdsc_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
-```
-
 ## Heatmaps
 
 ```{r wilcoxon_heatmap_function}
@@ -1458,6 +1321,8 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
 }
 ```
 
+### Pancan
+
 ```{r mut_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes", radius = 0.03)
 png(filename = "./plots/manuscript/ccle_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
@@ -1481,6 +1346,7 @@ png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 9
 draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
+
 
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.03)
@@ -1530,6 +1396,34 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side
 dev.off()
 ```
 
+### Lieage
+
+```{r}
+MakeWilcoxonLineageHeatmap <- function(all_lin_df, lineage) {
+  use_data <- filter(all_lin_df, Gene %in% unique(g2p_mut$Gene) & disease == lineage)
+  ccle_df <- filter(use_data, Database == "CCLE")
+  ctrp_df <- filter(use_data, Database == "CTRP")
+  gdsc_df <- filter(use_datas, Database == "GDSC")
+  
+  ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_df, feature = "mutation", legend_title = "CCLE -log10(p-value)                                                                     ", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.03)
+  
+  ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_df, feature = "mutation", legend_title = "CTRP -log10(p-value)                                                                    ", legend_breaks = seq(0, 12, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
+  
+  ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_df, feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 6, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.015)
+  
+  ht <- ht_ccle + ht_ctrp + ht_gdsc
+  return(ht)
+}
+```
+
+```
+lin_ht <- lapply(lineages, makeDrugBoxplots, dataset = "CCLE")
+ccle_lvlA_drugboxplot_paths <- paste0(ccle_drugs, "_ccle_boxplots.png")
+pwalk(list(ccle_lvlA_drugboxplot_paths, ccle_lvlA_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_lvlA_boxplots", dpi = 450, width = 12, height = 7, units = "in")
+
+
+ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+```
 
 # SPEARMAN: PanCan
 
@@ -1760,16 +1654,170 @@ draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_le
 dev.off()
 ```
 
-
-# WILCOXON: Lineages
-
---------------------------------------------------------------------------------
-
 # SPEARMAN: Lineages
 
 --------------------------------------------------------------------------------
 
 ## GE/CN
+
+# OLD
+
+--------------------------------------------------------------------------------
+
+## Mut: Sen vs. Res tests
+
+```{r SvR_direction_datasets, eval=FALSE}
+# CCLE
+ccle_prot_dir <- unique(select(ccle_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
+## Resistance
+ccle_prot_res <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
+ccle_prot_res$Direction_Grouper <- with(ccle_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
+## Sensitivity
+ccle_prot_sen <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
+ccle_prot_sen$Direction_Grouper <- with(ccle_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
+saveRDS(ccle_prot_res, "./data_munging/rds/ccle_protein_changes_resistance.rds")
+saveRDS(ccle_prot_sen, "./data_munging/rds/ccle_protein_changes_sensitivity.rds")
+
+# CTRP
+ctrp_prot_dir <- unique(select(ctrp_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
+## Resistance
+ctrp_prot_res <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
+ctrp_prot_res$Direction_Grouper <- with(ctrp_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
+## Sensitivity
+ctrp_prot_sen <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
+ctrp_prot_sen$Direction_Grouper <- with(ctrp_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
+saveRDS(ctrp_prot_res, "./data_munging/rds/ctrp_protein_changes_resistance.rds")
+saveRDS(ctrp_prot_sen, "./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
+
+# GDSC
+gdsc_prot_dir <- unique(select(gdsc_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
+## Resistance
+gdsc_prot_res <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
+gdsc_prot_res$Direction_Grouper <- with(gdsc_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
+## Sensitivity
+gdsc_prot_sen <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
+gdsc_prot_sen$Direction_Grouper <- with(gdsc_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
+saveRDS(gdsc_prot_res, "./data_munging/rds/gdsc_protein_changes_resistance.rds")
+saveRDS(gdsc_prot_sen, "./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
+```
+
+```{r prot_SvR_wilcoxon_tests, eval=FALSE}
+# CCLE
+ccle_signif_prot_res <- WilcoxonTestDF(dataframe = ccle_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
+ccle_signif_prot_sen <- WilcoxonTestDF(dataframe = ccle_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
+
+# CTRP
+ctrp_signif_prot_res <- WilcoxonTestDF(dataframe = ctrp_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
+ctrp_signif_prot_sen <- WilcoxonTestDF(dataframe = ctrp_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
+
+# GDSC
+gdsc_signif_prot_res <- WilcoxonTestDF(dataframe = gdsc_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
+gdsc_signif_prot_sen <- WilcoxonTestDF(dataframe = gdsc_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
+```
+
+```{r load_prot_SvR_wilcoxon_tests}
+ccle_signif_prot_res <- readRDS("./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
+ccle_signif_prot_res$Direction_Test <- "Resistance"
+ccle_signif_prot_sen <- readRDS("./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
+ccle_signif_prot_sen$Direction_Test <- "Sensitivity"
+ccle_signif_prot_dir <- bind_rows(ccle_signif_prot_res, ccle_signif_prot_sen)
+
+ctrp_signif_prot_res <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
+ctrp_signif_prot_res$Direction_Test <- "Resistance"
+ctrp_signif_prot_sen <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
+ctrp_signif_prot_sen$Direction_Test <- "Sensitivity"
+ctrp_signif_prot_dir <- bind_rows(ctrp_signif_prot_res, ctrp_signif_prot_sen)
+
+gdsc_signif_prot_res <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
+gdsc_signif_prot_res$Direction_Test <- "Resistance"
+gdsc_signif_prot_sen <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
+gdsc_signif_prot_sen$Direction_Test <- "Sensitivity"
+gdsc_signif_prot_dir <- bind_rows(gdsc_signif_prot_res, gdsc_signif_prot_sen)
+
+ccle_prot_res <- readRDS("./data_munging/rds/ccle_protein_changes_resistance.rds")
+ccle_prot_sen <- readRDS("./data_munging/rds/ccle_protein_changes_sensitivity.rds")
+ctrp_prot_res <- readRDS("./data_munging/rds/ctrp_protein_changes_resistance.rds")
+ctrp_prot_sen <- readRDS("./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
+gdsc_prot_res <- readRDS("./data_munging/rds/gdsc_protein_changes_resistance.rds")
+gdsc_prot_sen <- readRDS("./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
+```
+
+```{r direction_boxplots, eval=FALSE}
+# CCLE
+ccle_res_box <- ggplot(data = filter(ccle_prot_res, Drug_Gene %in% ccle_signif_prot_res$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ccle_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Resistance mutation?")
+
+ccle_sen_box <- ggplot(data = filter(ccle_prot_sen, Drug_Gene %in% ccle_signif_prot_sen$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ccle_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Sensitivity mutation?")
+ccle_dir_boxes <- plot_grid(ccle_res_box, ccle_sen_box, labels = c("A", "B"), rel_widths = c(3, 1.1))
+ggsave("./plots/manuscript/ccle_direction_boxplots.png", ccle_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+
+# CTRP
+ctrp_res_box <- ggplot(data = filter(ctrp_prot_res, Drug_Gene %in% ctrp_signif_prot_res$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ctrp_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Resistance mutation?")
+
+ctrp_sen_box <- ggplot(data = filter(ctrp_prot_sen, Drug_Gene %in% ctrp_signif_prot_sen$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ctrp_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Sensitivity mutation?")
+ctrp_dir_boxes <- plot_grid(ctrp_res_box, ctrp_sen_box, labels = c("A", "B"), ncol = 1)
+ggsave("./plots/manuscript/ctrp_direction_boxplots.png", ctrp_dir_boxes, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+
+# GDSC
+gdsc_res_box <- ggplot(data = filter(gdsc_prot_res, Drug_Gene %in% gdsc_signif_prot_res$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = gdsc_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Resistance mutation?")
+
+gdsc_sen_box <- ggplot(data = filter(gdsc_prot_sen, Drug_Gene %in% gdsc_signif_prot_sen$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = gdsc_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Sensitivity mutation?")
+gdsc_dir_boxes <- plot_grid(gdsc_res_box, gdsc_sen_box, labels = c("A", "B"), rel_widths = c(2, 1.1))
+ggsave("./plots/manuscript/gdsc_direction_boxplots.png", gdsc_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+```
 
 # SESSION INFORMATION
 
