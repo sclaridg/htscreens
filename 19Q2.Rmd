@@ -76,11 +76,11 @@ DepMap 19Q2 update fixed almost all of the inconsistencies of the Primary.Diseas
 ```{r depmap_metadata, eval=FALSE}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
-ccl_lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
-lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
+lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
+
+# OLD CCL_META
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 colnames(ccl_histologies) <- c("Cell_line", "CCLE_histology", "TCGA_classification", "CCLE_name", "DepMap_ID")
-
 ccl_meta <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 ccl_meta <- select(ccl_meta, DepMap_ID, stripped_cell_line_name, CCLE_name, disease)
 colnames(ccl_meta) <- c("DepMap_ID", "Cell_line", "CCLE_name", "disease")
@@ -96,23 +96,23 @@ ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & CCLE_histology == "vu
                                    ifelse(disease == " " & CCLE_histology == "oesophagus", "esophagus",
                                    ifelse(disease == "other" & CCLE_histology == "haematopoietic_and_lymphoid_tissue", "haematopoietic_and_lymphoid", disease)))))))
 
-ccl_meta <- merge(ccl_meta, ccl_histologies, by = c("Cell_line", "CCLE_histology", "DepMap_ID"), all = TRUE)
+ccl_meta <- merge(merge(ccl_meta, ccl_histologies, by = c("Cell_line", "CCLE_histology", "CCLE_name", "DepMap_ID"), all = TRUE), lineage_converter, by = "DepMap_ID", all = TRUE)
 ccl_meta$disease <- with(ccl_meta, ifelse(is.na(disease) & !is.na(CCLE_histology), CCLE_histology, disease))
-ccl_meta$disease <- with(ccl_meta, ifelse(CCLE_histology == "large_intestine", "colorectal", 
+ccl_meta$disease <- with(ccl_meta, ifelse(CCLE_histology == "large_intestine", "colorectal",
                                    ifelse(CCLE_histology == "haematopoietic_and_lymphoid_tissue", "haematopoietic_and_lymphoid",
                                    ifelse(CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive",
-                                   ifelse(CCLE_histology == "oesophagus", "esophagus", 
+                                   ifelse(CCLE_histology == "oesophagus", "esophagus",
                                    ifelse(CCLE_histology == "biliary_tract", "bile_duct",
                                    ifelse(Cell_line == "GT3TKB", "lung",
                                    ifelse(disease == "stomach" | CCLE_histology == "stomach", "gastric", disease))))))))
-
-write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190717.csv")
+write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190718.csv")
 ```
 
 ```{r}
 ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190717.csv", sep = ",", header = TRUE, row.names = 1)
 ccl_meta <- ccl_meta %>% select(DepMap_ID, Cell_line, disease)
 ccl_meta <- filter(ccl_meta, DepMap_ID != "ACH-002397")
+ccl_unique <- data.frame(disease = unique(ccl_meta$disease))
 ```
 
 ACH-002397 (KMH2_THYROID) was removed to align with Pozdeyev et al (2016) cell line name harmonization. CTRP only screened KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE, whereas GDSC screend both KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE (i.e. KM-H2) and KMH2_THYROID (i.e. KMH-2). During their harmonization process, Pozdeyev et al only kept KM-H2 from GDSC. Thus, we removed KMH2_THYROID from further analyses.
@@ -166,9 +166,9 @@ g2p <- data.frame(apply(g2p, MARGIN = 2, function(x) gsub("^$", NA, trimws(x))))
 # Manually assign biomarker_types based on a combination of biomarker_type derived from the JSON string and patterns in the Feature.Names
 biomarker_type_curated <- 
   ifelse(!is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "copy number variant|amplification")[,1]) | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "copy number variant|amplification")), "Amplification/CNV",
-  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION|POSITIVE")[,1]) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
+  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION|ALK POSITIVE")[,1]) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([A-Z]|[*])|[0-9A-Z]+ [A-Z][0-9]+|[A-Z][0-9]+$")[,1]), "Mutation",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation")[,1]), "Expression",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation|erbb2  positive")[,1]), "Expression",
   ifelse(!is.na(str_match(string = g2p$biomarker_type, pattern = "intron|insertion|deletion|mutant")[,1]), "Mutation",
   ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "codon|positive|biallelic inactivation|del|ins|dup|mut|frameshift|missense|variant|[0-9]+fs|>")[,1]), "Mutation",
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^KIT$|^BRCA$")[,1]), "Mutation", NA)))))))
@@ -200,16 +200,37 @@ g2p$Protein_Change <- gsub("^([A-Z])([0-9]+)$|^KRAS ([A-Z])([0-9]+)$", "\\1\\2\\
 g2p <- add_column(g2p, Gene_Protein_Change = NA, .after = "Protein_Change")
 g2p$Gene_Protein_Change <- ifelse(!is.na(g2p$Gene) & !is.na(g2p$Protein_Change), paste0(as.character(g2p$Gene), ":", as.character(g2p$Protein_Change)), NA)
 
+# Curate lineage column
+g2p <- separate_rows(g2p, Phenotype.Description, sep = ";")
+g2p_lineages <- cbind(unique(select(g2p, Phenotype.Description, Phenotype.Family)), disease = NA)
+g2p_lineages$disease <- with(g2p_lineages, ifelse(!is.na(str_match(string = tolower(Phenotype.Family), pattern = "astrocytoma|central nervous system|glioma")[,1]) | !is.na(str_match(string = tolower(Phenotype.Description), pattern = "astrocytoma|glioblastoma|craniopharyngioma|medulloblastoma")[,1]), "central_nervous_system",
+                                           ifelse(Phenotype.Family %in% c("breast cancer") | Phenotype.Description %in% c("breast cancer", "Her2-receptor positive breast cancer", "invasive ductal carcinoma"), "breast",
+                                           ifelse(!is.na(str_match(string = tolower(Phenotype.Family), pattern = "lymphoma|bone marrow|hematologic|immune system|leukemia")[,1]) | !is.na(str_match(string = tolower(Phenotype.Description), pattern = "leukemia|lymphoproliferative|myelodisplasic|systemic mastocytosis|hyper eosinophilic|waldenström macroglobulinemia|langerhans")[,1]), "haematopoietic_and_lymphoid",
+                                           ifelse(Phenotype.Family %in% c("kidney cancer", "Nephrotic syndrome") | !is.na(str_match(string = tolower(Phenotype.Description), pattern = "renal|kidney")[,1]), "kidney",
+                                           ifelse(Phenotype.Family %in% c("liver cancer"), "liver",
+                                           ifelse(Phenotype.Family %in% c("lung cancer", "respiratory system cancer"), "lung",
+                                           ifelse(Phenotype.Description %in% c("congenital fibrosarcoma", "synovial sarcoma", "myxoid liposarcoma", "liposarcoma"), "soft_tissue",
+                                           ifelse(Phenotype.Family %in% c("integumentary system cancer", "skin cancer") | Phenotype.Description %in% c("basal cell carcinoma", "Basal cell carcinoma", "Dermatofibrosarcoma", "dermatofibrosarcoma protuberans", "melanoma", "skin melanoma", "squamous cell carcinoma"), "skin",
+                                           ifelse(Phenotype.Family %in% c("peripheral nervous system neoplasm"), "peripheral_nervous_system",
+                                           ifelse(Phenotype.Family %in% c("urinary bladder cancer"), "urinary_tract", 
+                                           ifelse(!is.na(str_match(string = tolower(Phenotype.Description), pattern = "thyroid|papillary carcinoma")[,1]), "thyroid", 
+                                           ifelse(Phenotype.Description %in% c("ovarian cancer"), "ovary", 
+                                           ifelse(Phenotype.Description %in% c("rectal neoplasm"), "colorectal",
+                                           ifelse(Phenotype.Description %in% c("oropharynx cancer"), "upper_aerodigestive", 
+                                           ifelse(!is.na(str_match(string = tolower(Phenotype.Description), pattern = "gastrointestinal")[,1]), "gastric", NA))))))))))))))))
+
+g2p <- merge(g2p, g2p_lineages, by = c("Phenotype.Description", "Phenotype.Family"), all = TRUE)
+
 # Add association columns
 g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
-g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
-g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
+# g2p <- merge(unique(select(ccl_meta, grouped_general_doid, disease)), g2p, by = "grouped_general_doid", all.y = TRUE)
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$disease), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$disease))
 g2p <- unique(g2p)
-write.csv(g2p, "./data_munging/g2p_db_edited.csv")
+write.csv(g2p, "./data_munging/g2p_db_edited_20190718.csv")
 ```
 
 ```{r g2p}
-g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE, row.names = 1)
+g2p <- read.delim("./data_munging/g2p_db_edited_20190718.csv", sep = ",", header = TRUE, row.names = 1)
 g2p$Drug_Gene_Lin <- gsub(pattern = " cancer", "", g2p$Drug_Gene_Lin)
 
 g2p_dgl <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
@@ -230,9 +251,8 @@ g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "BCR-ABL", "BCR-ABL1", as.cha
 g2p_fus$Drug_FusionPair <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair))
 g2p_mut <- g2p_split[[4]] %>% drop_na(Direction_Curated)
 g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g2p_mut$Drug_Gene)], "_", fixed = TRUE), function(x) x[2]))
-g2p_nodrug <- filter(g2p, is.na(Drug))
 
-g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(group_general_lineage_name, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
+g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(disease, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
 ```
 
 ## Omics
@@ -286,11 +306,11 @@ fusions <- select(fusions, DepMap_ID, X.FusionName, LeftGene, RightGene)
 fusions <- as.data.frame(lapply(fusions, function(x) gsub("IGH@|IGH-@", "IGH", x)))
 colnames(fusions) <- c("DepMap_ID", "FusionPair", "LeftGene", "RightGene")
 fusions <- merge(fusions, ccl_meta, by = "DepMap_ID", all.x = TRUE)
-write.csv.gz(fusions, "./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz")
+write.csv.gz(fusions, "./data_munging/19Q2/CCLE_fusions_edit_20190718.csv.gz")
 ```
 
 ```{r}
-fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz", header = TRUE, sep = ",")
+fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190718.csv.gz", header = TRUE, sep = ",")
 ```
 
 DepMap WES CN Data:
@@ -1034,7 +1054,7 @@ gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ```
 
-```{r}
+```{r, eval=FALSE}
 ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
 ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
 ccle_filt <- unfactorize(ccle_filt)
@@ -1237,7 +1257,10 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
+    
+    signif_grid_annot1 <- signif_grid
+    signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+    signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
     
     signif_grid_annot <- dcast(signif_df, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -1261,7 +1284,10 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
+    
+    signif_grid_annot1 <- signif_grid
+    signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+    signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
     
     signif_grid_annot <- dcast(signif_df, FusionPair ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -1299,9 +1325,8 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) {
-                    grid.text(signif_grid_annot1[i, j], x = x - width*0.20, y = y + height*0.07, gp = gpar(fontsize = 17))
-                  }
+                  grid.text(signif_grid_annot1[i, j], x = x + width*0.25, y = y + height*0.07, gp = gpar(fontsize = 17))
+                  
                   if(signif_grid_annot[i, j] == "O") {
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
@@ -1396,7 +1421,7 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side
 dev.off()
 ```
 
-### Lieage
+### Lineage
 
 ```{r}
 MakeWilcoxonLineageHeatmap <- function(all_lin_df, lineage) {
@@ -1554,7 +1579,7 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, leg
   # annot_grid[annot_grid == "No"] <- ""
   # annot_grid[annot_grid == "Yes"] <- "G"
   
-  col_fun <- colorRamp2(color_range, c("red3", "white", "blue3"))
+  col_fun <- colorRamp2(color_range, c("forestgreen", "white", "blue3"))
   
   # Legend properties list
   ht_legend_list <- list(title_position = "topleft", legend_direction = "horizontal", legend_width = unit(3, "in"), border = "gray70", at = seq(color_range[1], color_range[3], by = 0.1), labels = seq(color_range[1], color_range[3], by = 0.1))
@@ -1591,7 +1616,7 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, leg
                     # grid.circle(x = x, y = y, r = radius, gp = gpar(fill = "transparent", col = "black"))
                   }
                   if(annot_grid[i, j] == "resistance") {
-                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "black", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "red", col = "black"))
                     # grid.text("☐", x, y, just = c(0.5, 0.425), gp = gpar(fontsize = 23, fontface = "bold"))
                   }
                 }
