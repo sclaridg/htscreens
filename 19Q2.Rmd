@@ -616,12 +616,12 @@ crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
 colnames(crispr_all)[1] <- "DepMap_ID"
 
-crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
+crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./../htscreens_giant_files/crispr_data_19Q2.rds")
 # write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
 
 ```{r read_crispr_data}
-crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
+crispr <- readRDS("./../htscreens_giant_files/crispr_data_19Q2.rds")
 ```
 
 ```{r merge_crispr_fus, eval=FALSE}
@@ -1102,24 +1102,32 @@ g2p_mut_summ <- merge(g2p_mut_summ, g2p_mut_summ_n, by = c("Drug", "Gene"))
 g2p_mut_summ$Direction_Heatmap <- with(g2p_mut_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
 g2p_mut_summ <- unique(select(g2p_mut_summ, Drug, Gene, Direction_Heatmap))
 
+g2p_mut_summ_lin <- g2p_mut %>% count(Drug, Gene, disease, Direction_Curated) %>% select(-n)
+g2p_mut_summ_lin_n <- g2p_mut_summ_lin %>% count(Drug, Gene, disease)
+g2p_mut_summ_lin <- merge(g2p_mut_summ_lin, g2p_mut_summ_lin_n, by = c("Drug", "Gene", "disease"))
+g2p_mut_summ_lin$Direction_Heatmap <- with(g2p_mut_summ_lin, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
+g2p_mut_summ_lin <- unique(select(g2p_mut_summ_lin, Drug, Gene, disease, Direction_Heatmap))
+
 crispr_signif_g2p_g <- readRDS("./data_munging/rds/crispr_signif_g2p_g.rds")
 crispr_signif_lin <- readRDS("./data_munging/rds/crispr_signif_g2p_gl.rds")
 
 ccle_signif_g2p_dg <- readRDS("./data_munging/rds/ccle_signif_g2p_dg.rds")
 ccle_signif_g2p_dg <- merge(ccle_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ccle_signif_dgl <- readRDS("./data_munging/rds/ccle_signif_g2p_dgl.rds")
-ccle_signif_dgl <- merge(ccle_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
+ccle_signif_dgl <- merge(ccle_signif_dgl, g2p_mut_summ_lin, by = c("Drug", "Gene", "disease"), all.x = TRUE)
 
 ctrp_signif_g2p_dg <- readRDS("./data_munging/rds/ctrp_signif_g2p_dg.rds")
 ctrp_signif_g2p_dg <- merge(ctrp_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ctrp_signif_dgl <- readRDS("./data_munging/rds/ctrp_signif_g2p_dgl.rds")
-ctrp_signif_dgl <- merge(ctrp_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
+ctrp_signif_dgl <- merge(ctrp_signif_dgl, g2p_mut_summ_lin, by = c("Drug", "Gene", "disease"), all.x = TRUE)
 
 gdsc_signif_g2p_dg <- readRDS("./data_munging/rds/gdsc_signif_g2p_dg.rds")
 gdsc_signif_g2p_dg <- merge(gdsc_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
-gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
+gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ_lin, by = c("Drug", "Gene", "disease"), all.x = TRUE)
 ```
+
+### Lineages
 
 ```{r, eval=FALSE}
 ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
@@ -1134,16 +1142,18 @@ gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
 gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
 gdsc_filt <- unfactorize(gdsc_filt)
 
-lins <- union(unique(ccle_signif_dgl$disease), union(unique(ctrp_signif_dgl$disease), unique(gdsc_signif_dgl$disease)))
+genes <- union(unique(ccle_signif_dgl$Gene), union(unique(ctrp_signif_dgl$Gene), unique(gdsc_signif_dgl$Gene)))
+diseases <- union(unique(ccle_signif_dgl$disease), union(unique(ctrp_signif_dgl$disease), unique(gdsc_signif_dgl$disease)))
 
-drug_gene_lins <- unique(rbind(select(ccle_signif_dgl, Gene, Drug, disease, Direction_Curated), select(ctrp_signif_dgl, Gene, Drug, disease, Direction_Curated), select(gdsc_signif_dgl, Gene, Drug, disease, Direction_Curated)))
+ccle_signif_dgl_4plot <- merge(merge(ccle_signif_dgl, unique(select(ccle_filt, Drug, Gene, disease)), by = c("Drug", "Gene", "disease"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_dgl$Drug), "Gene" = genes, "disease" = diseases), by = c("Drug", "Gene", "disease"), all = TRUE)
+ccle_signif_dgl_4plot$Database <- "CCLE"
 
-ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+ctrp_signif_dgl_4plot <- merge(merge(ctrp_signif_dgl, unique(select(ctrp_filt, Drug, Gene, disease)), by = c("Drug", "Gene", "disease"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_dgl$Drug), "Gene" = genes, "disease" = diseases), by = c("Drug", "Gene", "disease"), all = TRUE)
+ctrp_signif_dgl_4plot$Database <- "CTRP"
 
-ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
-gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+gdsc_signif_dgl_4plot <- merge(merge(gdsc_signif_dgl, unique(select(gdsc_filt, Drug, Gene, disease)), by = c("Drug", "Gene", "disease"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_dgl$Drug), "Gene" = genes, "disease" = diseases), by = c("Drug", "Gene", "disease"), all = TRUE)
+gdsc_signif_dgl_4plot$Database <- "GDSC"
 ```
-
 
 ### Protein changes
 
@@ -1500,26 +1510,33 @@ MakeWilcoxonLineageHeatmap <- function(all_lin_df, lineage) {
   use_data <- filter(all_lin_df, Gene %in% unique(g2p_mut$Gene) & disease == lineage)
   ccle_df <- filter(use_data, Database == "CCLE")
   ctrp_df <- filter(use_data, Database == "CTRP")
-  gdsc_df <- filter(use_datas, Database == "GDSC")
+  gdsc_df <- filter(use_data, Database == "GDSC")
   
   ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_df, feature = "mutation", legend_title = "CCLE -log10(p-value)                                                                     ", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.03)
   
   ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_df, feature = "mutation", legend_title = "CTRP -log10(p-value)                                                                    ", legend_breaks = seq(0, 12, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
   
-  ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_df, feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 6, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.015)
+  ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_df, feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.015)
   
   ht <- ht_ccle + ht_ctrp + ht_gdsc
   return(ht)
 }
+
+SaveWilcoxonLineageHeatmap <- function(ht, outfile) {
+  png(filename = outfile, width = 13, height = 9.5, units = "in", res = 500)
+  draw(ht, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+  dev.off()
+}
 ```
 
-```
-lin_ht <- lapply(lineages, makeDrugBoxplots, dataset = "CCLE")
-ccle_lvlA_drugboxplot_paths <- paste0(ccle_drugs, "_ccle_boxplots.png")
-pwalk(list(ccle_lvlA_drugboxplot_paths, ccle_lvlA_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_lvlA_boxplots", dpi = 450, width = 12, height = 7, units = "in")
+```{r, eval=FALSE}
+diseases <- union(unique(ccle_signif_dgl_4plot$disease), union(unique(ctrp_signif_dgl_4plot$disease), unique(gdsc_signif_dgl_4plot$disease)))
 
+drugscreens_all_signif_mut <- rbind(ccle_signif_dgl_4plot, ctrp_signif_dgl_4plot, gdsc_signif_dgl_4plot)
 
- draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+lin_hts <- lapply(diseases, MakeWilcoxonLineageHeatmap, all_lin_df = drugscreens_all_signif_mut)
+lin_ht_paths <- paste0(lins, "_mut_heatmap.png")
+pwalk(list(lin_ht_paths, lin_hts), SaveWilcoxonLineageHeatmap, outfile = "./plots/manuscript/lineage_heatmaps")
 ```
 
 # SPEARMAN: PanCan
