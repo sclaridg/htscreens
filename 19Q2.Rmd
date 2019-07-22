@@ -457,7 +457,7 @@ saveRDS(gdsc_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_al
 ```
 
 `r nrow(filter(test, n != 1))`/`r nrow(test)` gene-cell line combinations have more than one mutation in the MAF file. This is corrected in the point mutation filtering done below.
-```{r merge_drug_data, eval=TRUE}
+```{r merge_drug_data, eval=FALSE}
 ccle_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds")
 ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds")
 gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
@@ -610,14 +610,11 @@ prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
 
 ## CRISPR
 
-```{r merge_crispr_data, eval=TRUE}
+```{r merge_crispr_data, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
 colnames(crispr_all)[1] <- "DepMap_ID"
-
-# Melt CRISPR dataset for merging
-# crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
 crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
 # write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
@@ -627,7 +624,7 @@ crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = ma
 crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
 ```
 
-```{r merge_crispr_fus, eval=TRUE}
+```{r merge_crispr_fus, eval=FALSE}
 fusions_filt <- filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))
 crispr_fus_grid <- expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
 crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "Cell_line", "FusionPair", "disease"), all = TRUE)
@@ -643,11 +640,14 @@ crispr_fus$Database <- "CRISPR"
 saveRDS(crispr_fus, "./data_munging/rds/crispr_fusions.rds")
 ```
 
-```{r merge_crispr_prot, eval=TRUE}
+```{r merge_crispr_prot, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
 colnames(crispr_all)[1] <- "DepMap_ID"
+
+# Melt CRISPR dataset for merging
+crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
 
 maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 maf_changes_filt <- filter(maf_changes_df, Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)))
@@ -655,6 +655,7 @@ maf_changes_filt <- filter(maf_changes_df, Gene_Protein_Change %in% unique(as.ch
 crispr_prot_grid <- expand.grid("DepMap_ID" = unique(crispr_all$DepMap_ID), "Gene_Protein_Change" = unique(maf_changes_filt$Gene_Protein_Change))
 crispr_prot <- merge(crispr_all, crispr_prot_grid, by = "DepMap_ID", all = TRUE)
 crispr_prot <- merge(crispr_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Protein_Change"), all = TRUE)
+crispr_prot <- merge(crispr_prot, ccl_meta, by = "DepMap_ID", all.x = TRUE)
 crispr_prot$Change_Status <- ifelse(!is.na(crispr_prot$Protein_Change), "Yes", "No")
 crispr_prot$Drug <- "CRISPR"
 crispr_prot$Drug_Gene_Protein_Change <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
@@ -951,15 +952,28 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
   if(tolower(type) == "drug_gene_lineage") {
     # Filter out DGLs with too few samples in at least one mutation status category
     # Require at least 3 samples in each category to run the test, else filter out that DGL from testing df
-    count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
-    count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
-    dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
-    dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
-    dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
-    signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
-    signif <- adj_signif(signif, alpha = 0.05)
-    signif <- signif[order(signif$p),]
-    signif$InG2P <- ifelse(signif$Drug_Gene_Lin %in% g2p_list, "Yes", "No")
+    if(is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
+      dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
+      dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
+      dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- ifelse(signif$Drug_Gene_Lin %in% g2p_list, "Yes", "No")
+    }
+    if(!is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
+      dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
+      dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
+      dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- "No"
+    }
   }
   if(tolower(type) == "fusion") {
     # Filter out fusions with too few samples in at least one category
@@ -1021,15 +1035,28 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
   if(tolower(type) == "drug_gene") {
     # Filter out DGs with too few samples in at least one mutation status category
     # Require at least 3 samples in each category to run the test, else filter out that DG from testing df
-    count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
-    count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
-    dg_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
-    dataframe <- filter(dataframe, Drug_Gene %in% dg_keep)
-    dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
-    signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
-    signif <- adj_signif(signif, alpha = 0.05)
-    signif <- signif[order(signif$p),]
-    signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_list, "Yes", "No")
+    if(!is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
+      dg_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
+      dataframe <- filter(dataframe, Drug_Gene %in% dg_keep)
+      dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- "No"
+    }
+    if(is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
+      dg_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
+      dataframe <- filter(dataframe, Drug_Gene %in% dg_keep)
+      dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_list, "Yes", "No")
+    }
   }
   signif$p_log10 <- as.numeric(formatC(-log10(signif$p), digits = 3, format = "f"))
   saveRDS(signif, outfile)
@@ -1039,8 +1066,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
 
 ## Mutation status
 
-**DO THIS AFTER MERGING (19 July 2019)**
-```{r mut_wilcoxon_tests, eval=TRUE}
+```{r mut_wilcoxon_tests, eval=FALSE}
 # CRISPR
 crispr <- unfactorize(crispr)
 crispr_filt <- filter(crispr, Gene %in% g2p_genes)
