@@ -70,51 +70,52 @@ unfactorize <- function(df){
 
 ## Cell line metadata
 
-**D. Charytonowicz cell line converter**
-
-This comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
-```{r dan_ccl_database}
-ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
-ccl_lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
-lineage_converter <- unique(select(ccl_lineage_converter, grouped_general_doid, group_general_lineage_name))
-ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
-colnames(ccl_histologies) <- c("Cell_line", "CCLE_histology", "TCGA_classification", "CCLE_name", "DepMap_ID")
-```
-
-**DepMap metadata**
+A comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 
 DepMap 19Q2 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
 ```{r depmap_metadata, eval=FALSE}
+ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
+colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
+lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid", "group_general_lineage_name")])
+
+# OLD CCL_META
+ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
+colnames(ccl_histologies) <- c("Cell_line", "CCLE_histology", "TCGA_classification", "CCLE_name", "DepMap_ID")
 ccl_meta <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
 ccl_meta <- select(ccl_meta, DepMap_ID, stripped_cell_line_name, CCLE_name, disease)
 colnames(ccl_meta) <- c("DepMap_ID", "Cell_line", "CCLE_name", "disease")
-# Remove two rows that contain cell lines with two different histologies
-# The histologies that are kept are verified through matching in Cellosaurus and Cell Model Passports
-# KMH2, haematopoietic_and_lymphoid: https://web.expasy.org/cellosaurus/CVCL_1330, https://cellmodelpassports.sanger.ac.uk/passports/SIDM01018
-# MS1, lung: https://web.expasy.org/cellosaurus/CVCL_1429, https://cellmodelpassports.sanger.ac.uk/passports/SIDM00245
-ccl_meta <- subset(ccl_meta, CCLE_name != "KMH2_THYROID" & CCLE_name != "MS1_SKIN")
 ccl_meta <- subset(ccl_meta, !grepl("MERGED", CCLE_name, fixed = TRUE))
 ccl_diseases <- as.character(unique(ccl_meta$disease))[as.character(unique(ccl_meta$disease)) != " "]
 CCLE_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_name, ignore.case = TRUE))
 ccl_meta <- add_column(ccl_meta, CCLE_histology = CCLE_histology, .after = "CCLE_name")
-ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & CCLE_histology %in% ccl_diseases, as.character(CCLE_histology), as.character(disease)))
-ccl_meta$disease <- with(ccl_meta, ifelse(disease == "ovary", "ovarian",
-                                   ifelse(disease == " " & CCLE_histology == "vulva", "vulva",
-                                   ifelse(disease == " " & CCLE_histology == "stomach", "gastric",
-                                   ifelse(disease == " " & CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive_tract",
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == " ", as.character(CCLE_histology), as.character(disease)))
+ccl_meta$disease <- with(ccl_meta, ifelse(disease == " " & CCLE_histology == "vulva", "vulva",
+                                   ifelse(disease == " " & CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive",
                                    ifelse(disease == " " & CCLE_histology == "large_intestine", "colorectal",
                                    ifelse(disease == " " & CCLE_histology == "biliary_tract", "bile_duct",
                                    ifelse(disease == " " & CCLE_histology == "oesophagus", "esophagus",
-                                   ifelse(disease == " " & CCLE_histology == "testis", "embryo", disease)))))))))
+                                   ifelse(disease == "other" & CCLE_histology == "haematopoietic_and_lymphoid_tissue", "haematopoietic_and_lymphoid", disease)))))))
 
-write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190708.csv")
+ccl_meta <- merge(merge(ccl_meta, ccl_histologies, by = c("Cell_line", "CCLE_histology", "CCLE_name", "DepMap_ID"), all = TRUE), lineage_converter, by = "DepMap_ID", all = TRUE)
+ccl_meta$disease <- with(ccl_meta, ifelse(is.na(disease) & !is.na(CCLE_histology), CCLE_histology, disease))
+ccl_meta$disease <- with(ccl_meta, ifelse(CCLE_histology == "large_intestine", "colorectal",
+                                   ifelse(CCLE_histology == "haematopoietic_and_lymphoid_tissue", "haematopoietic_and_lymphoid",
+                                   ifelse(CCLE_histology == "upper_aerodigestive_tract", "upper_aerodigestive",
+                                   ifelse(CCLE_histology == "oesophagus", "esophagus",
+                                   ifelse(CCLE_histology == "biliary_tract", "bile_duct",
+                                   ifelse(Cell_line == "GT3TKB", "lung",
+                                   ifelse(disease == "stomach" | CCLE_histology == "stomach", "gastric", disease))))))))
+write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190718.csv")
 ```
 
 ```{r}
-ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190708.csv", sep = ",", header = TRUE, row.names = 1)
+ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190717.csv", sep = ",", header = TRUE, row.names = 1)
+ccl_meta <- ccl_meta %>% select(DepMap_ID, Cell_line, disease)
+ccl_meta <- filter(ccl_meta, DepMap_ID != "ACH-002397")
+ccl_unique <- data.frame(disease = unique(ccl_meta$disease))
 ```
 
+ACH-002397 (KMH2_THYROID) was removed to align with Pozdeyev et al (2016) cell line name harmonization. CTRP only screened KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE, whereas GDSC screend both KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE (i.e. KM-H2) and KMH2_THYROID (i.e. KMH-2). During their harmonization process, Pozdeyev et al only kept KM-H2 from GDSC. Thus, we removed KMH2_THYROID from further analyses.
 
 ## G2P
 
@@ -160,12 +161,14 @@ g2p <- subset(g2p, !grepl("germline|homozygosity", tolower(g2p$Feature.Names)))
 g2p <- add_column(g2p, biomarker_type = tolower(sapply(g2p$JSON, ExtractBiomarkerType, simplify = TRUE)), .after = "Feature.Names")
 g2p <- add_column(g2p, biomarker_type_curated = NA, .after = "biomarker_type")
 
+g2p <- data.frame(apply(g2p, MARGIN = 2, function(x) gsub("^$", NA, trimws(x))))
+
 # Manually assign biomarker_types based on a combination of biomarker_type derived from the JSON string and patterns in the Feature.Names
 biomarker_type_curated <- 
   ifelse(!is.na(str_match(string = tolower(g2p$biomarker_type), pattern = "copy number variant|amplification")[,1]) | !is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "copy number variant|amplification")), "Amplification/CNV",
-  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION")[,1]) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
+  ifelse(!is.na(str_match(string = toupper(g2p$Feature.Names), pattern = "[A-Z0-9|A-Z]+-[A-Z0-9|A-Z]+|FUSION|ALK POSITIVE")[,1]) & is.na(str_match(string = g2p$Feature.Names, pattern = "[0-9]+-[0-9]+")) | g2p$biomarker_type == "fusion" | g2p$biomarker_type == "rearrange", "Fusion",
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "[A-Z][0-9]+([A-Z]|[*])|[0-9A-Z]+ [A-Z][0-9]+|[A-Z][0-9]+$")[,1]), "Mutation",
-  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation")[,1]), "Expression",
+  ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "expression|methylation|erbb2  positive")[,1]), "Expression",
   ifelse(!is.na(str_match(string = g2p$biomarker_type, pattern = "intron|insertion|deletion|mutant")[,1]), "Mutation",
   ifelse(!is.na(str_match(string = tolower(g2p$Feature.Names), pattern = "codon|positive|biallelic inactivation|del|ins|dup|mut|frameshift|missense|variant|[0-9]+fs|>")[,1]), "Mutation",
   ifelse(!is.na(str_match(string = g2p$Feature.Names, pattern = "^KIT$|^BRCA$")[,1]), "Mutation", NA)))))))
@@ -182,32 +185,55 @@ g2p$Direction_Curated <- with(g2p, ifelse(!is.na(str_match(string = tolower(Dire
 
 # Curate protein change column
 g2p <- add_column(g2p, Protein_Change = NA, .after = "Mutation")
+g2p <- separate_rows(g2p, Mutation, sep = ",")
 g2p$Protein_Change <- gsub("u'|'| |,|\\[|\\]", "", g2p$Mutation)
-g2p$Protein_Change <- ifelse(g2p$Protein_Change == "", str_match(string = g2p$Feature.Names, pattern = "^[A-Z][0-9]+([A-Z]|[*])| [A-Z][0-9]+([A-Z]|[*])|:[A-Z][0-9]+([A-Z]|[*])")[,1], as.character(g2p$Protein_Change))
+g2p$Protein_Change <- ifelse(is.na(g2p$Protein_Change), str_match(string = g2p$Feature.Names, pattern = "^[A-Z][0-9]+([A-Z]|[*])| [A-Z][0-9]+([A-Z]|[*])|:[A-Z][0-9]+([A-Z]|[*])")[,1], as.character(g2p$Protein_Change))
 g2p$Protein_Change <- gsub(":| |c\\..*", "", g2p$Protein_Change)
-g2p$Protein_Change <- ifelse(!is.na(str_match(string = tolower(g2p$Protein_Change), pattern = "exon|expression|frameshift|fusion|methylation|mutation|-")[,1]), NA, as.character(g2p$Protein_Change))
-g2p$Protein_Change <- gsub("^([0-9]+)([A-Z])$", "\\2\\1\\2", g2p$Protein_Change)
-g2p$Protein_Change <- gsub("^([A-Z])([0-9]+)$", "\\1\\2\\1", g2p$Protein_Change)
+g2p$Protein_Change <- ifelse(!is.na(str_match(string = tolower(trimws(g2p$Protein_Change)), pattern = "^$|exon|amplification|expression|frameshift|fusion|methylation|mutation|-")[,1]), NA, as.character(g2p$Protein_Change))
+g2p$Protein_Change <- ifelse(g2p$Feature.Names == "ALK inframe insertion (1151T)", "1151T",
+                      ifelse(g2p$Feature.Names == "MET M995Ifs*19", "M995Ifs*19",
+                      ifelse(g2p$Feature.Names == "RET (618,620,634,768,791,891,918,C634W,M918T)", "C634W;M918T",
+                      ifelse(g2p$Protein_Change == "V600E/K", "V600E;V600K", as.character(g2p$Protein_Change)))))
+g2p <- separate_rows(g2p, Protein_Change, sep = ";")
+g2p$Protein_Change <- gsub("^([0-9]+)([A-Z])$|^KRAS ([0-9]+)([A-Z])$", "\\2\\1\\2", g2p$Protein_Change) # Fix synonymous mut formatting, eg 13G
+g2p$Protein_Change <- gsub("^([A-Z])([0-9]+)$|^KRAS ([A-Z])([0-9]+)$", "\\1\\2\\1", g2p$Protein_Change) # Fix synonymous mut formatting, eg G13
 g2p <- add_column(g2p, Gene_Protein_Change = NA, .after = "Protein_Change")
 g2p$Gene_Protein_Change <- ifelse(!is.na(g2p$Gene) & !is.na(g2p$Protein_Change), paste0(as.character(g2p$Gene), ":", as.character(g2p$Protein_Change)), NA)
 
-# Add association columns
-g2p[g2p == ""] <- NA
-g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
-g2p <- merge(lineage_converter, g2p, by = "grouped_general_doid", all.y = TRUE)
-g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
-g2p$Gene_Lin <- ifelse(is.na(g2p$Drug) | !is.na(g2p$Gene) | !is.na(g2p$group_general_lineage_name), paste0(g2p$Gene, "_", g2p$group_general_lineage_name), NA)
+# Curate lineage column
+g2p <- separate_rows(g2p, Phenotype.Description, sep = ";")
+g2p_lineages <- cbind(unique(select(g2p, Phenotype.Description, Phenotype.Family)), disease = NA)
+g2p_lineages$disease <- with(g2p_lineages, ifelse(!is.na(str_match(string = tolower(Phenotype.Family), pattern = "astrocytoma|central nervous system|glioma")[,1]) | !is.na(str_match(string = tolower(Phenotype.Description), pattern = "astrocytoma|glioblastoma|craniopharyngioma|medulloblastoma")[,1]), "central_nervous_system",
+                                           ifelse(Phenotype.Family %in% c("breast cancer") | Phenotype.Description %in% c("breast cancer", "Her2-receptor positive breast cancer", "invasive ductal carcinoma"), "breast",
+                                           ifelse(!is.na(str_match(string = tolower(Phenotype.Family), pattern = "lymphoma|bone marrow|hematologic|immune system|leukemia")[,1]) | !is.na(str_match(string = tolower(Phenotype.Description), pattern = "leukemia|lymphoproliferative|myelodisplasic|systemic mastocytosis|hyper eosinophilic|waldenström macroglobulinemia|langerhans")[,1]), "haematopoietic_and_lymphoid",
+                                           ifelse(Phenotype.Family %in% c("kidney cancer", "Nephrotic syndrome") | !is.na(str_match(string = tolower(Phenotype.Description), pattern = "renal|kidney")[,1]), "kidney",
+                                           ifelse(Phenotype.Family %in% c("liver cancer"), "liver",
+                                           ifelse(Phenotype.Family %in% c("lung cancer", "respiratory system cancer"), "lung",
+                                           ifelse(Phenotype.Description %in% c("congenital fibrosarcoma", "synovial sarcoma", "myxoid liposarcoma", "liposarcoma"), "soft_tissue",
+                                           ifelse(Phenotype.Family %in% c("integumentary system cancer", "skin cancer") | Phenotype.Description %in% c("basal cell carcinoma", "Basal cell carcinoma", "Dermatofibrosarcoma", "dermatofibrosarcoma protuberans", "melanoma", "skin melanoma", "squamous cell carcinoma"), "skin",
+                                           ifelse(Phenotype.Family %in% c("peripheral nervous system neoplasm"), "peripheral_nervous_system",
+                                           ifelse(Phenotype.Family %in% c("urinary bladder cancer"), "urinary_tract", 
+                                           ifelse(!is.na(str_match(string = tolower(Phenotype.Description), pattern = "thyroid|papillary carcinoma")[,1]), "thyroid", 
+                                           ifelse(Phenotype.Description %in% c("ovarian cancer"), "ovary", 
+                                           ifelse(Phenotype.Description %in% c("rectal neoplasm"), "colorectal",
+                                           ifelse(Phenotype.Description %in% c("oropharynx cancer"), "upper_aerodigestive", 
+                                           ifelse(!is.na(str_match(string = tolower(Phenotype.Description), pattern = "gastrointestinal")[,1]), "gastric", NA))))))))))))))))
 
-write.csv(g2p, "./data_munging/g2p_db_edited.csv")
+g2p <- merge(g2p, g2p_lineages, by = c("Phenotype.Description", "Phenotype.Family"), all = TRUE)
+
+# Add association columns
+g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
+# g2p <- merge(unique(select(ccl_meta, grouped_general_doid, disease)), g2p, by = "grouped_general_doid", all.y = TRUE)
+g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$disease), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$disease))
+g2p <- unique(g2p)
+write.csv(g2p, "./data_munging/g2p_db_edited_20190718.csv")
 ```
 
 ```{r g2p}
-g2p <- read.delim("./data_munging/g2p_db_edited.csv", sep = ",", header = TRUE, row.names = 1)
-g2p$Drug_Gene_Lin <- gsub(pattern = " cancer", "", g2p$Drug_Gene_Lin)
+g2p <- read.delim("./data_munging/g2p_db_edited_20190718.csv", sep = ",", header = TRUE, row.names = 1)
 
 g2p_dgl <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
 g2p_dg <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
-g2p_gl <- as.character(unique(g2p$Gene_Lin[!is.na(g2p$Gene_Lin)]))
 g2p_drugs <- as.character(unique(g2p$Drug[!is.na(g2p$Drug)]))
 g2p_genes <- as.character(unique(g2p$Gene[!is.na(g2p$Gene)]))
 g2p_dg_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[2]))
@@ -222,21 +248,13 @@ g2p_fus$FusionPair <- sapply(X = g2p_fus$Feature.Names, function(x) strsplit(as.
 g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "Fusions", as.character(g2p_fus$Gene), as.character(g2p_fus$FusionPair))
 g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "BCR-ABL", "BCR-ABL1", as.character(g2p_fus$FusionPair))
 g2p_fus$Drug_FusionPair <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair))
+g2p_fus$Drug_Fusion_Lineage <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair) | is.na(g2p_fus$disease), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair, "_", g2p_fus$disease))
 g2p_mut <- g2p_split[[4]] %>% drop_na(Direction_Curated)
 g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g2p_mut$Drug_Gene)], "_", fixed = TRUE), function(x) x[2]))
-g2p_nodrug <- filter(g2p, is.na(Drug))
-g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(group_general_lineage_name, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
-g2p_prot$Drug_Gene <- with(g2p_prot, paste0(Drug, "_", Gene))
-g2p_prot$Drug_Gene_Protein_Change <- with(g2p_prot, paste0(Drug, "_", Gene_Protein_Change))
-g2p_prot$Drug_Gene_Protein_Change_Direction <- with(g2p_prot, paste0(Drug_Gene_Protein_Change, "_", Direction_Curated))
-g2p_mut_summ <- g2p_mut %>% count(Drug_Gene, Direction_Curated)
-# g2p_mut_test_n <- g2p_mut_summ %>% count(Drug_Gene) %>% filter(n > 1)
-# g2p_mut_test <- filter(g2p_mut, Drug_Gene %in% as.character(g2p_mut_test_n$Drug_Gene))
-```
 
-```{r}
-test <- g2p %>% drop_na(Drug_Gene, Direction_Curated) %>% count(Drug_Gene, Direction_Curated) %>% count(Drug_Gene) %>% filter(n > 1)
-test_g2p <- filter(g2p, Drug_Gene %in% as.character(test$Drug_Gene))
+g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(disease, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
+g2p_prot$Drug_Gene_Protein_Change <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
+g2p_prot$Drug_Gene_Protein_Change_Lineage <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 ```
 
 ## Omics
@@ -290,11 +308,11 @@ fusions <- select(fusions, DepMap_ID, X.FusionName, LeftGene, RightGene)
 fusions <- as.data.frame(lapply(fusions, function(x) gsub("IGH@|IGH-@", "IGH", x)))
 colnames(fusions) <- c("DepMap_ID", "FusionPair", "LeftGene", "RightGene")
 fusions <- merge(fusions, ccl_meta, by = "DepMap_ID", all.x = TRUE)
-write.csv.gz(fusions, "./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz")
+write.csv.gz(fusions, "./data_munging/19Q2/CCLE_fusions_edit_20190718.csv.gz")
 ```
 
 ```{r}
-fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz", header = TRUE, sep = ",")
+fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190718.csv.gz", header = TRUE, sep = ",")
 ```
 
 DepMap WES CN Data:
@@ -363,14 +381,11 @@ MergeOmicsG2P <- function(database, dataframe, maf_df, ge_df, cn_df, gene_list, 
     data <-  merge(dataframe, grid, by = "Cell_line", all.y = TRUE)
     print("Merged grid.")
     # Merge metadata
-    data <-  merge(data, select(ccl_meta, Cell_line, CCLE_histology, CCLE_name, DepMap_ID, disease), by = c("Cell_line", "CCLE_histology", "CCLE_name", "DepMap_ID"), all.y = TRUE)
     ## Add columns for G2P drug-gene and drug-gene-lineage sorting
     data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
     data$G2P_Drug_Gene <- ifelse(data$Drug_Gene %in% g2p_dg, "Yes", "No")
     data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$disease)
     data$G2P_Drug_Gene_Lin <- ifelse(data$Drug_Gene_Lin %in% g2p_dgl, "Yes", "No")
-    data$Gene_Lin <- paste0(data$Gene, "_", data$Gene, "_", data$disease)
-    data$G2P_Gene_Lin <- ifelse(data$Gene_Lin %in% g2p_gl, "Yes", "No")
     print("Merged metadata.")
     # Merge mutation calls
     data <- unfactorize(data)
@@ -382,7 +397,12 @@ MergeOmicsG2P <- function(database, dataframe, maf_df, ge_df, cn_df, gene_list, 
     # Melt CRISPR dataset for merging
     data <- melt(dataframe, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
     # Merge cell line metadata
-    data <- merge(data, select(ccl_meta, Cell_line, CCLE_histology, CCLE_name, DepMap_ID, disease), by = "DepMap_ID", all.y = TRUE)
+    data <- merge(data, ccl_meta, by = "DepMap_ID", all.y = TRUE)
+    data$Drug <- "CRISPR"
+    data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
+    data$G2P_Drug_Gene <- "No"
+    data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$disease)
+    data$G2P_Drug_Gene_Lin <- "No"
     print("Merged metadata.")
     # Merge mutation calls
     data <- unfactorize(data)
@@ -424,15 +444,15 @@ auc$Cell_line <- ifelse(auc$Cell_line == "K052", "KO52", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "OVCAR3", "NIHOVCAR3", auc$Cell_line)
 auc$Cell_line <- ifelse(auc$Cell_line == "TI73", "T173", auc$Cell_line)
-auc <- merge(ccl_histologies, auc, by = "Cell_line", all.y = TRUE)
+auc <- merge(ccl_meta, auc, by = "Cell_line", all.y = TRUE)
 colnames(auc)[colnames(auc) == "AUC_IC50"] <- "Score"
 saveRDS(auc, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_auc_all.rds", compress = "xz")
 
-ccle_all <- auc %>% filter(Database == "CCLE") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+ccle_all <- auc %>% filter(Database == "CCLE") %>% select(Cell_line, disease, DepMap_ID, Drug, Score)
 saveRDS(ccle_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ccle_all_edited.rds", compress = "xz")
-ctrp_all <- auc %>% filter(Database == "CTRP") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+ctrp_all <- auc %>% filter(Database == "CTRP") %>% select(Cell_line, disease, DepMap_ID, Drug, Score)
 saveRDS(ctrp_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_all_edited.rds", compress = "xz")
-gdsc_all <- auc %>% filter(Database == "GDSC") %>% select(Cell_line, CCLE_histology, TCGA_classification, CCLE_name, DepMap_ID, Drug, Score)
+gdsc_all <- auc %>% filter(Database == "GDSC") %>% select(Cell_line, disease, DepMap_ID, Drug, Score)
 saveRDS(gdsc_all, "./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds", compress = "xz")
 ```
 
@@ -443,19 +463,14 @@ ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_
 gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
 
 ccle <- MergeOmicsG2P(database = "CCLE", dataframe = ccle_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/ccle_data_19Q2.rds")
-# write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
+write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
 
 ctrp <- MergeOmicsG2P(database = "CTRP", dataframe = ctrp_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
-# write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
+write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
 
 
 gdsc <- MergeOmicsG2P(database = "GDSC", dataframe = gdsc_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/gdsc_data_19Q2.rds")
-# write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
-
-# all_genes <- intersect(unique(maf_df$Gene), intersect(unique(cn_melt$Gene), unique(ge_melt$Gene)))
-# ccle <- MergeOmicsG2P(database = "CCLE", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/ccle_data_allgenes_19Q2.rds")
-# ctrp <- MergeOmicsG2P(database = "CTRP", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/ctrp_data_allgenes_19Q2.rds")
-# gdsc <- MergeOmicsG2P(database = "GDSC", maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = all_genes, outfile = "./../htscreens_giant_files/gdsc_data_allgenes_19Q2.rds")
+write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
 ```
 
 ```{r load_drug_rds, eval=TRUE}
@@ -490,27 +505,33 @@ gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_
 fusions_filt <- filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))
 
 ccle_fus_grid <- expand.grid("DepMap_ID" = unique(ccle_all$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-ccle_fus <- merge(merge(ccle_all, ccle_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
+ccle_fus <- merge(merge(ccle_all, ccle_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "Cell_line", "FusionPair", "disease"), all = TRUE)
 ccle_fus$Fusion_Status <- ifelse(!is.na(ccle_fus$LeftGene), "Yes", "No")
-ccle_fus$Drug_FusionPair <- ifelse(is.na(ccle_fus$Drug) | is.na(ccle_fus$FusionPair), NA, paste0(ccle_fus$Drug, "_", ccle_fus$FusionPair))
+ccle_fus$Drug_FusionPair <- with(ccle_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
+ccle_fus$Drug_Fusion_Lineage <- with(ccle_fus, ifelse(is.na(Drug) | is.na(FusionPair) | is.na(disease), NA, paste0(Drug, "_", FusionPair, "_", disease)))
 ccle_fus$G2P_Drug_FusionPair <- ifelse(ccle_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
 ccle_fus$G2P_Fusion <- ifelse(ccle_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
+ccle_fus$G2P_Drug_Fusion_Lineage <- ifelse(ccle_fus$Drug_Fusion_Lineage %in% unique(as.character(g2p_fus$Drug_Fusion_Lineage)), "Yes", "No")
 ccle_fus$Database <- "CCLE"
 
 ctrp_fus_grid <- expand.grid("DepMap_ID" = unique(ctrp_all$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-ctrp_fus <- merge(merge(ctrp_all, ctrp_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
-ctrp_fus$Fusion_Status <- ifelse(!is.na(ctrp_fus$LeftGene), "Yes", "No")
-ctrp_fus$Drug_FusionPair <- ifelse(is.na(ctrp_fus$Drug) | is.na(ctrp_fus$FusionPair), NA, paste0(ctrp_fus$Drug, "_", ctrp_fus$FusionPair))
+ctrp_fus <- merge(merge(ctrp_all, ctrp_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "Cell_line", "FusionPair", "disease"), all = TRUE)
+ctrp_fus$Fusion_Status <- ifelse(!is.na(ctrp_fus$LeftGene), "Yes", "No")     
+ctrp_fus$Drug_FusionPair <- with(ctrp_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
+ctrp_fus$Drug_Fusion_Lineage <- with(ctrp_fus, ifelse(is.na(Drug) | is.na(FusionPair) | is.na(disease), NA, paste0(Drug, "_", FusionPair, "_", disease)))
 ctrp_fus$G2P_Drug_FusionPair <- ifelse(ctrp_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
 ctrp_fus$G2P_Fusion <- ifelse(ctrp_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
+ctrp_fus$G2P_Drug_Fusion_Lineage <- ifelse(ctrp_fus$Drug_Fusion_Lineage %in% unique(as.character(g2p_fus$Drug_Fusion_Lineage)), "Yes", "No")
 ctrp_fus$Database <- "CTRP"
 
 gdsc_fus_grid <- expand.grid("DepMap_ID" = unique(gdsc_all$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-gdsc_fus <- merge(merge(gdsc_all, gdsc_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "CCLE_name", "CCLE_histology", "Cell_line", "FusionPair"), all = TRUE)
+gdsc_fus <- merge(merge(gdsc_all, gdsc_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "Cell_line", "FusionPair", "disease"), all = TRUE)
 gdsc_fus$Fusion_Status <- ifelse(!is.na(gdsc_fus$LeftGene), "Yes", "No")
-gdsc_fus$Drug_FusionPair <- ifelse(is.na(gdsc_fus$Drug) | is.na(gdsc_fus$FusionPair), NA, paste0(gdsc_fus$Drug, "_", gdsc_fus$FusionPair))
+gdsc_fus$Drug_FusionPair <- with(gdsc_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
+gdsc_fus$Drug_Fusion_Lineage <- with(gdsc_fus, ifelse(is.na(Drug) | is.na(FusionPair) | is.na(disease), NA, paste0(Drug, "_", FusionPair, "_", disease)))
 gdsc_fus$G2P_Drug_FusionPair <- ifelse(gdsc_fus$Drug_FusionPair %in% unique(as.character(g2p_fus$Drug_FusionPair)), "Yes", "No")
 gdsc_fus$G2P_Fusion <- ifelse(gdsc_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
+gdsc_fus$G2P_Drug_Fusion_Lineage <- ifelse(gdsc_fus$Drug_Fusion_Lineage %in% unique(as.character(g2p_fus$Drug_Fusion_Lineage)), "Yes", "No")
 gdsc_fus$Database <- "GDSC"
 
 fus <- bind_rows(ccle_fus, ctrp_fus, gdsc_fus)
@@ -536,9 +557,11 @@ ccle_prot_grid <- expand.grid("DepMap_ID" = unique(ccle_all$DepMap_ID), "Gene_Pr
 ccle_prot <- merge(ccle_all, ccle_prot_grid, by = "DepMap_ID", all = TRUE)
 ccle_prot <- merge(ccle_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Protein_Change"), all = TRUE)
 ccle_prot$Change_Status <- ifelse(!is.na(ccle_prot$Protein_Change), "Yes", "No")
-ccle_prot$Drug_Gene_Protein_Change <- ifelse(is.na(ccle_prot$Drug) | is.na(ccle_prot$Gene_Protein_Change), NA, paste0(ccle_prot$Drug, "_", ccle_prot$Gene_Protein_Change))
+ccle_prot$Drug_Gene_Protein_Change <- with(ccle_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
+ccle_prot$Drug_Gene_Protein_Change_Lineage <- with(ccle_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 ccle_prot$G2P_Drug_Gene_Protein_Change <- ifelse(ccle_prot$Drug_Gene_Protein_Change %in% unique(as.character(g2p_prot$Drug_Gene_Protein_Change)), "Yes", "No")
 ccle_prot$G2P_Protein_Change <- ifelse(ccle_prot$Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)), "Yes", "No")
+ccle_prot$G2P_Drug_Gene_Protein_Change_Lineage <- ifelse(ccle_prot$Drug_Gene_Protein_Change_Lineage %in% unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage)), "Yes", "No")
 ccle_prot <- merge(ccle_prot, unique(select(g2p_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
 ccle_prot$Database <- "CCLE"
 ccle_prot <- ccle_prot %>% drop_na(Drug)
@@ -548,9 +571,11 @@ ctrp_prot_grid <- expand.grid("DepMap_ID" = unique(ctrp_all$DepMap_ID), "Gene_Pr
 ctrp_prot <- merge(ctrp_all, ctrp_prot_grid, by = "DepMap_ID", all = TRUE)
 ctrp_prot <- merge(ctrp_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Protein_Change"), all = TRUE)
 ctrp_prot$Change_Status <- ifelse(!is.na(ctrp_prot$Protein_Change), "Yes", "No")
-ctrp_prot$Drug_Gene_Protein_Change <- ifelse(is.na(ctrp_prot$Drug) | is.na(ctrp_prot$Gene_Protein_Change), NA, paste0(ctrp_prot$Drug, "_", ctrp_prot$Gene_Protein_Change))
+ctrp_prot$Drug_Gene_Protein_Change <- with(ctrp_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
+ctrp_prot$Drug_Gene_Protein_Change_Lineage <- with(ctrp_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 ctrp_prot$G2P_Drug_Gene_Protein_Change <- ifelse(ctrp_prot$Drug_Gene_Protein_Change %in% unique(as.character(g2p_prot$Drug_Gene_Protein_Change)), "Yes", "No")
 ctrp_prot$G2P_Protein_Change <- ifelse(ctrp_prot$Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)), "Yes", "No")
+ctrp_prot$G2P_Drug_Gene_Protein_Change_Lineage <- ifelse(ctrp_prot$Drug_Gene_Protein_Change_Lineage %in% unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage)), "Yes", "No")
 ctrp_prot <- merge(ctrp_prot, unique(select(g2p_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
 ctrp_prot$Database <- "CTRP"
 ctrp_prot <- ctrp_prot %>% drop_na(Drug)
@@ -560,9 +585,11 @@ gdsc_prot_grid <- expand.grid("DepMap_ID" = unique(gdsc_all$DepMap_ID), "Gene_Pr
 gdsc_prot <- merge(gdsc_all, gdsc_prot_grid, by = "DepMap_ID", all = TRUE)
 gdsc_prot <- merge(gdsc_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Protein_Change"), all = TRUE)
 gdsc_prot$Change_Status <- ifelse(!is.na(gdsc_prot$Protein_Change), "Yes", "No")
-gdsc_prot$Drug_Gene_Protein_Change <- ifelse(is.na(gdsc_prot$Drug) | is.na(gdsc_prot$Gene_Protein_Change), NA, paste0(gdsc_prot$Drug, "_", gdsc_prot$Gene_Protein_Change))
+gdsc_prot$Drug_Gene_Protein_Change <- with(gdsc_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
+gdsc_prot$Drug_Gene_Protein_Change_Lineage <- with(gdsc_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 gdsc_prot$G2P_Drug_Gene_Protein_Change <- ifelse(gdsc_prot$Drug_Gene_Protein_Change %in% unique(as.character(g2p_prot$Drug_Gene_Protein_Change)), "Yes", "No")
 gdsc_prot$G2P_Protein_Change <- ifelse(gdsc_prot$Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)), "Yes", "No")
+gdsc_prot$G2P_Drug_Gene_Protein_Change_Lineage <- ifelse(gdsc_prot$Drug_Gene_Protein_Change_Lineage %in% unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage)), "Yes", "No")
 gdsc_prot <- merge(gdsc_prot, unique(select(g2p_prot, Drug_Gene_Protein_Change, Direction_Curated)), by = "Drug_Gene_Protein_Change", all.x = TRUE)
 gdsc_prot$Database <- "GDSC"
 gdsc_prot <- gdsc_prot %>% drop_na(Drug)
@@ -589,9 +616,6 @@ crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
 colnames(crispr_all)[1] <- "DepMap_ID"
 
-# Melt CRISPR dataset for merging
-# crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
-
 crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
 # write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
@@ -602,6 +626,16 @@ crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
 
 ```{r merge_crispr_fus, eval=FALSE}
 fusions_filt <- filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))
+crispr_fus_grid <- expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
+crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "Cell_line", "FusionPair", "disease"), all = TRUE)
+crispr_fus$Fusion_Status <- ifelse(!is.na(crispr_fus$LeftGene), "Yes", "No")
+crispr_fus$Drug <- "CRISPR"
+crispr_fus$Drug_FusionPair <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
+crispr_fus$Drug_Fusion_Lineage <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair) | is.na(disease), NA, paste0(Drug, "_", FusionPair, "_", disease)))
+crispr_fus$G2P_Drug_FusionPair <- "No"
+crispr_fus$G2P_Fusion <- ifelse(crispr_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
+crispr_fus$G2P_Drug_Fusion_Lineage <- "No"
+crispr_fus$Database <- "CRISPR"
 
 saveRDS(crispr_fus, "./data_munging/rds/crispr_fusions.rds")
 ```
@@ -612,27 +646,30 @@ crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
 colnames(crispr_all)[1] <- "DepMap_ID"
 
+# Melt CRISPR dataset for merging
+crispr_melt <- melt(crispr_all, id.vars = "DepMap_ID", measure.vars = colnames(crispr_all)[2:ncol(crispr_all)], variable.name = "Gene", value.name = "Score")
+
 maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 maf_changes_filt <- filter(maf_changes_df, Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)))
 
-# CCLE
-crispr_prot_grid <- expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "Gene_Protein_Change" = unique(maf_changes_filt$Gene_Protein_Change))
-crispr_prot <- merge(crispr, crispr_prot_grid, by = "DepMap_ID", all = TRUE)
+crispr_prot_grid <- expand.grid("DepMap_ID" = unique(crispr_all$DepMap_ID), "Gene_Protein_Change" = unique(maf_changes_filt$Gene_Protein_Change))
+crispr_prot <- merge(crispr_all, crispr_prot_grid, by = "DepMap_ID", all = TRUE)
 crispr_prot <- merge(crispr_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Protein_Change"), all = TRUE)
+crispr_prot <- merge(crispr_prot, ccl_meta, by = "DepMap_ID", all.x = TRUE)
 crispr_prot$Change_Status <- ifelse(!is.na(crispr_prot$Protein_Change), "Yes", "No")
+crispr_prot$Drug <- "CRISPR"
+crispr_prot$Drug_Gene_Protein_Change <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
+crispr_prot$Drug_Gene_Protein_Change_Lineage <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
+crispr_prot$G2P_Drug_Gene_Protein_Change <- "No"
 crispr_prot$G2P_Protein_Change <- ifelse(crispr_prot$Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)), "Yes", "No")
+crispr_prot$G2P_Drug_Gene_Protein_Change_Lineage <- "No"
 crispr_prot <- merge(crispr_prot, unique(select(g2p_prot, Gene_Protein_Change, Direction_Curated)), by = "Gene_Protein_Change", all.x = TRUE)
 crispr_prot$Database <- "CRISPR"
-
-crispr_prot <- separate(data = crispr_prot, col = Gene_Protein_Change, into = c("Gene", "Protein_Change"), remove = FALSE, sep = ":")
-crispr_prot <- add_column(crispr_prot, Drug_Gene = paste0("CRISPR_", crispr_prot$Gene), .after = "Gene")
-crispr_prot$Direction_Curated <- ifelse(is.na(crispr_prot$Direction_Curated), "none", as.character(crispr_prot$Direction_Curated))
-crispr_prot$Direction_Grouper <- with(crispr_prot, paste0(Change_Status, "_", Direction_Curated))
 
 saveRDS(crispr_prot, "./data_munging/rds/crispr_protein_changes.rds")
 ```
 
-```{r}
+```{r, eval = FALSE}
 crispr_fus <- readRDS("./data_munging/rds/crispr_fusions.rds")
 crispr_prot <- readRDS("./data_munging/rds/crispr_protein_changes.rds")
 ```
@@ -829,9 +866,9 @@ ccle_auc_grid <- dcast(ccle, Drug ~ DepMap_ID, value.var = "Score", fun.aggregat
 ctrp_auc_grid <- dcast(ctrp, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 gdsc_auc_grid <- dcast(gdsc, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 
-ccle_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ccle_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
-ctrp_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ctrp_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
-gdsc_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(gdsc_auc_grid)), select(ccl_meta, DepMap_ID, disease), by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+ccle_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ccle_auc_grid)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+ctrp_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(ctrp_auc_grid)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
+gdsc_lineages_ha <- merge(data.frame("DepMap_ID" = colnames(gdsc_auc_grid)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID)
 
 ht_legend_list <- list(direction = "horizontal")
 
@@ -888,7 +925,7 @@ dev.off()
 ```
 
 
-# WILCOXON: PanCan
+# WILCOXON
 
 --------------------------------------------------------------------------------
 
@@ -915,21 +952,34 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
   if(tolower(type) == "drug_gene_lineage") {
     # Filter out DGLs with too few samples in at least one mutation status category
     # Require at least 3 samples in each category to run the test, else filter out that DGL from testing df
-    count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
-    count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
-    dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
-    dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
-    dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
-    signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
-    signif <- adj_signif(signif, alpha = 0.05)
-    signif <- signif[order(signif$p),]
-    signif$InG2P <- ifelse(signif$Drug_Gene_Lin %in% g2p_list, "Yes", "No")
+    if(is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
+      dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
+      dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
+      dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- ifelse(signif$Drug_Gene_Lin %in% g2p_list, "Yes", "No")
+    }
+    if(!is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene_Lin, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene_Lin) %>% filter(n == 2)
+      dgl_keep <- intersect(count_mut_n$Drug_Gene_Lin, count_mut_category$Drug_Gene_Lin)
+      dataframe <- filter(dataframe, Drug_Gene_Lin %in% dgl_keep)
+      dataframe$Drug_Gene_Lin <- as.character(dataframe$Drug_Gene_Lin)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- "No"
+    }
   }
   if(tolower(type) == "fusion") {
     # Filter out fusions with too few samples in at least one category
     # Require at least 3 samples in each category to run the test, else filter out that Drug_FusionPair from testing df
-    count_n <- dataframe %>% count(Drug, FusionPair, Drug_FusionPair, Fusion_Status) %>% filter(n >= 3)
-    count_category <- count_n %>% count(Drug, FusionPair, Drug_FusionPair) %>% filter(n == 2)
+    count_n <- dataframe %>% count(Drug_FusionPair, Fusion_Status) %>% filter(n >= 3)
+    count_category <- count_n %>% count(Drug_FusionPair) %>% filter(n == 2)
     keep <- intersect(count_n$Drug_FusionPair, count_category$Drug_FusionPair)
     dataframe <- filter(dataframe, Drug_FusionPair %in% keep)
     dataframe$Drug_FusionPair <- as.character(dataframe$Drug_FusionPair)
@@ -938,11 +988,24 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
     signif <- signif[order(signif$p),]
     signif$InG2P <- ifelse(signif$Drug_FusionPair %in% g2p_list, "Yes", "No")
   }
+  if(tolower(type) == "fusion_lineage") {
+    # Filter out fusions with too few samples in at least one category
+    # Require at least 3 samples in each category to run the test, else filter out that Drug_Fusion_Lineage from testing df
+    count_n <- dataframe %>% count(Drug_Fusion_Lineage, Fusion_Status) %>% filter(n >= 3)
+    count_category <- count_n %>% count(Drug_Fusion_Lineage) %>% filter(n == 2)
+    keep <- intersect(count_n$Drug_Fusion_Lineage, count_category$Drug_Fusion_Lineage)
+    dataframe <- filter(dataframe, Drug_Fusion_Lineage %in% keep)
+    dataframe$Drug_Fusion_Lineage <- as.character(dataframe$Drug_Fusion_Lineage)
+    signif <- compare_means(Score ~ Fusion_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+    signif <- adj_signif(signif, alpha = 0.05)
+    signif <- signif[order(signif$p),]
+    signif$InG2P <- ifelse(signif$Drug_Fusion_Lineage %in% g2p_list, "Yes", "No")
+  }
   if(tolower(type) == "protein_change") {
     # Filter out Gene:Protein_Changes with too few samples in at least one category
     # Require at least 3 samples in each category to run the test, else filter out that Gene_Protein_Change from testing df
-    count_n <- dataframe %>% count(Drug, Gene_Protein_Change, Drug_Gene_Protein_Change, Change_Status) %>% filter(n >= 3)
-    count_category <- count_n %>% count(Drug, Gene_Protein_Change, Drug_Gene_Protein_Change) %>% filter(n == 2)
+    count_n <- dataframe %>% count(Drug_Gene_Protein_Change, Change_Status) %>% filter(n >= 3)
+    count_category <- count_n %>% count(Drug_Gene_Protein_Change) %>% filter(n == 2)
     keep <- intersect(count_n$Drug_Gene_Protein_Change, count_category$Drug_Gene_Protein_Change)
     dataframe <- filter(dataframe, Drug_Gene_Protein_Change %in% keep)
     dataframe$Drug_Gene_Protein_Change <- as.character(dataframe$Drug_Gene_Protein_Change)
@@ -950,6 +1013,19 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
     signif <- adj_signif(signif, alpha = 0.05)
     signif <- signif[order(signif$p),]
     signif$InG2P <- ifelse(signif$Drug_Gene_Protein_Change %in% g2p_list, "Yes", "No")
+  }
+  if(tolower(type) == "protein_change_lineage") {
+    # Filter out Gene:Protein_Changes with too few samples in at least one category
+    # Require at least 3 samples in each category to run the test, else filter out that Drug_Gene_Protein_Change_Lineage from testing df
+    count_n <- dataframe %>% count(Drug_Gene_Protein_Change_Lineage, Change_Status) %>% filter(n >= 3)
+    count_category <- count_n %>% count(Drug_Gene_Protein_Change_Lineage) %>% filter(n == 2)
+    keep <- intersect(count_n$Drug_Gene_Protein_Change_Lineage, count_category$Drug_Gene_Protein_Change_Lineage)
+    dataframe <- filter(dataframe, Drug_Gene_Protein_Change_Lineage %in% keep)
+    dataframe$Drug_Gene_Protein_Change_Lineage <- as.character(dataframe$Drug_Gene_Protein_Change_Lineage)
+    signif <- compare_means(Score ~ Change_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+    signif <- adj_signif(signif, alpha = 0.05)
+    signif <- signif[order(signif$p),]
+    signif$InG2P <- ifelse(signif$Drug_Gene_Protein_Change_Lineage %in% g2p_list, "Yes", "No")
   }
   if(tolower(type) == "direction") {
     signif <- compare_means(Score ~ Direction_Grouper, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
@@ -959,15 +1035,28 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
   if(tolower(type) == "drug_gene") {
     # Filter out DGs with too few samples in at least one mutation status category
     # Require at least 3 samples in each category to run the test, else filter out that DG from testing df
-    count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
-    count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
-    dg_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
-    dataframe <- filter(dataframe, Drug_Gene %in% dg_keep)
-    dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
-    signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
-    signif <- adj_signif(signif, alpha = 0.05)
-    signif <- signif[order(signif$p),]
-    signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_list, "Yes", "No")
+    if(!is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
+      dg_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
+      dataframe <- filter(dataframe, Drug_Gene %in% dg_keep)
+      dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- "No"
+    }
+    if(is.na(str_match(pattern = "crispr", string = outfile))) {
+      count_mut_n <- dataframe %>% count(Drug_Gene, Mutation) %>% filter(n >= 3)
+      count_mut_category <- count_mut_n %>% count(Drug_Gene) %>% filter(n == 2)
+      dg_keep <- intersect(count_mut_n$Drug_Gene, count_mut_category$Drug_Gene)
+      dataframe <- filter(dataframe, Drug_Gene %in% dg_keep)
+      dataframe$Drug_Gene <- as.character(dataframe$Drug_Gene)
+      signif <- compare_means(Score ~ Mutation, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+      signif <- adj_signif(signif, alpha = 0.05)
+      signif <- signif[order(signif$p),]
+      signif$InG2P <- ifelse(signif$Drug_Gene %in% g2p_list, "Yes", "No")
+    }
   }
   signif$p_log10 <- as.numeric(formatC(-log10(signif$p), digits = 3, format = "f"))
   saveRDS(signif, outfile)
@@ -980,16 +1069,14 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
 ```{r mut_wilcoxon_tests, eval=FALSE}
 # CRISPR
 crispr <- unfactorize(crispr)
-# crispr_signif_all_gene <- WilcoxonTestDF(dataframe = crispr, grouping = "Gene", outfile = "./data_munging/rds/crispr_signif_g.rds")
-# crispr_filt <- filter(crispr, Gene %in% g2p_genes)
-# crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_filt, grouping = "Gene", type = "drug_gene", outfile = "./data_munging/rds/crispr_signif_g2p_g.rds")
-# crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_filt, grouping = c("Gene", "disease"), type = "drug_gene_lineage", outfile = "./data_munging/rds/crispr_signif_g2p_gl.rds")
+crispr_filt <- filter(crispr, Gene %in% g2p_genes)
+crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_filt, grouping = "Gene", type = "drug_gene", outfile = "./data_munging/rds/crispr_signif_g2p_g.rds")
+crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_filt, grouping = c("Gene", "disease"), type = "drug_gene_lineage", outfile = "./data_munging/rds/crispr_signif_g2p_gl.rds")
 
 # CCLE
 ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
 ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
 ccle_filt <- unfactorize(ccle_filt)
-ccle_signif_dg <- WilcoxonTestDF(dataframe = ccle, grouping = c("Drug", "Gene", "Drug_Gene"), g2p_list = unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)])), type = "drug_gene", outfile = "./data_munging/rds/ccle_signif_dg.rds")
 ccle_signif_g2p_dg <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "Drug_Gene"), type = "drug_gene", g2p_list = unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)])), outfile = "./data_munging/rds/ccle_signif_g2p_dg.rds")
 ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), type = "drug_gene_lineage", g2p_list = unique(as.character(g2p_mut$Drug_Gene_Lin[!is.na(g2p_mut$Drug_Gene_Lin)])), outfile = "./data_munging/rds/ccle_signif_g2p_dgl.rds")
 
@@ -997,7 +1084,6 @@ ccle_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ccle_filt, grouping = c("Drug"
 ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
 ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
 ctrp_filt <- unfactorize(ctrp_filt)
-# ctrp_signif_dg <- WilcoxonTestDF(dataframe = ctrp, grouping = c("Drug", "Gene", "Drug_Gene"), type = "drug_gene", g2p_list = unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)])), outfile = "./data_munging/rds/ctrp_signif_dg.rds")
 ctrp_signif_g2p_dg <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "Drug_Gene"), type = "drug_gene", g2p_list = unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)])), outfile = "./data_munging/rds/ctrp_signif_g2p_dg.rds")
 ctrp_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), type = "drug_gene_lineage", g2p_list = unique(as.character(g2p_mut$Drug_Gene_Lin[!is.na(g2p_mut$Drug_Gene_Lin)])), outfile = "./data_munging/rds/ctrp_signif_g2p_dgl.rds")
 
@@ -1005,34 +1091,61 @@ ctrp_signif_g2p_dgl <- WilcoxonTestDF(dataframe = ctrp_filt, grouping = c("Drug"
 gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
 gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
 gdsc_filt <- unfactorize(gdsc_filt)
-# gdsc_signif_dg <- WilcoxonTestDF(dataframe = gdsc, grouping = c("Drug", "Gene", "Drug_Gene"), type = "drug_gene", g2p_list = unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)])), outfile = "./data_munging/rds/gdsc_signif_dg.rds")
 gdsc_signif_g2p_dg <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "Drug_Gene"), type = "drug_gene", g2p_list = unique(as.character(g2p_mut$Drug_Gene[!is.na(g2p_mut$Drug_Gene)])), outfile = "./data_munging/rds/gdsc_signif_g2p_dg.rds")
 gdsc_signif_g2p_dgl <- WilcoxonTestDF(dataframe = gdsc_filt, grouping = c("Drug", "Gene", "disease", "Drug_Gene_Lin"), type = "drug_gene_lineage", g2p_list = unique(as.character(g2p_mut$Drug_Gene_Lin[!is.na(g2p_mut$Drug_Gene_Lin)])), outfile = "./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 ```
 
 ```{r load_mut_wilcoxon_rds}
-g2p_mut_4merge <- unique(select(g2p_mut, Drug_Gene, Direction_Curated))
-test <- g2p_mut_4merge %>% filter(Direction_Curated != "none") %>% count(Drug_Gene) %>% filter(n == 2)
-extended_mut_ht_dg <- unique(as.character(test$Drug_Gene))
+g2p_mut_summ <- g2p_mut %>% count(Drug, Gene, Direction_Curated) %>% select(-n)
+g2p_mut_summ_n <- g2p_mut_summ %>% count(Drug, Gene)
+g2p_mut_summ <- merge(g2p_mut_summ, g2p_mut_summ_n, by = c("Drug", "Gene"))
+g2p_mut_summ$Direction_Heatmap <- with(g2p_mut_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
+g2p_mut_summ <- unique(select(g2p_mut_summ, Drug, Gene, Direction_Heatmap))
 
-crispr_signif_g <- readRDS("./data_munging/rds/crispr_signif_g.rds")
 crispr_signif_g2p_g <- readRDS("./data_munging/rds/crispr_signif_g2p_g.rds")
 crispr_signif_lin <- readRDS("./data_munging/rds/crispr_signif_g2p_gl.rds")
 
-ccle_signif_dg <- readRDS("./data_munging/rds/ccle_signif_dg.rds")
 ccle_signif_g2p_dg <- readRDS("./data_munging/rds/ccle_signif_g2p_dg.rds")
+ccle_signif_g2p_dg <- merge(ccle_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ccle_signif_dgl <- readRDS("./data_munging/rds/ccle_signif_g2p_dgl.rds")
+ccle_signif_dgl <- merge(ccle_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 
-# ctrp_signif_g <- readRDS("./data_munging/rds/ctrp_signif_dg.rds")
 ctrp_signif_g2p_dg <- readRDS("./data_munging/rds/ctrp_signif_g2p_dg.rds")
+ctrp_signif_g2p_dg <- merge(ctrp_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ctrp_signif_dgl <- readRDS("./data_munging/rds/ctrp_signif_g2p_dgl.rds")
+ctrp_signif_dgl <- merge(ctrp_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 
-# gdsc_signif_g <- readRDS("./data_munging/rds/gdsc_signif_dg.rds")
 gdsc_signif_g2p_dg <- readRDS("./data_munging/rds/gdsc_signif_g2p_dg.rds")
+gdsc_signif_g2p_dg <- merge(gdsc_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
+gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ, by = c("Drug", "Gene"), all.x = TRUE)
 ```
 
-## Protein changes
+```{r, eval=FALSE}
+ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
+ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
+ccle_filt <- unfactorize(ccle_filt)
+
+ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
+ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
+ctrp_filt <- unfactorize(ctrp_filt)
+
+gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
+gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
+gdsc_filt <- unfactorize(gdsc_filt)
+
+lins <- union(unique(ccle_signif_dgl$disease), union(unique(ctrp_signif_dgl$disease), unique(gdsc_signif_dgl$disease)))
+
+drug_gene_lins <- unique(rbind(select(ccle_signif_dgl, Gene, Drug, disease, Direction_Curated), select(ctrp_signif_dgl, Gene, Drug, disease, Direction_Curated), select(gdsc_signif_dgl, Gene, Drug, disease, Direction_Curated)))
+
+ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+
+ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+```
+
+
+### Protein changes
 
 ```{r protein_change_data}
 ccle_prot <- filter(prot, Database == "CCLE")
@@ -1048,95 +1161,18 @@ gdsc_prot <- unfactorize(gdsc_prot)
 # gdsc_prot_count <- gdsc_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 ```
 
-### Sen vs. Res tests
-
-```{r SvR_direction_datasets, eval=FALSE}
-# CCLE
-ccle_prot_dir <- unique(select(ccle_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
-## Resistance
-ccle_prot_res <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
-ccle_prot_res$Direction_Grouper <- with(ccle_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
-## Sensitivity
-ccle_prot_sen <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
-ccle_prot_sen$Direction_Grouper <- with(ccle_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
-saveRDS(ccle_prot_res, "./data_munging/rds/ccle_protein_changes_resistance.rds")
-saveRDS(ccle_prot_sen, "./data_munging/rds/ccle_protein_changes_sensitivity.rds")
-
-# CTRP
-ctrp_prot_dir <- unique(select(ctrp_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
-## Resistance
-ctrp_prot_res <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
-ctrp_prot_res$Direction_Grouper <- with(ctrp_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
-## Sensitivity
-ctrp_prot_sen <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
-ctrp_prot_sen$Direction_Grouper <- with(ctrp_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
-saveRDS(ctrp_prot_res, "./data_munging/rds/ctrp_protein_changes_resistance.rds")
-saveRDS(ctrp_prot_sen, "./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
-
-# GDSC
-gdsc_prot_dir <- unique(select(gdsc_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
-## Resistance
-gdsc_prot_res <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
-gdsc_prot_res$Direction_Grouper <- with(gdsc_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
-## Sensitivity
-gdsc_prot_sen <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
-gdsc_prot_sen$Direction_Grouper <- with(gdsc_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
-saveRDS(gdsc_prot_res, "./data_munging/rds/gdsc_protein_changes_resistance.rds")
-saveRDS(gdsc_prot_sen, "./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
-```
-
-```{r prot_SvR_wilcoxon_tests, eval=FALSE}
-# CCLE
-ccle_signif_prot_res <- WilcoxonTestDF(dataframe = ccle_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
-ccle_signif_prot_sen <- WilcoxonTestDF(dataframe = ccle_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
-
-# CTRP
-ctrp_signif_prot_res <- WilcoxonTestDF(dataframe = ctrp_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
-ctrp_signif_prot_sen <- WilcoxonTestDF(dataframe = ctrp_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
-
-# GDSC
-gdsc_signif_prot_res <- WilcoxonTestDF(dataframe = gdsc_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
-gdsc_signif_prot_sen <- WilcoxonTestDF(dataframe = gdsc_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
-```
-
-```{r load_prot_SvR_wilcoxon_tests}
-ccle_signif_prot_res <- readRDS("./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
-ccle_signif_prot_res$Direction_Test <- "Resistance"
-ccle_signif_prot_sen <- readRDS("./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
-ccle_signif_prot_sen$Direction_Test <- "Sensitivity"
-ccle_signif_prot_dir <- bind_rows(ccle_signif_prot_res, ccle_signif_prot_sen)
-
-ctrp_signif_prot_res <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
-ctrp_signif_prot_res$Direction_Test <- "Resistance"
-ctrp_signif_prot_sen <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
-ctrp_signif_prot_sen$Direction_Test <- "Sensitivity"
-ctrp_signif_prot_dir <- bind_rows(ctrp_signif_prot_res, ctrp_signif_prot_sen)
-
-gdsc_signif_prot_res <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
-gdsc_signif_prot_res$Direction_Test <- "Resistance"
-gdsc_signif_prot_sen <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
-gdsc_signif_prot_sen$Direction_Test <- "Sensitivity"
-gdsc_signif_prot_dir <- bind_rows(gdsc_signif_prot_res, gdsc_signif_prot_sen)
-
-ccle_prot_res <- readRDS("./data_munging/rds/ccle_protein_changes_resistance.rds")
-ccle_prot_sen <- readRDS("./data_munging/rds/ccle_protein_changes_sensitivity.rds")
-ctrp_prot_res <- readRDS("./data_munging/rds/ctrp_protein_changes_resistance.rds")
-ctrp_prot_sen <- readRDS("./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
-gdsc_prot_res <- readRDS("./data_munging/rds/gdsc_protein_changes_resistance.rds")
-gdsc_prot_sen <- readRDS("./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
-```
-
-### Exact match tests
-
 ```{r prot_wilcoxon_tests, eval=FALSE}
 ccle_prot <- unfactorize(ccle_prot)
 ccle_signif_prot <- WilcoxonTestDF(dataframe = ccle_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/ccle_signif_protein_changes.rds")
+ccle_signif_prot_lin <- WilcoxonTestDF(dataframe = ccle_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/ccle_signif_protein_changes_lineage.rds")
 
 ctrp_prot <- unfactorize(ctrp_prot)
 ctrp_signif_prot <- WilcoxonTestDF(dataframe = ctrp_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/ctrp_signif_protein_changes.rds")
+ctrp_signif_prot_lin <- WilcoxonTestDF(dataframe = ctrp_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/ctrp_signif_protein_changes_lineage.rds")
 
 gdsc_prot <- unfactorize(gdsc_prot)
 gdsc_signif_prot <- WilcoxonTestDF(dataframe = gdsc_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/gdsc_signif_protein_changes.rds")
+gdsc_signif_prot_lin <- WilcoxonTestDF(dataframe = gdsc_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/gdsc_signif_protein_changes_lineage.rds")
 ```
 
 ```{r load_prot_wilcoxon_rds, eval=FALSE}
@@ -1180,23 +1216,19 @@ gdsc_fus <- unfactorize(gdsc_fus)
 
 ```{r fus_wilcoxon_tests, eval=FALSE}
 ccle_signif_fus <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/ccle_signif_fusions.rds")
+ccle_signif_fus_lin <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Fusion_Lineage"), g2p_list = unique(as.character(g2p_fus$Drug_Fusion_Lineage[!is.na(g2p_fus$Drug_Fusion_Lineage)])), type = "fusion_lineage", outfile = "./data_munging/rds/ccle_signif_fusions_lineage.rds")
 
 ctrp_signif_fus <- WilcoxonTestDF(dataframe = ctrp_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/ctrp_signif_fusions.rds")
+ctrp_signif_fus_lin<- WilcoxonTestDF(dataframe = ctrp_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Fusion_Lineage"), g2p_list = unique(as.character(g2p_fus$Drug_Fusion_Lineage[!is.na(g2p_fus$Drug_Fusion_Lineage)])), type = "fusion_lineage", outfile = "./data_munging/rds/ctrp_signif_fusions_lineage.rds")
 
 gdsc_signif_fus <- WilcoxonTestDF(dataframe = gdsc_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/gdsc_signif_fusions.rds")
+gdsc_signif_fus_lin <- WilcoxonTestDF(dataframe = gdsc_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Fusion_Lineage"), g2p_list = unique(as.character(g2p_fus$Drug_Fusion_Lineage[!is.na(g2p_fus$Drug_Fusion_Lineage)])), type = "fusion_lineage", outfile = "./data_munging/rds/gdsc_signif_fusions_lineage.rds")
 ```
 
 ```{r load_fus_wilcoxon_rds}
-g2p_fus_4merge <- unique(select(g2p_fus, Drug_FusionPair, Direction_Curated))
-
 ccle_signif_fus <- readRDS("./data_munging/rds/ccle_signif_fusions.rds")
-# ccle_signif_fus <- merge(ccle_signif_fus, g2p_fus_4merge, by = "Drug_FusionPair", all.x = TRUE)
-
 ctrp_signif_fus <- readRDS("./data_munging/rds/ctrp_signif_fusions.rds")
-# ctrp_signif_fus <- merge(ctrp_signif_fus, g2p_fus_4merge, by = "Drug_FusionPair", all.x = TRUE)
-
 gdsc_signif_fus <- readRDS("./data_munging/rds/gdsc_signif_fusions.rds")
-# gdsc_signif_fus <- merge(gdsc_signif_fus, g2p_fus_4merge, by = "Drug_FusionPair", all.x = TRUE)
 ```
 
 ## Boxplots
@@ -1286,83 +1318,6 @@ gdsc_fus_boxplot
 # ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12, height = 5, units = "in")
 ```
 
-```{r direction_boxplots}
-# CCLE
-ccle_res_box <- ggplot(data = filter(ccle_prot_res, Drug_Gene %in% ccle_signif_prot_res$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ccle_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Resistance mutation?")
-
-ccle_sen_box <- ggplot(data = filter(ccle_prot_sen, Drug_Gene %in% ccle_signif_prot_sen$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ccle_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Sensitivity mutation?")
-ccle_dir_boxes <- plot_grid(ccle_res_box, ccle_sen_box, labels = c("A", "B"), rel_widths = c(3, 1.1))
-ggsave("./plots/manuscript/ccle_direction_boxplots.png", ccle_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
-
-# CTRP
-ctrp_res_box <- ggplot(data = filter(ctrp_prot_res, Drug_Gene %in% ctrp_signif_prot_res$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ctrp_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Resistance mutation?")
-
-ctrp_sen_box <- ggplot(data = filter(ctrp_prot_sen, Drug_Gene %in% ctrp_signif_prot_sen$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = ctrp_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Sensitivity mutation?")
-ctrp_dir_boxes <- plot_grid(ctrp_res_box, ctrp_sen_box, labels = c("A", "B"), ncol = 1)
-ggsave("./plots/manuscript/ctrp_direction_boxplots.png", ctrp_dir_boxes, device = "png", dpi = 450, width = 12, height = 8, units = "in")
-
-# GDSC
-gdsc_res_box <- ggplot(data = filter(gdsc_prot_res, Drug_Gene %in% gdsc_signif_prot_res$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = gdsc_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Resistance mutation?")
-
-gdsc_sen_box <- ggplot(data = filter(gdsc_prot_sen, Drug_Gene %in% gdsc_signif_prot_sen$Drug_Gene)) +
-  facet_wrap(~ Drug * Gene, nrow = 1) +
-  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
-  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
-  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
-  geom_text(data = gdsc_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
-  coord_cartesian(ylim = c(0, 1.1)) +
-  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
-  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
-  labs(y = "AUC", x = "Sensitivity mutation?")
-gdsc_dir_boxes <- plot_grid(gdsc_res_box, gdsc_sen_box, labels = c("A", "B"), rel_widths = c(2, 1.1))
-ggsave("./plots/manuscript/gdsc_direction_boxplots.png", gdsc_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
-```
-
 ## Heatmaps
 
 ```{r wilcoxon_heatmap_function}
@@ -1374,13 +1329,15 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
     
-    signif_grid_annot <- dcast(signif_df, Gene ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+    signif_grid_annot1 <- signif_grid
+    signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+    signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
+    
+    signif_grid_annot <- dcast(signif_df, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
-    signif_grid_annot[signif_grid_annot == "No"] <- ""
-    signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
+    signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
   }
   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) {
     signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
@@ -1399,7 +1356,10 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
-    signif_grid[signif_grid < -log10(0.05)] <- NA
+    
+    signif_grid_annot1 <- signif_grid
+    signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+    signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
     
     signif_grid_annot <- dcast(signif_df, FusionPair ~ Drug, value.var = "InG2P", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
@@ -1437,20 +1397,28 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) {
-                    grid.text(signif_grid_annot1[i, j], x = x - width*0.20, y = y + height*0.07, gp = gpar(fontsize = 17))
-                  }
+                  grid.text(signif_grid_annot1[i, j], x = x + width*0.25, y = y + height*0.07, gp = gpar(fontsize = 17))
+                  
                   if(signif_grid_annot[i, j] == "O") {
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
                   if(signif_grid_annot[i, j] == "X") {
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
                   }
+                  if(signif_grid_annot[i, j] == "resistance") {
+                    grid.circle(x = x - width*0.20, y = y + height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
+                  }
+                  if(signif_grid_annot[i, j] == "both") {
+                    grid.circle(x = x - width*0.20, y = y + height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
+                  }
                 }
                 )
   return(ht)
 }
 ```
+
+### Pancan
 
 ```{r mut_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes", radius = 0.03)
@@ -1475,6 +1443,7 @@ png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 9
 draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
+
 
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.03)
@@ -1524,6 +1493,34 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side
 dev.off()
 ```
 
+### Lineage
+
+```{r}
+MakeWilcoxonLineageHeatmap <- function(all_lin_df, lineage) {
+  use_data <- filter(all_lin_df, Gene %in% unique(g2p_mut$Gene) & disease == lineage)
+  ccle_df <- filter(use_data, Database == "CCLE")
+  ctrp_df <- filter(use_data, Database == "CTRP")
+  gdsc_df <- filter(use_datas, Database == "GDSC")
+  
+  ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_df, feature = "mutation", legend_title = "CCLE -log10(p-value)                                                                     ", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.03)
+  
+  ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_df, feature = "mutation", legend_title = "CTRP -log10(p-value)                                                                    ", legend_breaks = seq(0, 12, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
+  
+  ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_df, feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 6, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.015)
+  
+  ht <- ht_ccle + ht_ctrp + ht_gdsc
+  return(ht)
+}
+```
+
+```
+lin_ht <- lapply(lineages, makeDrugBoxplots, dataset = "CCLE")
+ccle_lvlA_drugboxplot_paths <- paste0(ccle_drugs, "_ccle_boxplots.png")
+pwalk(list(ccle_lvlA_drugboxplot_paths, ccle_lvlA_drugboxplots), ggsave, path = "./plots_18Q3/manuscript/ccle_lvlA_boxplots", dpi = 450, width = 12, height = 7, units = "in")
+
+
+ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+```
 
 # SPEARMAN: PanCan
 
@@ -1654,7 +1651,7 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, leg
   # annot_grid[annot_grid == "No"] <- ""
   # annot_grid[annot_grid == "Yes"] <- "G"
   
-  col_fun <- colorRamp2(color_range, c("red3", "white", "blue3"))
+  col_fun <- colorRamp2(color_range, c("forestgreen", "white", "blue3"))
   
   # Legend properties list
   ht_legend_list <- list(title_position = "topleft", legend_direction = "horizontal", legend_width = unit(3, "in"), border = "gray70", at = seq(color_range[1], color_range[3], by = 0.1), labels = seq(color_range[1], color_range[3], by = 0.1))
@@ -1691,7 +1688,7 @@ MakeCorrHeatmap <- function(drug_cor_res, row_names, col_title, color_range, leg
                     # grid.circle(x = x, y = y, r = radius, gp = gpar(fill = "transparent", col = "black"))
                   }
                   if(annot_grid[i, j] == "resistance") {
-                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "black", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "red", col = "black"))
                     # grid.text("☐", x, y, just = c(0.5, 0.425), gp = gpar(fontsize = 23, fontface = "bold"))
                   }
                 }
@@ -1754,16 +1751,170 @@ draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_le
 dev.off()
 ```
 
-
-# WILCOXON: Lineages
-
---------------------------------------------------------------------------------
-
 # SPEARMAN: Lineages
 
 --------------------------------------------------------------------------------
 
 ## GE/CN
+
+# OLD
+
+--------------------------------------------------------------------------------
+
+## Mut: Sen vs. Res tests
+
+```{r SvR_direction_datasets, eval=FALSE}
+# CCLE
+ccle_prot_dir <- unique(select(ccle_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
+## Resistance
+ccle_prot_res <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
+ccle_prot_res$Direction_Grouper <- with(ccle_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
+## Sensitivity
+ccle_prot_sen <- filter(ccle_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
+ccle_prot_sen$Direction_Grouper <- with(ccle_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
+saveRDS(ccle_prot_res, "./data_munging/rds/ccle_protein_changes_resistance.rds")
+saveRDS(ccle_prot_sen, "./data_munging/rds/ccle_protein_changes_sensitivity.rds")
+
+# CTRP
+ctrp_prot_dir <- unique(select(ctrp_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
+## Resistance
+ctrp_prot_res <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
+ctrp_prot_res$Direction_Grouper <- with(ctrp_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
+## Sensitivity
+ctrp_prot_sen <- filter(ctrp_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
+ctrp_prot_sen$Direction_Grouper <- with(ctrp_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
+saveRDS(ctrp_prot_res, "./data_munging/rds/ctrp_protein_changes_resistance.rds")
+saveRDS(ctrp_prot_sen, "./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
+
+# GDSC
+gdsc_prot_dir <- unique(select(gdsc_prot, DepMap_ID, Gene, Cell_line, CCLE_histology, TCGA_classification, CCLE_name, Drug, Drug_Gene, Score, Change_Status, Direction_Curated, Direction_Grouper))
+## Resistance
+gdsc_prot_res <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_resistance", "Yes_resistance"))
+gdsc_prot_res$Direction_Grouper <- with(gdsc_prot_res, ifelse(Direction_Grouper == "Yes_resistance", "Mutated", "Not mutated"))
+## Sensitivity
+gdsc_prot_sen <- filter(gdsc_prot_dir, Direction_Grouper %in% c("No_none", "Yes_none", "No_sensitivity", "Yes_sensitivity"))
+gdsc_prot_sen$Direction_Grouper <- with(gdsc_prot_sen, ifelse(Direction_Grouper == "Yes_sensitivity", "Mutated", "Not mutated"))
+saveRDS(gdsc_prot_res, "./data_munging/rds/gdsc_protein_changes_resistance.rds")
+saveRDS(gdsc_prot_sen, "./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
+```
+
+```{r prot_SvR_wilcoxon_tests, eval=FALSE}
+# CCLE
+ccle_signif_prot_res <- WilcoxonTestDF(dataframe = ccle_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
+ccle_signif_prot_sen <- WilcoxonTestDF(dataframe = ccle_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
+
+# CTRP
+ctrp_signif_prot_res <- WilcoxonTestDF(dataframe = ctrp_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
+ctrp_signif_prot_sen <- WilcoxonTestDF(dataframe = ctrp_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
+
+# GDSC
+gdsc_signif_prot_res <- WilcoxonTestDF(dataframe = gdsc_prot_res, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
+gdsc_signif_prot_sen <- WilcoxonTestDF(dataframe = gdsc_prot_sen, grouping = c("Drug", "Gene", "Drug_Gene"), type = "direction", outfile = "./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
+```
+
+```{r load_prot_SvR_wilcoxon_tests}
+ccle_signif_prot_res <- readRDS("./data_munging/rds/ccle_signif_protein_changes_resistance.rds")
+ccle_signif_prot_res$Direction_Test <- "Resistance"
+ccle_signif_prot_sen <- readRDS("./data_munging/rds/ccle_signif_protein_changes_sensitivity.rds")
+ccle_signif_prot_sen$Direction_Test <- "Sensitivity"
+ccle_signif_prot_dir <- bind_rows(ccle_signif_prot_res, ccle_signif_prot_sen)
+
+ctrp_signif_prot_res <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_resistance.rds")
+ctrp_signif_prot_res$Direction_Test <- "Resistance"
+ctrp_signif_prot_sen <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_sensitivity.rds")
+ctrp_signif_prot_sen$Direction_Test <- "Sensitivity"
+ctrp_signif_prot_dir <- bind_rows(ctrp_signif_prot_res, ctrp_signif_prot_sen)
+
+gdsc_signif_prot_res <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_resistance.rds")
+gdsc_signif_prot_res$Direction_Test <- "Resistance"
+gdsc_signif_prot_sen <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_sensitivity.rds")
+gdsc_signif_prot_sen$Direction_Test <- "Sensitivity"
+gdsc_signif_prot_dir <- bind_rows(gdsc_signif_prot_res, gdsc_signif_prot_sen)
+
+ccle_prot_res <- readRDS("./data_munging/rds/ccle_protein_changes_resistance.rds")
+ccle_prot_sen <- readRDS("./data_munging/rds/ccle_protein_changes_sensitivity.rds")
+ctrp_prot_res <- readRDS("./data_munging/rds/ctrp_protein_changes_resistance.rds")
+ctrp_prot_sen <- readRDS("./data_munging/rds/ctrp_protein_changes_sensitivity.rds")
+gdsc_prot_res <- readRDS("./data_munging/rds/gdsc_protein_changes_resistance.rds")
+gdsc_prot_sen <- readRDS("./data_munging/rds/gdsc_protein_changes_sensitivity.rds")
+```
+
+```{r direction_boxplots, eval=FALSE}
+# CCLE
+ccle_res_box <- ggplot(data = filter(ccle_prot_res, Drug_Gene %in% ccle_signif_prot_res$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ccle_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Resistance mutation?")
+
+ccle_sen_box <- ggplot(data = filter(ccle_prot_sen, Drug_Gene %in% ccle_signif_prot_sen$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "springgreen4", "Not mutated" = "palegreen3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ccle_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Sensitivity mutation?")
+ccle_dir_boxes <- plot_grid(ccle_res_box, ccle_sen_box, labels = c("A", "B"), rel_widths = c(3, 1.1))
+ggsave("./plots/manuscript/ccle_direction_boxplots.png", ccle_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+
+# CTRP
+ctrp_res_box <- ggplot(data = filter(ctrp_prot_res, Drug_Gene %in% ctrp_signif_prot_res$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ctrp_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Resistance mutation?")
+
+ctrp_sen_box <- ggplot(data = filter(ctrp_prot_sen, Drug_Gene %in% ctrp_signif_prot_sen$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "steelblue4", "Not mutated" = "slategray3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = ctrp_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Sensitivity mutation?")
+ctrp_dir_boxes <- plot_grid(ctrp_res_box, ctrp_sen_box, labels = c("A", "B"), ncol = 1)
+ggsave("./plots/manuscript/ctrp_direction_boxplots.png", ctrp_dir_boxes, device = "png", dpi = 450, width = 12, height = 8, units = "in")
+
+# GDSC
+gdsc_res_box <- ggplot(data = filter(gdsc_prot_res, Drug_Gene %in% gdsc_signif_prot_res$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = gdsc_signif_prot_res, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Resistance mutation?")
+
+gdsc_sen_box <- ggplot(data = filter(gdsc_prot_sen, Drug_Gene %in% gdsc_signif_prot_sen$Drug_Gene)) +
+  facet_wrap(~ Drug * Gene, nrow = 1) +
+  scale_color_manual(values = c("Mutated" = "turquoise4", "Not mutated" = "paleturquoise3")) +
+  geom_boxplot(mapping = aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), outlier.shape = NA) +
+  geom_jitter(aes(x = Direction_Grouper, y = Score, color = Direction_Grouper), width = 0.2, alpha = 0.5, size = 0.6) +
+  geom_text(data = gdsc_signif_prot_sen, aes(x = 1.5, y = 1.05, label = p.signif), size = 7) +
+  coord_cartesian(ylim = c(0, 1.1)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+  theme(legend.position = "none", axis.title.y = element_blank(), axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+  labs(y = "AUC", x = "Sensitivity mutation?")
+gdsc_dir_boxes <- plot_grid(gdsc_res_box, gdsc_sen_box, labels = c("A", "B"), rel_widths = c(2, 1.1))
+ggsave("./plots/manuscript/gdsc_direction_boxplots.png", gdsc_dir_boxes, device = "png", dpi = 450, width = 12, height = 5, units = "in")
+```
 
 # SESSION INFORMATION
 
