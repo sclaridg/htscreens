@@ -35,6 +35,8 @@ options(mc.cores = parallel::detectCores(), expressions = 5e5)
 ```
 
 ```{r libraries}
+# install_github("jokergoo/ComplexHeatmap")
+library(devtools)
 library(circlize)
 library(ComplexHeatmap)
 library(cowplot)
@@ -44,6 +46,7 @@ library(ggrepel)
 library(ggsignif)
 library(jsonlite)
 library(kableExtra)
+library(magrittr)
 library(naniar)
 library(openxlsx)
 library(reshape2)
@@ -240,7 +243,7 @@ g2p_dg_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) 
 g2p_lins <- as.character(unique(g2p$group_general_lineage_name[!is.na(g2p$group_general_lineage_name)]))
 
 g2p$biomarker_type_curated <- ifelse(is.na(g2p$biomarker_type_curated), "None", as.character(g2p$biomarker_type_curated))
-g2p_split <- filter(g2p, !is.na(Drug)) %>% group_split(biomarker_type_curated)
+g2p_split <- filter(g2p, !is.na(Drug)) %>% split(g2p$biomarker_type_curated)
 g2p_amp <- g2p_split[[1]]
 g2p_expr <- g2p_split[[2]]
 g2p_fus <- g2p_split[[3]]
@@ -463,17 +466,23 @@ ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_
 gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
 
 ccle <- MergeOmicsG2P(database = "CCLE", dataframe = ccle_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/ccle_data_19Q2.rds")
-write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
+# write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
 
 ctrp <- MergeOmicsG2P(database = "CTRP", dataframe = ctrp_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
-write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
-
+# write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
 
 gdsc <- MergeOmicsG2P(database = "GDSC", dataframe = gdsc_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/gdsc_data_19Q2.rds")
-write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
+# write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
 ```
 
 ```{r load_drug_rds, eval=TRUE}
+# ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2_all.rds") %>% drop_na(Drug)
+# ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2_all.rds") %>% drop_na(Drug)
+# gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2_all.rds") %>% drop_na(Drug)
+# saveRDS(ccle, "./data_munging/19Q2/ccle_data_19Q2.rds", compress = "xz")
+# saveRDS(ctrp, "./../htscreens_giant_files/ctrp_data_19Q2.rds", compress = "xz")
+# saveRDS(gdsc, "./data_munging/19Q2/gdsc_data_19Q2.rds", compress = "xz")
+
 ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2.rds") %>% drop_na(Drug)
 ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2.rds") %>% drop_na(Drug)
 gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2.rds") %>% drop_na(Drug)
