@@ -466,17 +466,23 @@ ctrp_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_ctrp_
 gdsc_all <- readRDS("./../htscreens_giant_files/pozdeyev_data/pozdeyev2016_gdsc_all_edited.rds")
 
 ccle <- MergeOmicsG2P(database = "CCLE", dataframe = ccle_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/ccle_data_19Q2.rds")
-write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
+# write.csv.gz(ccle %>% drop_na(Score), "./data_munging/19Q2/ccle_data_19Q2.csv.gz")
 
 ctrp <- MergeOmicsG2P(database = "CTRP", dataframe = ctrp_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./../htscreens_giant_files/ctrp_data_19Q2.rds")
-write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
-
+# write.csv.gz(ctrp %>% drop_na(Score), "./../htscreens_giant_files/ctrp_data_19Q2.csv.gz")
 
 gdsc <- MergeOmicsG2P(database = "GDSC", dataframe = gdsc_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/gdsc_data_19Q2.rds")
-write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
+# write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
 ```
 
 ```{r load_drug_rds, eval=TRUE}
+# ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2_all.rds") %>% drop_na(Drug)
+# ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2_all.rds") %>% drop_na(Drug)
+# gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2_all.rds") %>% drop_na(Drug)
+# saveRDS(ccle, "./data_munging/19Q2/ccle_data_19Q2.rds", compress = "xz")
+# saveRDS(ctrp, "./../htscreens_giant_files/ctrp_data_19Q2.rds", compress = "xz")
+# saveRDS(gdsc, "./data_munging/19Q2/gdsc_data_19Q2.rds", compress = "xz")
+
 ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2.rds") %>% drop_na(Drug)
 ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2.rds") %>% drop_na(Drug)
 gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2.rds") %>% drop_na(Drug)
