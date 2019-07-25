@@ -35,6 +35,8 @@ options(mc.cores = parallel::detectCores(), expressions = 5e5)
 ```
 
 ```{r libraries}
+# install_github("jokergoo/ComplexHeatmap")
+library(devtools)
 library(circlize)
 library(ComplexHeatmap)
 library(cowplot)
@@ -44,6 +46,7 @@ library(ggrepel)
 library(ggsignif)
 library(jsonlite)
 library(kableExtra)
+library(magrittr)
 library(naniar)
 library(openxlsx)
 library(reshape2)
@@ -240,7 +243,7 @@ g2p_dg_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) 
 g2p_lins <- as.character(unique(g2p$group_general_lineage_name[!is.na(g2p$group_general_lineage_name)]))
 
 g2p$biomarker_type_curated <- ifelse(is.na(g2p$biomarker_type_curated), "None", as.character(g2p$biomarker_type_curated))
-g2p_split <- filter(g2p, !is.na(Drug)) %>% group_split(biomarker_type_curated)
+g2p_split <- filter(g2p, !is.na(Drug)) %>% split(g2p$biomarker_type_curated)
 g2p_amp <- g2p_split[[1]]
 g2p_expr <- g2p_split[[2]]
 g2p_fus <- g2p_split[[3]]
