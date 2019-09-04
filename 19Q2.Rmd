@@ -634,9 +634,9 @@ crispr <- readRDS("./../htscreens_giant_files/crispr_data_19Q2.rds")
 ```
 
 ```{r merge_crispr_fus, eval=FALSE}
-fusions_filt <- filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))
+fusions_filt <- unique(filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))) %>% select(-c("Cell_line", "disease"))
 crispr_fus_grid <- expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair))
-crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "Cell_line", "FusionPair", "disease"), all = TRUE)
+crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "FusionPair"), all = TRUE)
 crispr_fus$Fusion_Status <- ifelse(!is.na(crispr_fus$LeftGene), "Yes", "No")
 crispr_fus$Drug <- "CRISPR"
 crispr_fus$Drug_FusionPair <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
@@ -646,7 +646,7 @@ crispr_fus$G2P_Fusion <- ifelse(crispr_fus$FusionPair %in% unique(as.character(g
 crispr_fus$G2P_Drug_Fusion_Lineage <- "No"
 crispr_fus$Database <- "CRISPR"
 
-saveRDS(crispr_fus, "./data_munging/rds/crispr_fusions.rds")
+saveRDS(crispr_fus, "./../htscreens_giant_files/crispr_fusions.rds", compress = "xz")
 ```
 
 ```{r merge_crispr_prot, eval=FALSE}
@@ -675,12 +675,12 @@ crispr_prot$G2P_Drug_Gene_Protein_Change_Lineage <- "No"
 crispr_prot <- merge(crispr_prot, unique(select(g2p_prot, Gene_Protein_Change, Direction_Curated)), by = "Gene_Protein_Change", all.x = TRUE)
 crispr_prot$Database <- "CRISPR"
 
-saveRDS(crispr_prot, "./data_munging/rds/crispr_protein_changes.rds")
+saveRDS(crispr_prot, "./../htscreens_giant_files/crispr_protein_changes.rds", compress = "xz")
 ```
 
 ```{r, eval = FALSE}
-crispr_fus <- readRDS("./data_munging/rds/crispr_fusions.rds")
-crispr_prot <- readRDS("./data_munging/rds/crispr_protein_changes.rds")
+crispr_fus <- readRDS("./../htscreens_giant_files/crispr_fusions.rds")
+crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
 ```
 
 
