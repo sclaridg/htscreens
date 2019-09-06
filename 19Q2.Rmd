@@ -662,7 +662,7 @@ maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 maf_changes_filt <- filter(maf_changes_df, Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)))
 
 crispr_prot_grid <- expand.grid("DepMap_ID" = unique(crispr_all$DepMap_ID), "Gene_Protein_Change" = unique(maf_changes_filt$Gene_Protein_Change))
-crispr_prot <- merge(crispr_all, crispr_prot_grid, by = "DepMap_ID", all = TRUE)
+crispr_prot <- merge(crispr_melt, crispr_prot_grid, by = "DepMap_ID", all = TRUE)
 crispr_prot <- merge(crispr_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Protein_Change"), all = TRUE)
 crispr_prot <- merge(crispr_prot, ccl_meta, by = "DepMap_ID", all.x = TRUE)
 crispr_prot$Change_Status <- ifelse(!is.na(crispr_prot$Protein_Change), "Yes", "No")
@@ -678,7 +678,7 @@ crispr_prot$Database <- "CRISPR"
 saveRDS(crispr_prot, "./../htscreens_giant_files/crispr_protein_changes.rds", compress = "xz")
 ```
 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 crispr_fus <- readRDS("./../htscreens_giant_files/crispr_fusions.rds")
 crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
 ```
