@@ -1,12 +1,11 @@
 ---
 output              :
-  pdf_document      :
+  word_document     :
+    reference_docx  : ./word_reference_template.docx
     toc             : true
     toc_depth       : 2
-    number_sections : true
     fig_caption     : true
     df_print        : kable
-    highlight       : tango
     # citation_package: natbib
 title               : "Manuscript Draft"
 author              :
@@ -20,7 +19,12 @@ geometry            : margin=1in
 linkcolor           : blue
 urlcolor            : blue
 citecolor           : blue
-abstract            : Multiple high-throughput functional screens in cancer cell lines have generated large amounts of information on drug efficacy in a variety of genomic contexts and cancer lineages. Inconsistencies between datasets have led us to investigate whether these large-scale screens reproduce established clinical drug-gene associations and if genomic features particular to specific genes improve said reproducibility. We evaluated three large-scale, small-molecule drug screens within the context of clinical interpretations derived from a new cancer variant annotation resource published by the Variant Interpretation for Cancer Consortium (VICC). We identified low levels of concordance between the three drug screen datasets and clinical drug-gene associations using mutation status, gene expression, and copy number as genomic indicators. Less than half of the clinical drug-gene cancer associations from the VICC resource were identified in these three drug screen datasets, suggesting a barrier to translating findings from these large-scale screens into the clinic.
+floatsintext        : yes
+figurelist          : no
+tablelist           : no
+footnotelist        : no
+linenumbers         : yes
+abstract            : Multiple high-throughput functional screens in cancer cell lines have generated large amounts of information on drug efficacy in a variety of genomic contexts and cancer lineages. Reported inconsistencies between datasets have led us to investigate whether these large-scale screens reproduce established clinical drug-gene associations and if genomic features particular to specific genes improve said reproducibility. We evaluated three large-scale, small-molecule drug screens within the context of clinical interpretations derived from a new cancer variant annotation resource published by the Variant Interpretation for Cancer Consortium (VICC). We identified low levels of concordance between the three drug screen datasets and clinical drug-gene associations using mutation status, gene expression, and copy number as genomic indicators. Less than half of the clinical drug-gene cancer associations from the VICC resource were identified in these three drug screen datasets, suggesting a barrier to translating findings from these large-scale screens into the clinic.
 ---
 
 \newpage
@@ -159,30 +163,34 @@ g2p_lins <- as.character(unique(g2p_dgl_tally$group_general_lineage_name))
 ```
 
 ```{r load-processed-data, echo=FALSE, include=FALSE}
-ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190708.csv", sep = ",", header = TRUE, row.names = 1)
-maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
-maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
-cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
-ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
-fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz", header = TRUE, sep = ",")
+# ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190708.csv", sep = ",", header = TRUE, row.names = 1)
+# maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
+# maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
+# cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
+# ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
+# fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz", header = TRUE, sep = ",")
+# 
+# ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2.rds") %>% drop_na(Drug)
+# ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2.rds") %>% drop_na(Drug)
+# gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2.rds") %>% drop_na(Drug)
+# fus <- readRDS("./data_munging/rds/fusions_merged.rds") %>% drop_na(Drug)
+# fus_summary <- fus %>% count(Database, Drug, FusionPair, Fusion_Status)
+# prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
+# 
+# crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
 
-ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2.rds") %>% drop_na(Drug)
-ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2.rds") %>% drop_na(Drug)
-gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2.rds") %>% drop_na(Drug)
-fus <- readRDS("./data_munging/rds/fusions_merged.rds") %>% drop_na(Drug)
-fus_summary <- fus %>% count(Database, Drug, FusionPair, Fusion_Status)
-prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
-
-crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
-
-crispr_prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
+# crispr_prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
 ```
 
-G2P designed a set of standards for stratifying their database’s cancer variant interpretations, ranging from preclinical data at the low-evidence end (level D) to clinically actionable interpretations at the high-evidence end (level A). To test only these clinically actionable associations, we filtered the G2P dataset for only level-A G2P interpretations, of which there were `r formatC(nrow(g2p), big.mark = ",", big.interval = 3L)` (see Methods). All compounds screened within the GDSC, CTRP, and CCLE datasets are considered “small molecules” and are respectively linked to Compound (CID) numbers used for indexing in the PubChem database (https://pubchem.ncbi.nlm.nih.gov/). As a result, non-small molecules, which include proteins and biologics (i.e. monoclonal antibodies), that had level-A G2P evidence could not be included in our comparisons. Thus, G2P interpretations for which the compound did not have a matching CID code were excluded from further analysis as were interpretations that did not have an associated compound, resulting in removal of `r nrow(g2p_nonCID)` interpretations (Table\ \@ref(tab:table-g2p-nonCID)). It should be noted that cisplatin, a small molecule, was excluded due to its being indexed with a ChEMBLdb identifier (https://www.ebi.ac.uk/chembl/), which we did not manually re-index to a CID to avoid accidental mischaracterization.
+G2P designed a set of standards for stratifying their database’s cancer variant interpretations, ranging from preclinical data at the low-evidence end (level D) to clinically actionable interpretations at the high-evidence end (level A). To test only these clinically actionable associations, we filtered the G2P dataset for only level-A G2P interpretations, of which there were `r formatC(nrow(g2p), big.mark = ",", big.interval = 3L)` (see Methods). All compounds screened within the GDSC, CTRP, and CCLE datasets are considered "small molecules" and are respectively linked to Compound (CID) numbers used for indexing in the PubChem database (https://pubchem.ncbi.nlm.nih.gov/). As a result, non-small molecules, which include proteins and biologics (i.e. monoclonal antibodies), that had level-A G2P evidence could not be included in our comparisons. Thus, G2P interpretations for which the compound did not have a matching CID code were excluded from further analysis as were interpretations that did not have an associated compound, resulting in removal of `r nrow(g2p_nonCID)` interpretations (Table\ \@ref(tab:table-g2p-nonCID)). It should be noted that cisplatin, a small molecule, was excluded due to its being indexed with a ChEMBLdb identifier (https://www.ebi.ac.uk/chembl/), which we did not manually re-index to a CID to avoid accidental mischaracterization.
 
-After filtering, `r nrow(g2p_filt)` level-A G2P interpretations were carried forward in subsequent analyses, constituting `r length(g2p_drugs)` unique drugs and `r length(g2p_genes)` unique genes in `r length(g2p_druggenes)` distinct level-A combinations (*Figure 1A: Pink heatmap*). The number of level-A interpretations per drug ranged from `r range(g2p_drug_tally$n)[1]` to `r range(g2p_drug_tally$n)[2]` ($M =$ `r formatC(mean(g2p_drug_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_drug_tally$n), digits = 2)`), `r range(g2p_gene_tally$n)[1]` to `r range(g2p_gene_tally$n)[2]` ($M =$ `r formatC(mean(g2p_gene_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_gene_tally$n), digits = 2)`) per gene, and for each level-A drug-gene combination, the range was `r range(g2p_druggene_tally$n)[1]` to `r range(g2p_druggene_tally$n)[2]` ($M =$ `r formatC(mean(g2p_druggene_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_druggene_tally$n), digits = 2)`). These unique drugs, genes, and combinations are hereafter referred to as G2P drugs, G2P genes, and G2P associations. Filtering our screening datasets by these clinical criteria yields panels of potentially clinically relevant omic features. Of the `r length(g2p_drugs)` unique G2P drugs, N of them were screened in at least one of the drug screen datasets, N drugs were screened in at least two of the three datasets, and only N were screened in all three datasets. The remaining N un-screened G2P drugs suggests an incompleteness of these drug screens, though these projects frequently release new screening data that may include these drugs in future releases.
+<!-- After filtering, `r nrow(g2p_filt)` level-A G2P interpretations were carried forward in subsequent analyses, constituting `r length(g2p_drugs)` unique drugs and `r length(g2p_genes)` unique genes in `r length(g2p_druggenes)` distinct level-A combinations (*Figure 1: Pink heatmap*). The number of level-A interpretations per drug ranged from `r range(g2p_drug_tally$n)[1]` to `r range(g2p_drug_tally$n)[2]` ($M =$ `r formatC(mean(g2p_drug_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_drug_tally$n), digits = 2)`), `r range(g2p_gene_tally$n)[1]` to `r range(g2p_gene_tally$n)[2]` ($M =$ `r formatC(mean(g2p_gene_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_gene_tally$n), digits = 2)`) per gene, and for each level-A drug-gene combination, the range was `r range(g2p_druggene_tally$n)[1]` to `r range(g2p_druggene_tally$n)[2]` ($M =$ `r formatC(mean(g2p_druggene_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_druggene_tally$n), digits = 2)`). These unique drugs, genes, and combinations are hereafter referred to as G2P drugs, G2P genes, and G2P associations. Filtering our screening datasets by these clinical criteria yields panels of potentially clinically relevant omic features. Of the `r length(g2p_drugs)` unique G2P drugs, N of them were screened in at least one of the drug screen datasets, N drugs were screened in at least two of the three datasets, and only N were screened in all three datasets. The remaining N un-screened G2P drugs suggests an incompleteness of these drug screens, though these projects frequently release new screening data that may include these drugs in future releases. -->
+
+![Summary of G2P data content and concordance with drug sensitivity screens. (left) The presence or absence of small molecule drugs analyzed in GDSC, CTRP, and CCLE that were identified with level-A evidence in the G2P database. (right) The number of level-A interpretations for each drug-gene combination in the G2P database. Both axes are ordered by decreasing number of G2P associations.](./plots/manuscript/g2p_summary_heatmap.png)
 
 > Mutation status
+
+
 
 > Fusions
 
@@ -198,8 +206,6 @@ However, taking these results as a whole, we observe little concordance between 
 - What do these correlations with mutation status, gene expression, and copy number look like when you constrict to a specific lineage?
 - When you restrict, do the correlations become more distinct?
 - Are the lineage-specific results approximately the same as the pancancer results?
-- Looking at a histogram of p-values, if the histogram is flat, then nothing is significant (note from meeting on 11/16)
-- KS test results
 
 In the `r nrow(g2p_filt)` level-A G2P interpretations, there was a wide variation in the specificity of cancer description, ranging from “Waldenström macroglobulinemia” and “hyper eosinophilic advanced syndrome” on the more detailed end to “cancer” on the broad end. Similarly, the drug screen datasets had a wide range in lineage specificity, e.g. CCLE, GTRP, and GDSC all had lineages labeled “leukemia” and “T-cell childhood acute lymphocytic leukemia” and the CRISPR dataset had cell lines labeled “Epstein-Barr virus-related Burkitt lymphoma” and “lymphoma.” To more easily conduct comparative analyses in a cancer-specific manner, we developed a more general lineage grouping method derived from the Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml2019] assigned to each cell line, yielding `r length(unique(ccl_converter$group_general_lineage_name))` unique lineage groupings. This custom lineage grouping was included in our harmonized cancer cell line database (see Methods).
 
