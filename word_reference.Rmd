@@ -1,0 +1,36 @@
+---
+title: "Untitled"
+
+author:
+- Jane Doe
+- John Doe
+date: "`r format(Sys.time(), '%d %B %Y')`"
+toc: yes
+output:
+  word_document:
+    reference_docx: ./word_reference_template.docx
+tags: [tag1, tag2]
+abstract: |
+  Abstract text goes here.
+---
+
+# HEADER
+
+Body text goes here.
+
+## Subheader
+
+Body text goes here.
+
+- List item 1
+- List item 2
+    - Sub-list item 1
+    - Sub-list item 2
+
+### Sub-subheader
+
+Body text goes here.
+
+> Block quote
+
+![Figure caption.](./plots/manuscript/all_venn_ccls.png) 
