@@ -747,7 +747,6 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
 
 ## Histology distributions
 
-**RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
 ```{r histology_dists_data, eval=FALSE}
 ccle_hists <- unique(select(ccle, DepMap_ID, disease)) %>% count(disease)
 ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
@@ -780,7 +779,6 @@ ggplot(drug_hists, aes(x = Dataset, y = n, fill = disease)) +
 dev.off()
 ```
 
-**RUN THIS WHEN CRISPR IS DONE MERGING (5/17)**
 ```{r, eval=FALSE}
 ccle_ccls <- unique(ccle$DepMap_ID)
 ctrp_ccls <- unique(ctrp$DepMap_ID)
@@ -796,7 +794,7 @@ ggplot(all_ccls, aes(x = fct_infreq(factor(disease)), fill = disease)) +
   geom_bar(color = "black") +
   scale_y_continuous(breaks = seq(0, 220, by = 40), labels = seq(0, 220, by = 40)) +
   guides(fill = FALSE) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1, vjust = 1)) +
   labs(y = "Number of Cell Lines", x = "Histology", caption = paste0(formatC(nrow(all_ccls), format = "d", big.mark = ","), " cell lines represented."))
 dev.off()
 ```
