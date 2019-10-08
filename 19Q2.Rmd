@@ -76,6 +76,10 @@ unfactorize <- function(df){
 A comprehensive cancer cell line information was curated by both Daniel Charytonowicz and myself.
 
 DepMap 19Q2 update fixed almost all of the inconsistencies of the Primary.Disease column, though there were come capitalization inconsistencies.
+```{r}
+ccle_meta_test <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+```
+
 ```{r depmap_metadata, eval=FALSE}
 ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
 colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
@@ -84,10 +88,10 @@ lineage_converter <- unique(ccl_converter[, c("DepMap_ID", "grouped_general_doid
 # OLD CCL_META
 ccl_histologies <- read.delim("./data_munging/ccl_histologies_metadata.csv", sep = ",", header = TRUE, row.names = 1)
 colnames(ccl_histologies) <- c("Cell_line", "CCLE_histology", "TCGA_classification", "CCLE_name", "DepMap_ID")
-ccl_meta <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
-ccl_meta <- select(ccl_meta, DepMap_ID, stripped_cell_line_name, CCLE_name, disease)
-colnames(ccl_meta) <- c("DepMap_ID", "Cell_line", "CCLE_name", "disease")
-ccl_meta <- subset(ccl_meta, !grepl("MERGED", CCLE_name, fixed = TRUE))
+ccl_meta_orig <- read.delim("./data_munging/19Q2/sample_info.csv", sep = ",", header = TRUE, na.strings = c("", NA))
+ccl_meta_orig_filt <- select(ccl_meta_orig, DepMap_ID, stripped_cell_line_name, CCLE_name, disease)
+colnames(ccl_meta_orig_filt) <- c("DepMap_ID", "Cell_line", "CCLE_name", "disease")
+ccl_meta <- subset(ccl_meta_orig_filt, !grepl("MERGED", CCLE_name, fixed = TRUE))
 ccl_diseases <- as.character(unique(ccl_meta$disease))[as.character(unique(ccl_meta$disease)) != " "]
 CCLE_histology <- tolower(gsub("^[a-z0-9]*_", "", ccl_meta$CCLE_name, ignore.case = TRUE))
 ccl_meta <- add_column(ccl_meta, CCLE_histology = CCLE_histology, .after = "CCLE_name")
@@ -108,17 +112,22 @@ ccl_meta$disease <- with(ccl_meta, ifelse(CCLE_histology == "large_intestine", "
                                    ifelse(CCLE_histology == "biliary_tract", "bile_duct",
                                    ifelse(Cell_line == "GT3TKB", "lung",
                                    ifelse(disease == "stomach" | CCLE_histology == "stomach", "gastric", disease))))))))
-write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20190718.csv")
-```
-
-```{r}
-ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190717.csv", sep = ",", header = TRUE, row.names = 1)
-ccl_meta <- ccl_meta %>% select(DepMap_ID, Cell_line, disease)
+# Filter out cell lines without a DepMap ID or a cell line
+ccl_meta <- filter(ccl_meta, !is.na(DepMap_ID) & !is.na(Cell_line))
+# Filter out cell lines that have a CCLE_name not present in the original sample info from DepMap
+ccl_meta <- filter(ccl_meta, CCLE_name %in% ccl_meta_orig$CCLE_name & Cell_line %in% ccl_meta_orig_filt$Cell_line)
+# Remove cell line not used in Pozdeyev
 ccl_meta <- filter(ccl_meta, DepMap_ID != "ACH-002397")
-ccl_unique <- data.frame(disease = unique(ccl_meta$disease))
+write.csv(ccl_meta, "./data_munging/19Q2/sample_info_edit_20191008.csv")
 ```
 
 ACH-002397 (KMH2_THYROID) was removed to align with Pozdeyev et al (2016) cell line name harmonization. CTRP only screened KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE, whereas GDSC screend both KMH2_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE (i.e. KM-H2) and KMH2_THYROID (i.e. KMH-2). During their harmonization process, Pozdeyev et al only kept KM-H2 from GDSC. Thus, we removed KMH2_THYROID from further analyses.
+
+```{r}
+ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20191008.csv", sep = ",", header = TRUE, row.names = 1)
+ccl_meta <- ccl_meta %>% select(DepMap_ID, Cell_line, disease)
+ccl_unique <- data.frame(disease = unique(ccl_meta$disease))
+```
 
 ## G2P
 
@@ -311,11 +320,11 @@ fusions <- select(fusions, DepMap_ID, X.FusionName, LeftGene, RightGene)
 fusions <- as.data.frame(lapply(fusions, function(x) gsub("IGH@|IGH-@", "IGH", x)))
 colnames(fusions) <- c("DepMap_ID", "FusionPair", "LeftGene", "RightGene")
 fusions <- merge(fusions, ccl_meta, by = "DepMap_ID", all.x = TRUE)
-write.csv.gz(fusions, "./data_munging/19Q2/CCLE_fusions_edit_20190718.csv.gz")
+write.csv.gz(fusions, "./data_munging/19Q2/CCLE_fusions_edit_20191008.csv.gz")
 ```
 
 ```{r}
-fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190718.csv.gz", header = TRUE, sep = ",")
+fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20191008.csv.gz", header = TRUE, sep = ",")
 ```
 
 DepMap WES CN Data:
@@ -652,8 +661,6 @@ crispr_fus$Database <- "CRISPR"
 saveRDS(crispr_fus, "./data_munging/19Q2/crispr_fusions.rds", compress = "xz")
 ```
 
-**NEED TO DO THIS**
-
 ```{r merge_crispr_prot, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
@@ -801,7 +808,7 @@ dev.off()
 
 ## G2P summary heatmap
 
-```{r dg_heatmap, fig.height=6, fig.width=8, warning=FALSE}
+```{r dg_heatmap, fig.height=6, fig.width=8, warning=FALSE, eval=FALSE}
 g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
 g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
@@ -818,7 +825,7 @@ hta_data$GDSC <- ifelse(hta_data$Drug %in% unique(gdsc$Drug), "Screened", "Not s
 rownames(hta_data) <- hta_data$Drug
 hta_data$Drug <- NULL
 
-hta_annot <- HeatmapAnnotation(text = anno_text(colnames(hta_data), offset = unit(0.1, "in"), gp = gpar(fontsize = 10)))
+hta_annot <- HeatmapAnnotation(text = anno_text(colnames(hta_data), offset = unit(0.4, "in"), gp = gpar(fontsize = 10)))
 hta_legend_list <- list(legend_direction = "horizontal", border = "gray70", nrow = 2)
 hta <- Heatmap(hta_data,
                name = "Functional screen status           ",
@@ -874,9 +881,11 @@ draw(hta + ht, gap = unit(5, "mm"), heatmap_legend_side = "top")
 dev.off()
 ```
 
+**ENDED HERE 10/08**
+
 ## Clustered AUC heatmap
 
-```{r auc_clustered_ht, eval=FALSE}
+```{r auc_clustered_ht, eval=TRUE}
 ccle_auc_grid <- dcast(ccle, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 ctrp_auc_grid <- dcast(ctrp, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 gdsc_auc_grid <- dcast(gdsc, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
@@ -1078,6 +1087,8 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
   return(signif)
 }
 ```
+
+**10/8 Ran code up to here**
 
 ## Mutation status
 
