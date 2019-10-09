@@ -808,7 +808,7 @@ dev.off()
 
 ## G2P summary heatmap
 
-```{r dg_heatmap, fig.height=6, fig.width=8, warning=FALSE, eval=FALSE}
+```{r g2p_gount_summ}
 g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
 g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
@@ -816,7 +816,9 @@ g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2
 
 g2p_gene_order <- colnames(g2p_dg_counts)
 g2p_drug_order <- rownames(g2p_dg_counts)
+```
 
+```{r dg_heatmap, fig.height=6, fig.width=8, warning=FALSE, eval=FALSE}
 # Create annotation layer
 hta_data <- data.frame(Drug = rownames(g2p_dg_counts), CCLE = NA, CTRP = NA, GDSC = NA)
 hta_data$CCLE <- ifelse(hta_data$Drug %in% unique(ccle$Drug), "Screened", "Not screened")
@@ -885,7 +887,7 @@ dev.off()
 
 ## Clustered AUC heatmap
 
-```{r auc_clustered_ht, eval=TRUE}
+```{r auc_clustered_ht, eval=FALSE}
 ccle_auc_grid <- dcast(ccle, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 ctrp_auc_grid <- dcast(ctrp, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 gdsc_auc_grid <- dcast(gdsc, Drug ~ DepMap_ID, value.var = "Score", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
@@ -1172,6 +1174,8 @@ gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ_lin, by = c("Drug", "Gene
 ### Protein changes
 
 ```{r protein_change_data}
+crispr_prot <- unfactorize(crispr_prot)
+
 ccle_prot <- filter(prot, Database == "CCLE")
 ccle_prot <- unfactorize(ccle_prot)
 # ccle_prot_count <- ccle_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
@@ -1185,7 +1189,14 @@ gdsc_prot <- unfactorize(gdsc_prot)
 # gdsc_prot_count <- gdsc_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 ```
 
+**10/9 ENDED HERE**
+
 ```{r prot_wilcoxon_tests, eval=FALSE}
+# crispr_prot <- unfactorize(crispr_prot)
+# crispr_signif_prot <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/crispr_signif_protein_changes.rds")
+# 10/9: Ran above line and got this error: Error in wilcox.test.default(xi, xj, paired = paired, ...) : not enough (finite) 'x' observations
+# crispr_signif_prot_lin <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/crispr_signif_protein_changes_lineage.rds")
+
 ccle_prot <- unfactorize(ccle_prot)
 ccle_signif_prot <- WilcoxonTestDF(dataframe = ccle_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/ccle_signif_protein_changes.rds")
 ccle_signif_prot_lin <- WilcoxonTestDF(dataframe = ccle_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/ccle_signif_protein_changes_lineage.rds")
@@ -1228,6 +1239,8 @@ gdsc_signif_prot_4plot <- readRDS("./data_munging/rds/gdsc_signif_protein_change
 ## Fusions
 
 ```{r fusion_data}
+crispr_fus <- unfactorize(crispr_fus)
+
 ccle_fus <- filter(fus, Database == "CCLE")
 ccle_fus <- unfactorize(ccle_fus)
 
@@ -1299,7 +1312,7 @@ ccle_fus_boxplot <- ggplot(data = ccle_fus_filt) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   labs(y = "AUC", x = "Fusion Status")
 ccle_fus_boxplot
-# ggsave("./plots/manuscript/ccle_fus_boxplots.png", ccle_fus_boxplot, width = 8, height = 5, units = "in")
+ggsave("./plots/manuscript/ccle_fus_boxplots.png", ccle_fus_boxplot, width = 8, height = 5, units = "in")
 
 # CTRP
 ctrp_fus_filt <- filter(ctrp_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
@@ -1319,7 +1332,7 @@ ctrp_fus_boxplot <- ggplot(data = ctrp_fus_filt) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   labs(y = "AUC", x = "Fusion Status")
 ctrp_fus_boxplot
-# ggsave("./plots/manuscript/ctrp_fus_boxplots.png", ctrp_fus_boxplot, width = 19, height = 5, units = "in")
+ggsave("./plots/manuscript/ctrp_fus_boxplots.png", ctrp_fus_boxplot, width = 19, height = 5, units = "in")
 
 # GDSC
 gdsc_fus_filt <- filter(gdsc_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
@@ -1339,7 +1352,7 @@ gdsc_fus_boxplot <- ggplot(data = gdsc_fus_filt) +
   guides(color = guide_legend(override.aes = list(size = 3))) +
   labs(y = "AUC", x = "Fusion Status")
 gdsc_fus_boxplot
-# ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12, height = 5, units = "in")
+ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12, height = 5, units = "in")
 ```
 
 ## Heatmaps
@@ -1513,6 +1526,7 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatma
 dev.off()
 ```
 
+**10/9 STOPPED HERE BEFORE REALIZING I NEEDED TO RUN CRISPR PROT AND FUS WILCOXON TESTS**
 
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
