@@ -650,7 +650,7 @@ fusions_filt <- unfactorize(unique(filter(fusions, FusionPair %in% unique(as.cha
 crispr_fus_grid <- unfactorize(expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair)))
 crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "FusionPair"), all = TRUE)
 crispr_fus$Fusion_Status <- ifelse(!is.na(crispr_fus$LeftGene), "Yes", "No")
-crispr_fus$Drug <- "CRISPR"
+crispr_fus$Drug <- crispr_fus$Drug_Gene
 crispr_fus$Drug_FusionPair <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
 crispr_fus$Drug_Fusion_Lineage <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair) | is.na(disease), NA, paste0(Drug, "_", FusionPair, "_", disease)))
 crispr_fus$G2P_Drug_FusionPair <- "No"
@@ -681,7 +681,7 @@ crispr_prot <- merge(crispr_prot, maf_changes_filt, by = c("DepMap_ID", "Gene_Pr
 crispr_prot <- merge(crispr_prot, ccl_meta, by = "DepMap_ID", all.x = TRUE)
 crispr_prot$Change_Status <- ifelse(!is.na(crispr_prot$Protein_Change), "Yes", "No")
 crispr_prot <- select(crispr_prot, -Protein_Change)
-crispr_prot$Drug <- "CRISPR"
+crispr_prot$Drug <- paste0("CRISPR_", crispr_prot$Gene)
 crispr_prot$Drug_Gene_Protein_Change <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
 crispr_prot$Drug_Gene_Protein_Change_Lineage <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 crispr_prot$G2P_Drug_Gene_Protein_Change <- "No"
@@ -1190,10 +1190,28 @@ gdsc_prot <- unfactorize(gdsc_prot)
 ```
 
 **10/9 ENDED HERE**
+**10/14 ENDED HERE**
+
+Testing:
+```{r}
+dataframe <- crispr_prot
+grouping <- c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change")
+
+count_n <- dataframe %>% count(Drug_Gene_Protein_Change, Change_Status) %>% filter(n >= 3)
+count_category <- count_n %>% count(Drug_Gene_Protein_Change) %>% filter(n == 2)
+keep <- intersect(count_n$Drug_Gene_Protein_Change, count_category$Drug_Gene_Protein_Change)
+dataframe <- filter(dataframe, Drug_Gene_Protein_Change %in% keep)
+dataframe$Drug_Gene_Protein_Change <- as.character(dataframe$Drug_Gene_Protein_Change)
+signif <- compare_means(Score ~ Change_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+signif <- adj_signif(signif, alpha = 0.05)
+signif <- signif[order(signif$p),]
+signif$InG2P <- ifelse(signif$Drug_Gene_Protein_Change %in% g2p_list, "Yes", "No")
+```
+
 
 ```{r prot_wilcoxon_tests, eval=FALSE}
 # crispr_prot <- unfactorize(crispr_prot)
-# crispr_signif_prot <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/crispr_signif_protein_changes.rds")
+crispr_signif_prot <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/crispr_signif_protein_changes.rds")
 # 10/9: Ran above line and got this error: Error in wilcox.test.default(xi, xj, paired = paired, ...) : not enough (finite) 'x' observations
 # crispr_signif_prot_lin <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/crispr_signif_protein_changes_lineage.rds")
 
