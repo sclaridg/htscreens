@@ -695,7 +695,7 @@ saveRDS(crispr_prot, "./data_munging/19Q2/crispr_protein_changes.rds", compress 
 
 ```{r, eval = TRUE}
 crispr_fus <- readRDS("./data_munging/19Q2/crispr_fusions.rds")
-crispr_prot <- readRDS("./data_munging/19Q2/crispr_protein_changes.rds")
+crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
 ```
 
 
@@ -1192,28 +1192,11 @@ gdsc_prot <- unfactorize(gdsc_prot)
 **10/9 ENDED HERE**
 **10/14 ENDED HERE**
 
-Testing:
-```{r}
-dataframe <- crispr_prot
-grouping <- c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change")
-
-count_n <- dataframe %>% count(Drug_Gene_Protein_Change, Change_Status) %>% filter(n >= 3)
-count_category <- count_n %>% count(Drug_Gene_Protein_Change) %>% filter(n == 2)
-keep <- intersect(count_n$Drug_Gene_Protein_Change, count_category$Drug_Gene_Protein_Change)
-dataframe <- filter(dataframe, Drug_Gene_Protein_Change %in% keep)
-dataframe$Drug_Gene_Protein_Change <- as.character(dataframe$Drug_Gene_Protein_Change)
-signif <- compare_means(Score ~ Change_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
-signif <- adj_signif(signif, alpha = 0.05)
-signif <- signif[order(signif$p),]
-signif$InG2P <- ifelse(signif$Drug_Gene_Protein_Change %in% g2p_list, "Yes", "No")
-```
-
-
 ```{r prot_wilcoxon_tests, eval=FALSE}
-# crispr_prot <- unfactorize(crispr_prot)
+crispr_prot <- unfactorize(crispr_prot)
 crispr_signif_prot <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/crispr_signif_protein_changes.rds")
 # 10/9: Ran above line and got this error: Error in wilcox.test.default(xi, xj, paired = paired, ...) : not enough (finite) 'x' observations
-# crispr_signif_prot_lin <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/crispr_signif_protein_changes_lineage.rds")
+crispr_signif_prot_lin <- WilcoxonTestDF(dataframe = crispr_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change", "Drug_Gene_Protein_Change_Lineage", "disease"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change_Lineage[!is.na(g2p_prot$Drug_Gene_Protein_Change_Lineage)])), type = "protein_change_lineage", outfile = "./data_munging/rds/crispr_signif_protein_changes_lineage.rds")
 
 ccle_prot <- unfactorize(ccle_prot)
 ccle_signif_prot <- WilcoxonTestDF(dataframe = ccle_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/ccle_signif_protein_changes.rds")
@@ -1229,20 +1212,23 @@ gdsc_signif_prot_lin <- WilcoxonTestDF(dataframe = gdsc_prot, grouping = c("Gene
 ```
 
 ```{r load_prot_wilcoxon_rds, eval=FALSE}
+crispr_signif_prot <- readRDS("./data_munging/rds/crispr_signif_protein_changes.rds")
 ccle_signif_prot <- readRDS("./data_munging/rds/ccle_signif_protein_changes.rds")
 ctrp_signif_prot <- readRDS("./data_munging/rds/ctrp_signif_protein_changes.rds")
 gdsc_signif_prot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes.rds")
 
-gene_prots <- union(unique(ccle_signif_prot$Gene_Protein_Change), union(unique(ctrp_signif_prot$Gene_Protein_Change), unique(gdsc_signif_prot$Gene_Protein_Change)))
+gene_prots <- union(union(unique(ccle_signif_prot$Gene_Protein_Change), union(unique(ctrp_signif_prot$Gene_Protein_Change), unique(gdsc_signif_prot$Gene_Protein_Change))), unique(crispr_signif_prot$Gene_Protein_Change))
 
-# all_directions <- unique(rbind(select(ccle_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ctrp_prot, Gene_Protein_Change, Drug, Direction_Curated), select(gdsc_prot, Gene_Protein_Change, Drug, Direction_Curated)))
-# saveRDS(all_directions, "./data_munging/rds/protein_changes_directions.rds")
-all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
+all_directions <- unique(rbind(select(crispr_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ccle_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ctrp_prot, Gene_Protein_Change, Drug, Direction_Curated), select(gdsc_prot, Gene_Protein_Change, Drug, Direction_Curated)))
+saveRDS(all_directions, "./data_munging/rds/protein_changes_directions.rds")
+# all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
 
+crispr_signif_prot_4plot <- merge(merge(merge(crispr_signif_prot, unique(select(crispr_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(crispr_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
 ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
 ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
 gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
 
+saveRDS(crispr_signif_prot_4plot, "./data_munging/rds/crispr_signif_protein_changes_4plot.rds")
 saveRDS(ccle_signif_prot_4plot, "./data_munging/rds/ccle_signif_protein_changes_4plot.rds")
 saveRDS(ctrp_signif_prot_4plot, "./data_munging/rds/ctrp_signif_protein_changes_4plot.rds")
 saveRDS(gdsc_signif_prot_4plot, "./data_munging/rds/gdsc_signif_protein_changes_4plot.rds")
@@ -1269,7 +1255,25 @@ gdsc_fus <- filter(fus, Drug %in% g2p_drugs & Database == "GDSC")
 gdsc_fus <- unfactorize(gdsc_fus)
 ```
 
+**10/15 FIX FUSION_STATUS COLUMN, ALL "NO"**
+
+```{r}
+dataframe <- crispr_fus
+grouping <- c("FusionPair", "Drug", "Drug_FusionPair")
+
+count_n <- dataframe %>% count(Drug_FusionPair, Fusion_Status) %>% filter(n >= 3)
+count_category <- count_n %>% count(Drug_FusionPair) %>% filter(n == 2)
+# keep <- intersect(count_n$Drug_FusionPair, count_category$Drug_FusionPair)
+# dataframe <- filter(dataframe, Drug_FusionPair %in% keep)
+# dataframe$Drug_FusionPair <- as.character(dataframe$Drug_FusionPair)
+# signif <- compare_means(Score ~ Fusion_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+```
+
+
 ```{r fus_wilcoxon_tests, eval=FALSE}
+crispr_signif_fus <- WilcoxonTestDF(dataframe = crispr_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/crispr_signif_fusions.rds")
+crispr_signif_fus_lin <- WilcoxonTestDF(dataframe = crispr_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Fusion_Lineage"), g2p_list = unique(as.character(g2p_fus$Drug_Fusion_Lineage[!is.na(g2p_fus$Drug_Fusion_Lineage)])), type = "fusion_lineage", outfile = "./data_munging/rds/crispr_signif_fusions_lineage.rds")
+
 ccle_signif_fus <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/ccle_signif_fusions.rds")
 ccle_signif_fus_lin <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Fusion_Lineage"), g2p_list = unique(as.character(g2p_fus$Drug_Fusion_Lineage[!is.na(g2p_fus$Drug_Fusion_Lineage)])), type = "fusion_lineage", outfile = "./data_munging/rds/ccle_signif_fusions_lineage.rds")
 
@@ -1311,7 +1315,27 @@ crispr_gene_mut_plot
 # ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
 ```
 
+**10/15 NEED TO DO CRISPR FUS BOXPLOTS**
+
 ```{r fusion_boxplots, fig.height=5, fig.width=12, eval=FALSE}
+# CRISPR
+# LOOK AT FUSION PREVALENCE
+# crispr_fus_filt <- filter(crispr_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1"))
+# 
+# crispr_fus_boxplot <- ggplot(data = crispr_fus_filt) +
+#   facet_grid(FusionPair ~ Drug) +
+#   scale_color_manual(name = "Fusion Status", values = c("Yes" = "darkorchid4", "No" = "thistle")) +
+#   geom_jitter(aes(x = Fusion_Status, y = Score, color = Fusion_Status), width = 0.2, alpha = 0.5, size = 0.6) +
+#   geom_boxplot(aes(x = Fusion_Status, y = Score), fill = "transparent", outlier.shape = NA, lwd = 0.3) +
+#   # coord_cartesian(ylim = c(0, 1.2)) +
+#   scale_y_continuous(breaks = seq(0, 1, by = 0.2), labels = seq(0, 1, by = 0.2)) +
+#   geom_text(data = crispr_signif_fus_filt, aes(x = 1.5, y = 1.1, label = p.signif)) +
+#   theme(legend.position = "top", legend.direction = "horizontal", axis.text.x = element_text(angle = 45, hjust = 0.8, vjust = 1)) +
+#   guides(color = guide_legend(override.aes = list(size = 3))) +
+#   labs(y = "AUC", x = "Fusion Status")
+# crispr_fus_boxplot
+# ggsave("./plots/manuscript/crispr_fus_boxplots.png", crispr_fus_boxplot, width = 8, height = 5, units = "in")
+
 # CCLE
 ccle_fus_filt <- filter(ccle_fus, FusionPair %in% c("ABL1-BCR", "BCR-ABL1") & Drug %in% g2p_drugs)
 ccle_fus_filt$Drug_f <- factor(ccle_fus_filt$Drug, levels = intersect(g2p_drug_order, unique(ccle_fus$Drug)))
@@ -1544,9 +1568,20 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatma
 dev.off()
 ```
 
-**10/9 STOPPED HERE BEFORE REALIZING I NEEDED TO RUN CRISPR PROT AND FUS WILCOXON TESTS**
+**10/15 NEED TO FIGURE OUT CRISPR HT BELOW**
+
+Ran line 1565:
+```
+Error in seq_len(n%%length(x)) : 
+  argument must be coercible to non-negative integer
+```
 
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
+ht_crispr<- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
+png(filename = "./plots/manuscript/crispr_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
+draw(ht_crispr, heatmap_legend_side = "top")
+dev.off()
+
 ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
 png(filename = "./plots/manuscript/ccle_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
