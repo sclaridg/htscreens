@@ -408,10 +408,12 @@ MergeOmicsG2P <- function(database, dataframe, maf_df, ge_df, cn_df, gene_list, 
     print(paste0("Processing ", database, " data."))
     # Melt CRISPR dataset for merging
     data <- select(dataframe, matches(paste(c("DepMap_ID", gene_list), collapse = "|")))
-    data <- melt(dataframe, id.vars = "DepMap_ID", measure.vars = colnames(data)[2:ncol(data)], variable.name = "Gene", value.name = "Score")
+    data <- melt(dataframe, id.vars = "DepMap_ID", measure.vars = colnames(data)[2:ncol(data)], variable.name = "Drug", value.name = "Score")
+    grid <- expand.grid("DepMap_ID" = unique(data$DepMap_ID), "Gene" = gene_list)
+    data <- merge(data, grid, by = "DepMap_ID", all = TRUE)
     # Merge cell line metadata
     data <- merge(data, ccl_meta, by = "DepMap_ID", all.y = TRUE)
-    data$Drug <- "CRISPR"
+    data$Drug <- paste0("CRISPR_", data$Drug)
     data$Drug_Gene <- paste0(data$Drug, "_", data$Gene)
     data$G2P_Drug_Gene <- "No"
     data$Drug_Gene_Lin <- paste0(data$Drug, "_", data$Gene, "_", data$disease)
@@ -641,6 +643,8 @@ crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = ma
 # write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
 
+**10/15 MERGED CRISPR -- NEED TO TEST**
+
 ```{r read_crispr_data}
 crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds") %>% drop_na(Gene)
 ```
@@ -648,7 +652,7 @@ crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds") %>% drop_na(Gene)
 ```{r merge_crispr_fus, eval=FALSE}
 fusions_filt <- unfactorize(unique(filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))) %>% select(-c("Cell_line", "disease")))
 crispr_fus_grid <- unfactorize(expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair)))
-crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "FusionPair"), all = TRUE)
+crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "FusionPair"), all.x = TRUE)
 crispr_fus$Fusion_Status <- ifelse(!is.na(crispr_fus$LeftGene), "Yes", "No")
 crispr_fus$Drug <- crispr_fus$Drug_Gene
 crispr_fus$Drug_FusionPair <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
@@ -1254,8 +1258,6 @@ ctrp_fus <- unfactorize(ctrp_fus)
 gdsc_fus <- filter(fus, Drug %in% g2p_drugs & Database == "GDSC")
 gdsc_fus <- unfactorize(gdsc_fus)
 ```
-
-**10/15 FIX FUSION_STATUS COLUMN, ALL "NO"**
 
 ```{r}
 dataframe <- crispr_fus
