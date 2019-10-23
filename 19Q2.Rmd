@@ -1210,6 +1210,7 @@ gdsc_signif_prot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes.rds"
 gene_prots <- union(union(unique(ccle_signif_prot$Gene_Protein_Change), union(unique(ctrp_signif_prot$Gene_Protein_Change), unique(gdsc_signif_prot$Gene_Protein_Change))), unique(crispr_signif_prot$Gene_Protein_Change))
 
 # all_directions <- unique(rbind(select(crispr_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ccle_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ctrp_prot, Gene_Protein_Change, Drug, Direction_Curated), select(gdsc_prot, Gene_Protein_Change, Drug, Direction_Curated)))
+# all_directions <- filter(all_directions, !is.na(Direction_Curated))
 # saveRDS(all_directions, "./data_munging/rds/protein_changes_directions.rds")
 all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
 
@@ -1398,7 +1399,8 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     na_color <- "white"
   }
   
-  if(!is.na(str_match(string = tolower(feature), pattern = "crispr"))) {
+  if(!is.na(str_match(string = tolower(feature), pattern = "crispr")) & is.na(str_match(string = tolower(feature), pattern = "prot"))) {
+    print("Making CRISPR mutation status grid and annotation dataframes.")
     signif_df <- filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene))
     signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0)
     signif_grid <- signif_grid[match(g2p_gene_order, signif_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
@@ -1410,8 +1412,10 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid_annot <- dcast(signif_df, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0)
     signif_grid_annot <- signif_grid_annot[match(g2p_gene_order, signif_grid_annot$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
+    print("Done.")
   }
   if(!is.na(str_match(string = tolower(feature), pattern = "mut"))) {
+    print("Making mutation status grid and annotation dataframes.")
     signif_grid <- dcast(signif_df, Gene ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
@@ -1424,21 +1428,40 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid_annot <- signif_grid_annot[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
     signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
+    print("Done.")
   }
   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) {
-    signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
-    signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
-    
-    signif_grid_annot1 <- signif_grid
-    signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
-    signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
-    
-    signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
-    signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
-    signif_grid_annot[signif_grid_annot == "resistance"] <- "X"
-    signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
+    if(is.na(str_match(string = tolower(feature), pattern = "crispr"))) {
+      print("Making protein changes grid and annotation dataframes.")
+      signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+      signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
+      
+      signif_grid_annot1 <- signif_grid
+      signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+      signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
+      
+      signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+      signif_grid_annot <- signif_grid_annot[, intersect(g2p_drug_order, colnames(signif_grid))]
+      signif_grid_annot[signif_grid_annot == "resistance"] <- "X"
+      signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
+      print("Done.")
+    }
+    if(!is.na(str_match(string = tolower(feature), pattern = "crispr"))) {
+      print("Making CRISPR protein changes grid and annotation dataframes.")
+      signif_grid <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+      
+      signif_grid_annot1 <- signif_grid
+      signif_grid_annot1[signif_grid_annot1 <= -log10(0.05) | is.na(signif_grid_annot1)] <- ""
+      signif_grid_annot1[signif_grid_annot1 > -log10(0.05)] <- "*"
+      
+      signif_grid_annot <- dcast(signif_df, Gene_Protein_Change ~ Drug, value.var = "Direction_Curated", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene_Protein_Change)
+      signif_grid_annot[signif_grid_annot == "resistance"] <- "X"
+      signif_grid_annot[signif_grid_annot == "sensitivity"] <- "O"
+      print("Done.")
+    }
   }
   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) {
+    print("Making fusions grid and annotation dataframes.")
     signif_grid <- dcast(signif_df, FusionPair ~ Drug, value.var = "p_log10", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-FusionPair)
     signif_grid <- signif_grid[, intersect(g2p_drug_order, colnames(signif_grid))]
     signif_grid <- signif_grid[complete.cases(signif_grid), ]
@@ -1452,11 +1475,13 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
     signif_grid_annot <- signif_grid_annot[complete.cases(signif_grid_annot), ]
     signif_grid_annot[signif_grid_annot == "No"] <- ""
     signif_grid_annot[signif_grid_annot == "Yes"] <- "O"
+    print("Done.")
   }
   col_fun <- colorRamp2(c(legend_breaks[1], legend_breaks[length(legend_breaks)]), c("gray97", color))
   # Legend properties list
   ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(1.5, "in"), border = "gray70", at = legend_breaks, labels = legend_breaks)
   
+  print("Making heatmap object.")
   ht <- Heatmap(signif_grid,
                 col = col_fun,
                 na_col = na_color,
@@ -1485,10 +1510,12 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
                   if(color == "darkorchid4") {
-                    radius <- width*0.18
+                    if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.18 }
+                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
                   }
                   if(color == "steelblue4") {
-                    radius <- height*0.12
+                    if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.12 }
+                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
                   }
                   if(color == "darkgreen") {
                     if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) {
@@ -1501,8 +1528,6 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                       radius <- height*0.16
                     }
                     else { radius <- width*0.18 }
-                  }
-                  
                   grid.text(signif_grid_annot1[i, j], x = x + width*0.25, y = y + height*0.07, gp = gpar(fontsize = 17))
                   
                   if(signif_grid_annot[i, j] == "O") {
@@ -1519,12 +1544,15 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
                 }
-                )
+                
+  print("Done.")
   return(ht)
 }
 ```
 
 ### Pancan
+
+**10/23 STOPPED HERE: Was fixing annotation dot sizes on heatmaps**
 
 ```{r mut_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
 ht_crispr <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene)), feature = "crispr", legend_title = "-log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Genes")
@@ -1561,16 +1589,8 @@ draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatma
 dev.off()
 ```
 
-**10/22 STOPPED HERE, NEED TO FIGURE OUT CRISPR HT BELOW**
-
-Ran line 1565:
-```
-Error in seq_len(n%%length(x)) : 
-  argument must be coercible to non-negative integer
-```
-
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
-ht_crispr<- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
+ht_crispr <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "-log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change")
 png(filename = "./plots/manuscript/crispr_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
 draw(ht_crispr, heatmap_legend_side = "top")
 dev.off()
@@ -1590,11 +1610,12 @@ png(filename = "./plots/manuscript/gdsc_prot_heatmap.png", width = 5, height = 5
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
 ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)                                                              ", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
 ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)                                                                               ", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black")
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
-png(filename = "./plots/manuscript/drug_prot_heatmap.png", width = 13, height = 5, units = "in", res = 500)
-draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)                                ", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
+png(filename = "./plots/manuscript/all_prot_heatmap.png", width = 14, height = 5, units = "in", res = 500)
+draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
 
