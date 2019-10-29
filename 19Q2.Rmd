@@ -259,6 +259,7 @@ g2p_fus <- g2p_split[[3]]
 g2p_fus$FusionPair <- sapply(X = g2p_fus$Feature.Names, function(x) strsplit(as.character(x)," ")[[1]][1])
 g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "Fusions", as.character(g2p_fus$Gene), as.character(g2p_fus$FusionPair))
 g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "BCR-ABL", "BCR-ABL1", as.character(g2p_fus$FusionPair))
+g2p_fus <- g2p_fus[grep("-", g2p_fus$FusionPair), ]
 g2p_fus$Drug_FusionPair <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair))
 g2p_fus$Drug_Fusion_Lineage <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair) | is.na(g2p_fus$disease), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair, "_", g2p_fus$disease))
 g2p_mut <- g2p_split[[4]] %>% drop_na(Direction_Curated)
@@ -1165,6 +1166,16 @@ gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ_lin, by = c("Drug", "Gene", "disease"), all.x = TRUE)
 ```
 
+```{r}
+ccle_signif_dgl %>% count(InG2P)
+filter(ccle_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+ctrp_signif_dgl %>% count(InG2P)
+filter(ctrp_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+gdsc_signif_dgl %>% count(InG2P)
+filter(gdsc_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+```
+
+
 ### Protein changes
 
 ```{r protein_change_data}
@@ -1232,6 +1243,25 @@ ctrp_signif_prot_4plot <- readRDS("./data_munging/rds/ctrp_signif_protein_change
 gdsc_signif_prot_4plot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_4plot.rds")
 ```
 
+```{r}
+all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
+crispr_signif_prot_lin <- readRDS("./data_munging/rds/crispr_signif_protein_changes_lineage.rds")
+crispr_signif_prot_lin <- merge(crispr_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+ccle_signif_prot_lin <- readRDS("./data_munging/rds/ccle_signif_protein_changes_lineage.rds")
+ccle_signif_prot_lin <- merge(ccle_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+ctrp_signif_prot_lin <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_lineage.rds")
+ctrp_signif_prot_lin <- merge(ctrp_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+gdsc_signif_prot_lin <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_lineage.rds")
+gdsc_signif_prot_lin <- merge(gdsc_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+
+ccle_signif_prot_lin %>% count(InG2P)
+filter(ccle_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
+ctrp_signif_prot_lin %>% count(InG2P)
+filter(ctrp_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
+gdsc_signif_prot_lin %>% count(InG2P)
+filter(gdsc_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
+```
+
 ## Fusions
 
 ```{r fusion_data}
@@ -1239,14 +1269,16 @@ crispr_fus <- unfactorize(crispr_fus)
 
 ccle_fus <- filter(fus, Database == "CCLE")
 ccle_fus <- unfactorize(ccle_fus)
+# ccle_fus_summ <- unique(select(ccle_fus, DepMap_ID, FusionPair, Fusion_Status)) %>% count(FusionPair, Fusion_Status)
 
 ctrp_fus <- filter(fus, Database == "CTRP")
 ctrp_fus <- unfactorize(ctrp_fus)
+# ctrp_fus_summ <- unique(select(ctrp_fus, DepMap_ID, FusionPair, Fusion_Status)) %>% count(FusionPair, Fusion_Status)
 
 gdsc_fus <- filter(fus, Drug %in% g2p_drugs & Database == "GDSC")
 gdsc_fus <- unfactorize(gdsc_fus)
+# gdsc_fus_summ <- unique(select(gdsc_fus, DepMap_ID, FusionPair, Fusion_Status)) %>% count(FusionPair, Fusion_Status)
 ```
-
 
 ```{r fus_wilcoxon_tests, eval=FALSE}
 crispr_signif_fus <- WilcoxonTestDF(dataframe = crispr_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Gene"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/crispr_signif_fusions.rds")
@@ -1381,6 +1413,8 @@ ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12,
 
 ## Heatmaps
 
+**10/29 NEED TO FIX CIRCLE ANNOTS ON FUSION/STEELBLUE4 HEATMAP**
+
 ```{r wilcoxon_heatmap_function}
 MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, na_color) {
   if(missing(na_color)) {
@@ -1505,30 +1539,29 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                                    offset = unit(1, "npc"),
                                    just = "right"),
                   annotation_height = unit(0.85, "in")),
-                  # annotation_height = max_text_width(colnames(signif_grid))),
                 row_title = row_title_txt,
                 row_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title = col_title, 
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  if(color == "darkorchid4") {
-                    if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*3.3 }
-                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*2 }
-                  }
-                  if(color == "steelblue4") {
-                    if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.20 }
-                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
-                    else { radius <- width*0.18 }
-                  }
                   if(color == "darkgreen") {
                     if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.16 }
                     if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.3 }
                     else { radius <- width*0.17 }
                   }
+                  if(color == "steelblue4") {
+                    if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.5 }
+                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
+                    else { radius <- width*0.18 }
+                  }
                   if(color == "turquoise4") {
                     if(!is.na(str_match(string = tolower(feature), pattern = "fus|prot"))) { radius <- height*0.16 }
                     else { radius <- width*0.18 }
+                  }
+                  if(color == "darkorchid4") {
+                    if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*3.3 }
+                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*2 }
                   }
                   
                   grid.text(signif_grid_annot1[i, j], x = x + width*0.25, y = y + height*0.065, gp = gpar(fontsize = 17))
@@ -1551,6 +1584,16 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
   print("Done.")
   return(ht)
 }
+
+# ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 10, by = 2), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
+# png(filename = "./plots/manuscript/ctrp_fus_heatmap.png", width = 13, height = 3, units = "in", res = 500)
+# draw(ht_ctrp, heatmap_legend_side = "top")
+# dev.off()
+# 
+# ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
+# png(filename = "./plots/manuscript/ctrp_prot_heatmap.png", width = 9.5, height = 5.5, units = "in", res = 500)
+# draw(ht_ctrp, heatmap_legend_side = "top")
+# dev.off()
 ```
 
 ### Pancan
