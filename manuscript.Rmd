@@ -7,6 +7,8 @@ output              :
     fig_caption     : true
     df_print        : kable
     # citation_package: natbib
+header-includes:
+- \usepackage{caption}
 title               : "Manuscript Draft"
 author              :
 - Sally E. Claridge
@@ -55,9 +57,11 @@ There have also been debates over consistency between drug screen datasets, name
 
 The prevalence and importance of cancer cell lines in large-scale therapeutic research and the apparent inconsistencies between the GDSC and CCLE encouraged us to compare the results from these functional screens to clinical drug-gene associations. An outstanding question concerning studies based on cancer cell lines is whether these the cell line systems can accurately model tumor dynamics or recapitulate clinical cancer vulnerabilities, and many large-scale grants and clinical trials are fundamentally anchored by results from screens conducted in cancer cell lines. Thus, our goal was to evaluate how well these functional screens recapitulate known drug, gene, and tumor type associations that are currently used in clinical decision-making.
 
-To curate an evidence-based list of these clinical biomarkers, we utilized a new oncological data aggregation project conducted by the Variant Interpretation for Cancer Consortium (VICC; https://cancervariants.org/), a Driver Project for the Global Alliance for Genomics and Health (GA4GH) [@theglobalallianceforgenomicsandhealth2016]. The VICC has curated annotations of known cancer variants at varying levels of evidence from multiple resources [@wagner2018]: the Precision Medicine Knowledgebase [@huang2016], MolecularMatch (https://www.molecularmatch.com/index.html), OncoKB [@chakravarty2017], Jackson Labs Clinical Knowledgebase [@patterson2016], Clinical Interpretations of Variance in Cancers (CIViC) [@griffith2017], and the Cancer Genome Interpreter (CGI) [@tamborero2018]. These harmonized variants are hosted on an ElasticSearch (Kibana v6.0) platform called Genotype to Phenotype (G2P, https://search.cancervariants.org/#*) that allows users to query and filter aggregated evidence from the various databases listed above as well as the GA4GH beacon service (http://beacon-network.org/#/), which yields access to genetic mutation data from over 200 datasets as of 2016 [@theglobalallianceforgenomicsandhealth2016]. For drug screen datasets, we focus on three well-known, large-scale drug projects: the CCLE and GDSC, which were mentioned above, and the Center for the Science of Therapeutics at the Broad Institute’s Cancer Therapeutics Response Portal (CTRP) dataset [@basu2013; @rees2016; @seashore-ludlow2015]. We also analyzed the results from a large-scale CRISPR/Cas9 screen conducted by the Broad Institute’s Cancer Dependency Map project (DepMap) using the Avana knockout library [@doench2016a; @meyers2017], which will address whether gene essentiality screens via CRISPR yield results comparable to functional drug screens.
-
 # Results
+
+## Curating clinical biomarkers
+
+To curate an evidence-based list of these clinical biomarkers, we utilized a new oncological data aggregation project conducted by the Variant Interpretation for Cancer Consortium (VICC; https://cancervariants.org/), a Driver Project for the Global Alliance for Genomics and Health (GA4GH) [@theglobalallianceforgenomicsandhealth2016]. The VICC has curated annotations of known cancer variants at varying levels of evidence from multiple resources [@wagner2018]: the Precision Medicine Knowledgebase [@huang2016], MolecularMatch (https://www.molecularmatch.com/index.html), OncoKB [@chakravarty2017], Jackson Labs Clinical Knowledgebase [@patterson2016], Clinical Interpretations of Variance in Cancers (CIViC) [@griffith2017], and the Cancer Genome Interpreter (CGI) [@tamborero2018]. These harmonized variants are hosted on an ElasticSearch (Kibana v6.0) platform called Genotype to Phenotype (G2P, https://search.cancervariants.org/#*) that allows users to query and filter aggregated evidence from the various databases listed above as well as the GA4GH beacon service (http://beacon-network.org/#/), which yields access to genetic mutation data from over 200 datasets as of 2016 [@theglobalallianceforgenomicsandhealth2016]. For drug screen datasets, we focus on three well-known, large-scale drug projects: the CCLE and GDSC, which were mentioned above, and the Center for the Science of Therapeutics at the Broad Institute’s Cancer Therapeutics Response Portal (CTRP) dataset [@basu2013; @rees2016; @seashore-ludlow2015]. We also analyzed the results from a large-scale CRISPR/Cas9 screen conducted by the Broad Institute’s Cancer Dependency Map project (DepMap) using the Avana knockout library [@doench2016a; @meyers2017], which will address whether gene essentiality screens via CRISPR yield results comparable to functional drug screens.
 
 ## Do small-molecule screens in cancer cell lines recapitulate clinical drug-gene associations?
 
@@ -188,24 +192,35 @@ G2P designed a set of standards for stratifying their database’s cancer varian
 
 ![Summary of G2P data content and concordance with drug sensitivity screens. (left) The presence or absence of small molecule drugs analyzed in GDSC, CTRP, and CCLE that were identified with level-A evidence in the G2P database. (right) The number of level-A interpretations for each drug-gene combination in the G2P database. Both axes are ordered by decreasing number of G2P associations.](./plots/manuscript/g2p_summary_heatmap.png)
 
-> Mutation status
+![Overlap of cancer cell lines in our four datasets.](./plots/manuscript/all_venn_ccls.png) 
+
+### Mutation status
+
+![Mutation status.](./plots/manuscript/all_mut_heatmap.png)
+
+![Protein changes.](./plots/manuscript/all_prot_heatmap.png)
+
+Taking these results as a whole, we observe little concordance between G2P associations and the correlation of mutation status and AUC for said G2P association, suggesting that mutation status alone is not a robust predicto r of clinically actionable genetic targets. This led us to examine the correlations between AUC and gene expression and AUC and copy number, two other genomic features that are known to associate with cancer and drug response. We computed Spearman correlation coefficients ($r_s$) between AUC of each drug-gene association and gene expression (RPKM) and copy number (log$_2$ ratio) of the gene in the association...**need to complete this thought/analysis**
+
+### Fusions
+
+![Fusion status.](./plots/manuscript/all_fus_heatmap.png)
+
+### Copy number
+
+![Correlation between putative copy number and AUC.](./plots/manuscript/drug_cn_heatmap.png)
+
+### Gene expression
+
+![Correlation between gene expression and AUC.](./plots/manuscript/drug_ge_heatmap.png)
 
 
-
-> Fusions
-
-> Copy number
-
-> Gene expression
-
-However, taking these results as a whole, we observe little concordance between G2P associations and the correlation of mutation status and AUC for said G2P association, suggesting that mutation status alone is not a robust predictor of clinically actionable genetic targets. This led us to examine the correlations between AUC and gene expression and AUC and copy number, two other genomic features that are known to associate with cancer and drug response. We computed Spearman correlation coefficients ($r_s$) between AUC of each drug-gene association and gene expression (RPKM) and copy number (log$_2$ ratio) of the gene in the association...**(???) need to complete this thought/analysis**
 
 
 ## Do these pancancer drug-gene associations penetrate to the lineage-specific level?
 
 - What do these correlations with mutation status, gene expression, and copy number look like when you constrict to a specific lineage?
-- When you restrict, do the correlations become more distinct?
-- Are the lineage-specific results approximately the same as the pancancer results?
+- When you restrict, do the correlations become more distinct or are the lineage-specific results approximately the same as the pancancer results?
 
 In the `r nrow(g2p_filt)` level-A G2P interpretations, there was a wide variation in the specificity of cancer description, ranging from “Waldenström macroglobulinemia” and “hyper eosinophilic advanced syndrome” on the more detailed end to “cancer” on the broad end. Similarly, the drug screen datasets had a wide range in lineage specificity, e.g. CCLE, GTRP, and GDSC all had lineages labeled “leukemia” and “T-cell childhood acute lymphocytic leukemia” and the CRISPR dataset had cell lines labeled “Epstein-Barr virus-related Burkitt lymphoma” and “lymphoma.” To more easily conduct comparative analyses in a cancer-specific manner, we developed a more general lineage grouping method derived from the Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml2019] assigned to each cell line, yielding `r length(unique(ccl_converter$group_general_lineage_name))` unique lineage groupings. This custom lineage grouping was included in our harmonized cancer cell line database (see Methods).
 
@@ -224,6 +239,8 @@ As a next step to improve the informational granularity of the analysis presente
 
 # Methods
 
+**Need to update all methods for data processing, these method are current up to ~May 2019**
+
 ## G2P cancer variants
 
 Cancer variants with the highest level of evidence (i.e. level A) in the Genotype to Phenotype (G2P) database were retrieved from the Variant Interpretation for Cancer Consortium (VICC) portal (https://search.cancervariants.org/#*) [@wagner2018] using a customized JSON-query script. All JSON queries were passed to the available application program interface (API) where a request was made for all drug-gene associations with level-A evidence via the G2P evidence label, i.e. association.evidence_label. From manual inspection using G2P’s front-end Kibana interface, it was known that, at the time of the last query, 27 November 2018, there were 1,297 known level-A associations. Due to the limited request processing capabilities of the G2P JSON API, queries were batched into packets of 10 data points, for a total of 130 requests made in succession. Each returned request was processed as JSON object and searched to identify any existing key:value pairs for the following variables: evidence level, mutation, gene, chromosome, start, end, ref, alt, direction, phenotype description, phenotype family, phenotype ID, drug, drug ID, feature names, and sequence ID. For any evidence point where a given key:value pair was not found or unavailable, a value of -1 was assigned. One of the 1,297 level-A entries was irretrievable, yielding a final dataset of 1,296 level-A G2P interpretations, which were stored in a pandas data table and exported in CSV format. The VICC’s methods for the harvesting and harmonizing of cancer variants is available in a GitHub repository from Oregon Health & Science University (https://github.com/ohsu-comp-bio/g2p-aggregator).
@@ -238,7 +255,11 @@ Gene effect scores for 17,634 genes in 517 cell lines were inferred from a CRISP
 
 ### Mutation calls
 
-To preclude variation in genomic feature calls across the datasets, we used identical annotations from CCLE for all cell lines screened in the three datasets. The CCLE provided mutation annotations in 19,280 genes across 1,596 cell lines (dataset: depmap_18Q4_mutation_calls.csv, accessed 14 November 2018). CCLE called substitutions using MuTect [@cibulskis2013] and annotated variants using Oncotator [@ramos2015a] and indels using Indelocator (https://software.broadinstitute.org/cancer/cga/indelocator). We filtered mutation calls for point mutations, defined as single-nucleotide insertions, deletions, and substitutions, regardless of result, i.e. frameshift, missense, or nonsense mutation. For this analysis, cell lines harboring non-silent point mutations were considered “mutant” for the gene in question. All other mutations and genes without annotation in the Mutation Annotation Format (MAF) file were considered “wildtype.” “Mutant” and “wildtype” calls were binarily encoded per-gene/per-cell line, regardless of quantity of harbored mutations per gene in a given cell line.
+To preclude variation in genomic feature calls across the datasets, we used identical annotations from CCLE for all cell lines screened in the three datasets. The CCLE provided mutation annotations in 19,280 genes across 1,596 cell lines (dataset: depmap_18Q4_mutation_calls.csv, accessed 14 November 2018). CCLE called substitutions using MuTect [@cibulskis2013] and annotated variants using Oncotator [@ramos2015a] and indels using Indelocator (https://software.broadinstitute.org/cancer/cga/indelocator). We filtered mutation calls for point mutations, defined as single-nucleotide insertions, deletions, and substitutions, regardless of result, i.e. frameshift, missense, or nonsense mutation. For this analysis, cell lines harboring non-silent point mutations were considered “mutant” for the gene in question. All other mutations and genes without annotation in the Mutation Annotation Format (MAF) file were considered "wildtype." "Mutant" and "wildtype" calls were binarily encoded per-gene/per-cell line, regardless of quantity of harbored mutations per gene in a given cell line.
+
+### Protein changes
+
+### Fusion status
 
 ### Copy number data
 
