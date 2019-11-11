@@ -757,28 +757,29 @@ venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
 ## Histology distributions
 
 ```{r histology_dists_data, eval=FALSE}
-ccle_hists <- unique(select(ccle, DepMap_ID, disease)) %>% count(disease)
-ccle_hists$Perc <- ccle_hists$n / sum(ccle_hists$n) * 100
-ccle_hists$Dataset <- "CCLE"
-ctrp_hists <- unique(select(ctrp, DepMap_ID, disease)) %>% count(disease)
-ctrp_hists$Perc <- ctrp_hists$n / sum(ctrp_hists$n) * 100
-ctrp_hists$Dataset <- "CTRP"
-gdsc_hists <- unique(select(gdsc, DepMap_ID, disease)) %>% count(disease)
-gdsc_hists$Perc <- gdsc_hists$n / sum(gdsc_hists$n) * 100
-gdsc_hists$Dataset <- "GDSC"
-crispr_hists <- unique(select(crispr, DepMap_ID, disease)) %>% count(disease)
-crispr_hists$Perc <- crispr_hists$n / sum(crispr_hists$n) * 100
-crispr_hists$Dataset <- "CRISPR"
+hist_count <- function(df, dataset) {
+  hists <- unique(select(df, DepMap_ID, disease)) %>% count(disease)
+  hists$Percent <- hists$n / sum(hists$n) * 100
+  hists$Dataset <- dataset
+  hists$disease <- gsub(" cancer", "", hists$disease)
+  hists <- hists[order(hists$n, decreasing = T),]
+  return(hists)
+}
+
+ccle_hists <- hist_count(ccle, "CCLE")
+ctrp_hists <- hist_count(ctrp, "CTRP")
+gdsc_hists <- hist_count(gdsc, "GDSC")
+crispr_hists <- hist_count(crispr, "CRISPR")
 
 drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists, crispr_hists) %>% drop_na(disease)
 drug_hists$Dataset <- factor(drug_hists$Dataset, levels = c("CCLE", "CTRP", "GDSC", "CRISPR"))
-drug_hists$disease <- as.character(drug_hists$disease)
-drug_hists$disease <- gsub(" cancer", "", drug_hists$disease)
+# drug_hists$disease <- as.character(drug_hists$disease)
 saveRDS(drug_hists, "./data_munging/rds/histology_distributions.rds")
 ```
 
 ```{r histology_dists, fig.height=4.5, fig.width=4, eval=FALSE}
 drug_hists <- readRDS("./data_munging/rds/histology_distributions.rds")
+
 png(filename = "./plots/manuscript/all_histology_distributions.png", width = 8, height = 9, units = "in", res = 500)
 ggplot(drug_hists, aes(x = Dataset, y = n, fill = disease)) +
   geom_bar(stat = "identity", color = "black") +
@@ -1916,14 +1917,21 @@ ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_
 ```
 
 **10/28 FIX CRISPR PART OF corr_heatmap_function**
+**11/11 Added CRISPR code to function, but R aborted due to misplaced bracket (fixed but did not run)**
 
 ```{r corr_heatmap_function}
-MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_title, metric, radius, crispr) {
+MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_title, metric, radius) {
   if(toupper(metric) == "CN" | toupper(metric) == "COPY NUMBER") {
-    if(crispr == TRUE) {
+    if(col_title == "CRISPR") {
+      signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      signif_grid <- signif_grid[g2p_gene_order,]
+      signif_grid[signif_grid >= 0.05] <- ""
+      signif_grid[signif_grid != ""] <- "*"
       
+      corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      corr_grid <- corr_grid[g2p_gene_order,]
     }
-    if(crispr == FALSE) {
+    if(col_title != "CRISPR") {
       signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
       signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
       signif_grid <- signif_grid[complete.cases(signif_grid), ]
@@ -1937,10 +1945,16 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
   }
   
   if(toupper(metric) == "GE" | toupper(metric) == "GENE EXPRESSION") {
-    if(crispr == TRUE) {
+    if(col_title == "CRISPR") {
+      signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      signif_grid <- signif_grid[g2p_gene_order,]
+      signif_grid[signif_grid >= 0.05] <- ""
+      signif_grid[signif_grid != ""] <- "*"
       
+      corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      corr_grid <- corr_grid[g2p_gene_order,]
     }
-    if(crispr == FALSE) {
+    if(col_title != "CRISPR") {
       signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
       signif_grid <- signif_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
       signif_grid <- signif_grid[complete.cases(signif_grid), ]
@@ -1952,12 +1966,12 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
       corr_grid <- corr_grid[complete.cases(corr_grid), ]
     }
   }
-  if(crispr == TRUE) {
+  
+  if(col_title == "CRISPR") {
     annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0)
     annot_grid <- annot_grid[match(g2p_gene_order, annot_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-    # annot_grid[annot_grid == "sensitivity"] <- "O"
-    }
-  if(crispr == FALSE) {
+  }
+  if(col_title != "CRISPR") {
     annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     annot_grid <- annot_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
     annot_grid <- annot_grid[complete.cases(annot_grid), ]
@@ -2039,6 +2053,12 @@ png(filename = "./plots/manuscript/gdsc_cn_heatmap.png", width = 5, height = 3, 
 draw(gdsc_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
+crispr_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_amp$Gene)))
+crispr_cn_ht <- MakeCorrHeatmap(cor_res = crispr_cn_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.3, 0, 0.1), radius = 0.1, legend_title = "CRISPR Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/gdsc_cn_heatmap.png", width = 5, height = 3, units = "in", res = 500)
+draw(gdsc_cn_ht, heatmap_legend_side = "top")
+dev.off()
+
 ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN", crispr =  FALSE)
 ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN", crispr =  FALSE)
 gdsc_cn_ht2 <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN", crispr =  FALSE)
@@ -2080,6 +2100,8 @@ dev.off()
 --------------------------------------------------------------------------------
 
 ## GE/CN
+
+
 
 # OLD
 
