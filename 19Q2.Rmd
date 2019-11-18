@@ -636,7 +636,7 @@ prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
 
 ## CRISPR
 
-```{r merge_crispr_data, eval=TRUE}
+```{r merge_crispr_data, eval=FALSE}
 crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
@@ -644,7 +644,7 @@ colnames(crispr_all)[1] <- "DepMap_ID"
 
 crispr_allgenes <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = colnames(crispr_all)[2:length(colnames(crispr_all))], outfile = "./../htscreens_giant_files/crispr_data_19Q2_allgenes.rds")
 
-# crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
+crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
 # write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
 
@@ -724,8 +724,8 @@ crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
 
 ```{r, eval = FALSE}
 crispr_allgenes <- readRDS("./../htscreens_giant_files/crispr_data_19Q2_allgenes.rds")
-crispr_fus_all <- readRDS("./../htscreens_giant_files/crispr_fusions_allgenes.rds")
-crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes_allgenes.rds")
+crispr_fus_allgenes <- readRDS("./../htscreens_giant_files/crispr_fusions_allgenes.rds")
+crispr_prot_allgenes <- readRDS("./../htscreens_giant_files/crispr_protein_changes_allgenes.rds")
 ```
 
 # EXPLORATORY FIGURES
@@ -1109,6 +1109,12 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
 ```
 
 ## Mutation status
+
+```{r eval=FALSE}
+crispr_allgenes <- unfactorize(crispr_allgenes)
+crispr_signif_gene <- WilcoxonTestDF(dataframe = crispr_allgenes, grouping = c("Drug", "Gene", "Drug_Gene"), type = "drug_gene", outfile = "./data_munging/rds/crispr_signif_g_allgenes.rds")
+crispr_signif_lineage <- WilcoxonTestDF(dataframe = crispr_allgenes, grouping =  c("Drug", "Gene", "disease", "Drug_Gene_Lin"), type = "drug_gene_lineage", outfile = "./data_munging/rds/crispr_signif_gl_allgenes.rds")
+```
 
 ```{r mut_wilcoxon_tests, eval=FALSE}
 # CRISPR
