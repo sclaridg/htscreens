@@ -270,6 +270,16 @@ g2p_prot$Drug_Gene_Protein_Change <- with(g2p_prot, ifelse(is.na(Drug) | is.na(G
 g2p_prot$Drug_Gene_Protein_Change_Lineage <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 ```
 
+```{r g2p_count_summ}
+g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
+g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
+g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
+# g2p_dg_counts[g2p_dg_counts == 0] <- NA
+
+g2p_gene_order <- colnames(g2p_dg_counts)
+g2p_drug_order <- rownames(g2p_dg_counts)
+```
+
 ## Omics
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
@@ -373,10 +383,6 @@ maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
 maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
 ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
-```
-
-```{r}
-test <- filter(maf_changes_df, Gene_Protein_Change %in% unique(g2p_mut$Gene_Protein_Change))
 ```
 
 
@@ -630,13 +636,15 @@ prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
 
 ## CRISPR
 
-```{r merge_crispr_data, eval=FALSE}
+```{r merge_crispr_data, eval=TRUE}
 crispr_all <- read.delim("./data_munging/19Q2/Achilles_gene_effect_20190514.csv.gz", sep = ",", header = TRUE, check.names = FALSE)
 # Remove Entrez gene IDs from colnames
 colnames(crispr_all) <- gsub(" .*", "", colnames(crispr_all))
 colnames(crispr_all)[1] <- "DepMap_ID"
 
-crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
+crispr_allgenes <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = colnames(crispr_all)[2:length(colnames(crispr_all))], outfile = "./../htscreens_giant_files/crispr_data_19Q2_allgenes.rds")
+
+# crispr <- MergeOmicsG2P(database = "CRISPR", dataframe = crispr_all, maf_df = maf_df, ge_df = ge_melt, cn_df = cn_melt, gene_list = g2p_genes, outfile = "./data_munging/19Q2/crispr_data_19Q2.rds")
 # write.csv.gz(crispr %>% drop_na(Score), "./../htscreens_giant_files/crispr_data_19Q2.csv.gz")
 ```
 
@@ -645,6 +653,20 @@ crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds") %>% drop_na(Gene)
 ```
 
 ```{r merge_crispr_fus, eval=FALSE}
+crispr_allgenes <- readRDS("./../htscreens_giant_files/crispr_data_19Q2_allgenes.rds")
+fusions_filt <- unfactorize(unique(filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))) %>% select(-c("Cell_line", "disease")))
+crispr_fus_grid <- unfactorize(expand.grid("DepMap_ID" = unique(crispr_allgenes$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair)))
+crispr_fus <- merge(merge(crispr_allgenes, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "FusionPair"), all.x = TRUE)
+crispr_fus$Fusion_Status <- ifelse(!is.na(crispr_fus$LeftGene), "Yes", "No")
+crispr_fus$Drug_FusionPair <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair), NA, paste0(Drug, "_", FusionPair)))
+crispr_fus$Drug_Fusion_Lineage <- with(crispr_fus, ifelse(is.na(Drug) | is.na(FusionPair) | is.na(disease), NA, paste0(Drug, "_", FusionPair, "_", disease)))
+crispr_fus$G2P_Drug_FusionPair <- "No"
+crispr_fus$G2P_Fusion <- ifelse(crispr_fus$FusionPair %in% unique(as.character(g2p_fus$FusionPair)), "Yes", "No")
+crispr_fus$G2P_Drug_Fusion_Lineage <- "No"
+crispr_fus$Database <- "CRISPR"
+crispr_fus <- crispr_fus %>% drop_na(Score)
+saveRDS(crispr_fus, "./../htscreens_giant_files/crispr_fusions_allgenes.rds", compress = "xz")
+
 fusions_filt <- unfactorize(unique(filter(fusions, FusionPair %in% unique(as.character(g2p_fus$FusionPair)))) %>% select(-c("Cell_line", "disease")))
 crispr_fus_grid <- unfactorize(expand.grid("DepMap_ID" = unique(crispr$DepMap_ID), "FusionPair" = unique(fusions_filt$FusionPair)))
 crispr_fus <- merge(merge(crispr, crispr_fus_grid, by = "DepMap_ID", all = TRUE), fusions_filt, by = c("DepMap_ID", "FusionPair"), all.x = TRUE)
@@ -692,7 +714,7 @@ crispr_prot$G2P_Drug_Gene_Protein_Change_Lineage <- "No"
 crispr_prot <- merge(crispr_prot, unique(select(g2p_prot, Gene_Protein_Change, Direction_Curated)), by = "Gene_Protein_Change", all.x = TRUE)
 crispr_prot$Database <- "CRISPR"
 
-saveRDS(crispr_prot, "./../htscreens_giant_files/crispr_protein_changes.rds", compress = "xz")
+saveRDS(crispr_prot, "./../htscreens_giant_files/crispr_protein_changes_allgenes.rds", compress = "xz")
 ```
 
 ```{r, eval = TRUE}
@@ -700,6 +722,11 @@ crispr_fus <- readRDS("./data_munging/19Q2/crispr_fusions.rds")
 crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
 ```
 
+```{r, eval = FALSE}
+crispr_allgenes <- readRDS("./../htscreens_giant_files/crispr_data_19Q2_allgenes.rds")
+crispr_fus_all <- readRDS("./../htscreens_giant_files/crispr_fusions_allgenes.rds")
+crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes_allgenes.rds")
+```
 
 # EXPLORATORY FIGURES
 
@@ -810,16 +837,6 @@ dev.off()
 ```
 
 ## G2P summary heatmap
-
-```{r g2p_gount_summ}
-g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
-g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
-g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
-# g2p_dg_counts[g2p_dg_counts == 0] <- NA
-
-g2p_gene_order <- colnames(g2p_dg_counts)
-g2p_drug_order <- rownames(g2p_dg_counts)
-```
 
 ```{r dg_heatmap, fig.height=6, fig.width=8, warning=FALSE, eval=FALSE}
 # Create annotation layer
@@ -1417,7 +1434,7 @@ ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12,
 **10/29 NEED TO FIX CIRCLE ANNOTS ON FUSION/STEELBLUE4 HEATMAP**
 
 ```{r wilcoxon_heatmap_function}
-MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, na_color) {
+MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, na_color, radius) {
   if(missing(na_color)) {
     na_color <- "white"
   }
@@ -1546,25 +1563,25 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  if(color == "darkgreen") {
-                    if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.16 }
-                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.3 }
-                    else { radius <- width*0.17 }
-                  }
-                  if(color == "steelblue4") {
-                    if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.5 }
-                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
-                    else { radius <- width*0.18 }
-                  }
-                  if(color == "turquoise4") {
-                    if(!is.na(str_match(string = tolower(feature), pattern = "fus|prot"))) { radius <- height*0.16 }
-                    else { radius <- width*0.18 }
-                  }
-                  if(color == "darkorchid4") {
-                    if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*3.3 }
-                    if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*2 }
-                  }
-                  
+                  # if(color == "darkgreen") {
+                  #   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.16 }
+                  #   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.3 }
+                  #   else { radius <- width*0.17 }
+                  # }
+                  # if(color == "steelblue4") {
+                  #   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.5 }
+                  #   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
+                  #   else { radius <- width*0.18 }
+                  # }
+                  # if(color == "turquoise4") {
+                  #   if(!is.na(str_match(string = tolower(feature), pattern = "fus|prot"))) { radius <- height*0.16 }
+                  #   else { radius <- width*0.18 }
+                  # }
+                  # if(color == "darkorchid4") {
+                  #   if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*3.3 }
+                  #   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*2 }
+                  # }
+                  # 
                   grid.text(signif_grid_annot1[i, j], x = x + width*0.25, y = y + height*0.065, gp = gpar(fontsize = 17))
                   
                   if(signif_grid_annot[i, j] == "O") {
@@ -1580,118 +1597,105 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                     grid.circle(x = x - width*0.20, y = y + height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
                     grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
-                })
+                }
+                )
                 
   print("Done.")
   return(ht)
 }
-
-# ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 10, by = 2), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
-# png(filename = "./plots/manuscript/ctrp_fus_heatmap.png", width = 13, height = 3, units = "in", res = 500)
-# draw(ht_ctrp, heatmap_legend_side = "top")
-# dev.off()
-# 
-# ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
-# png(filename = "./plots/manuscript/ctrp_prot_heatmap.png", width = 9.5, height = 5.5, units = "in", res = 500)
-# draw(ht_ctrp, heatmap_legend_side = "top")
-# dev.off()
 ```
 
 ### Pancan
 
 ```{r mut_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
-ht_crispr <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene)), feature = "crispr", legend_title = "-log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Genes")
+ht_crispr <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene)), feature = "crispr", legend_title = "-log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Genes", radius = 0.05)
 png(filename = "./plots/manuscript/crispr_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
 draw(ht_crispr, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes")
+ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Genes", radius = 0.04)
 png(filename = "./plots/manuscript/ccle_mut_heatmap.png", width = 3, height = 10, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes")
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.0075)
 png(filename = "./plots/manuscript/ctrp_mut_heatmap.png", width = 9.5, height = 10, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
 
-ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Genes")
+ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.01)
 png(filename = "./plots/manuscript/gdsc_mut_heatmap.png", width = 5, height = 10, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes")
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes")
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes")
-ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene)), feature = "crispr", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Genes")
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.023)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.007)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene)), feature = "mutation", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.011)
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene)), feature = "crispr", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Genes", radius = 0.15)
 
-# png(filename = "./plots/manuscript/drug_mut_heatmap.png", width = 13, height = 9.5, units = "in", res = 500)
-# draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
-# dev.off()
-
-png(filename = "./plots/manuscript/all_mut_heatmap.png", width = 14, height = 8, units = "in", res = 500)
-draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+png(filename = "./plots/manuscript/all_mut_heatmap.png", width = 14, height = 7.5, units = "in", res = 500)
+draw(ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
 
 ```{r prot_heatmaps, eval=FALSE, fig.height=10, fig.width=3}
-ht_crispr <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "-log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change")
+ht_crispr <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "-log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change", radius = 0.03)
 png(filename = "./plots/manuscript/crispr_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
 draw(ht_crispr, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
+ht_ccle <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.03)
 png(filename = "./plots/manuscript/ccle_prot_heatmap.png", width = 3, height = 5.5, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.01)
 png(filename = "./plots/manuscript/ctrp_prot_heatmap.png", width = 9.5, height = 5.5, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
 
-ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Gene:Protein Change")
+ht_gdsc <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "-log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", radius = 0.01)
 png(filename = "./plots/manuscript/gdsc_prot_heatmap.png", width = 5, height = 5.5, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black")
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
-ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black")
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 15, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.021)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.0125)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.0125)
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.135)
 
 png(filename = "./plots/manuscript/all_prot_heatmap.png", width = 14, height = 5, units = "in", res = 500)
-draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+draw(ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
 
 **10/25 Need to fix InG2P annots on CTRP data**
-
+**11/15 Need to fix direction annot on CRISPR!**
 ```{r fus_heatmaps, eval=FALSE}
-ht_crispr <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_fus, Drug_Gene == "CRISPR_ABL1" & FusionPair %in% c("BCR-ABL1", "ABL1-BCR")), feature = "fusion crispr", legend_title = "-log10(p-value)",  legend_breaks = seq(0, 2, by = 0.5), row_names = TRUE, color = "darkorchid4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
+ht_crispr <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_fus, Drug_Gene == "CRISPR_ABL1" & FusionPair %in% c("BCR-ABL1", "ABL1-BCR")), feature = "fusion crispr", legend_title = "-log10(p-value)",  legend_breaks = seq(0, 2, by = 0.5), row_names = TRUE, color = "darkorchid4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.5)
 png(filename = "./plots/manuscript/crispr_fus_heatmap.png", width = 3, height = 3, units = "in", res = 500)
 draw(ht_crispr, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)",  legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Fusion Pairs")
+ht_ccle <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)",  legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.01)
 png(filename = "./plots/manuscript/ccle_fus_heatmap.png", width = 5, height = 3, units = "in", res = 500)
 draw(ht_ccle, heatmap_legend_side = "top")
 dev.off()
 
-ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 10, by = 2), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
+ht_ctrp <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 10, by = 2), row_names = TRUE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.01)
 png(filename = "./plots/manuscript/ctrp_fus_heatmap.png", width = 13, height = 3, units = "in", res = 500)
 draw(ht_ctrp, heatmap_legend_side = "top")
 dev.off()
 
-ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
+ht_gdsc <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "-log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "turquoise4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.01)
 png(filename = "./plots/manuscript/gdsc_fus_heatmap.png", width = 9, height = 3, units = "in", res = 500)
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Fusion Pairs")
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 10, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs")
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Fusion Pairs")
-ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_fus, Drug_Gene == "CRISPR_ABL1" & FusionPair %in% c("BCR-ABL1", "ABL1-BCR")), feature = "fusion crispr", legend_title = "CRISPR -log10(p-value)",  legend_breaks = seq(0, 2, by = 0.5), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Fusion Pairs")
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.01)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 10, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.01)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.01)
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_fus, Drug_Gene == "CRISPR_ABL1" & FusionPair %in% c("BCR-ABL1", "ABL1-BCR")), feature = "fusion crispr", legend_title = "CRISPR -log10(p-value)",  legend_breaks = seq(0, 2, by = 0.5), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.01)
 
 png(filename = "./plots/manuscript/all_fus_heatmap.png", width = 15, height = 2.4, units = "in", res = 500)
 draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
@@ -1916,20 +1920,20 @@ crispr_spearman_corr_plot
 ggsave("./plots/manuscript/crispr_spearman_corr_plot.png", crispr_spearman_corr_plot, device = "png", dpi = 450, width = 20, height = 10, units = "in")
 ```
 
-**10/28 FIX CRISPR PART OF corr_heatmap_function**
-**11/11 Added CRISPR code to function, but R aborted due to misplaced bracket (fixed but did not run)**
-
 ```{r corr_heatmap_function}
 MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_title, metric, radius) {
   if(toupper(metric) == "CN" | toupper(metric) == "COPY NUMBER") {
     if(col_title == "CRISPR") {
-      signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-      signif_grid <- signif_grid[g2p_gene_order,]
+      signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_p", fun.aggregate = mean, fill = 0)
+      signif_grid <- signif_grid[match(g2p_gene_order, signif_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
       signif_grid[signif_grid >= 0.05] <- ""
       signif_grid[signif_grid != ""] <- "*"
       
-      corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-      corr_grid <- corr_grid[g2p_gene_order,]
+      corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0)
+      corr_grid <- corr_grid[match(g2p_gene_order, corr_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      
+      annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0)
+      annot_grid <- annot_grid[match(g2p_gene_order, annot_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     }
     if(col_title != "CRISPR") {
       signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
@@ -1941,18 +1945,25 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
       corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
       corr_grid <- corr_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(corr_grid))]
       corr_grid <- corr_grid[complete.cases(corr_grid), ]
+      
+      annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      annot_grid <- annot_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+      annot_grid <- annot_grid[complete.cases(annot_grid), ]
     }
   }
   
   if(toupper(metric) == "GE" | toupper(metric) == "GENE EXPRESSION") {
     if(col_title == "CRISPR") {
-      signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-      signif_grid <- signif_grid[g2p_gene_order,]
+      signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_p", fun.aggregate = mean, fill = 0)
+      signif_grid <- signif_grid[match(g2p_gene_order, signif_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
       signif_grid[signif_grid >= 0.05] <- ""
       signif_grid[signif_grid != ""] <- "*"
       
-      corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "CN_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-      corr_grid <- corr_grid[g2p_gene_order,]
+      corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_r", fun.aggregate = mean, fill = 0)
+      corr_grid <- corr_grid[match(g2p_gene_order, corr_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      
+      annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0)
+      annot_grid <- annot_grid[match(g2p_gene_order, annot_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
     }
     if(col_title != "CRISPR") {
       signif_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_p", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
@@ -1964,17 +1975,11 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
       corr_grid <- dcast(cor_res, Gene ~ Drug, value.var = "GE_r", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
       corr_grid <- corr_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(corr_grid))]
       corr_grid <- corr_grid[complete.cases(corr_grid), ]
+      
+      annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+      annot_grid <- annot_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
+      annot_grid <- annot_grid[complete.cases(annot_grid), ]
     }
-  }
-  
-  if(col_title == "CRISPR") {
-    annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0)
-    annot_grid <- annot_grid[match(g2p_gene_order, annot_grid$Gene),] %>% drop_na(Gene) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-  }
-  if(col_title != "CRISPR") {
-    annot_grid <- dcast(cor_res, Gene ~ Drug, value.var = "Direction_Heatmap", fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
-    annot_grid <- annot_grid[g2p_gene_order, intersect(g2p_drug_order, colnames(signif_grid))]
-    annot_grid <- annot_grid[complete.cases(annot_grid), ]
   }
   
   col_fun <- colorRamp2(color_range, c("forestgreen", "white", "blue3"))
@@ -2018,14 +2023,14 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
                 cell_fun = function(j, i, x, y, width, height, fill) {
                   grid.text(signif_grid[i, j], x = x + width*0.20, y = y + height*0.025, gp = gpar(fontsize = 18))
                   if(annot_grid[i, j] == "sensitivity") {
-                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "white", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
                   if(annot_grid[i, j] == "resistance") {
-                    grid.circle(x = x - width*0.20, y = y + height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "red", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y + height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
                   }
                   if(annot_grid[i, j] == "both") {
-                    grid.circle(x = x - width*0.20, y = y + height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "red", col = "black"))
-                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = height*0.15, default.units = "npc", gp = gpar(fill = "white", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y + height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "red", col = "black"))
+                    grid.circle(x = x - width*0.20, y = y - height*0.20, r = radius, default.units = "npc", gp = gpar(fill = "white", col = "black"))
                   }
                 }
                 )
@@ -2033,67 +2038,74 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
 }
 ```
 
-```{r drug_spear_plots, eval=FALSE}
+```{r spear_plots, eval=FALSE}
 # Copy number
+crispr_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_amp$Gene)))
+crispr_cn_ht <- MakeCorrHeatmap(cor_res = crispr_cn_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.25, 0, 0.25), radius = 0.03, legend_title = "CRISPR Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/crispr_cn_heatmap.png", width = 3, height = 3, units = "in", res = 500)
+draw(crispr_cn_ht, heatmap_legend_side = "top")
+dev.off()
+
 ccle_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CCLE" & Gene %in% unique(g2p_amp$Gene)))
-ccle_cn_ht <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.1, legend_title = "CCLE Spearman correlation", metric = "CN", crispr =  FALSE)
+ccle_cn_ht <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.02, legend_title = "CCLE Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/ccle_cn_heatmap.png", width = 3, height = 4, units = "in", res = 500)
 draw(ccle_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
 ctrp_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CTRP" & Gene %in% unique(g2p_amp$Gene)))
-ctrp_cn_ht <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.1, legend_title = "CTRP Spearman correlation", metric = "CN", crispr =  FALSE)
+ctrp_cn_ht <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.02, legend_title = "CTRP Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/ctrp_cn_heatmap.png", width = 8, height = 3, units = "in", res = 500)
 draw(ctrp_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
 gdsc_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "GDSC" & Gene %in% unique(g2p_amp$Gene)))
-gdsc_cn_ht <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.1, legend_title = "GDSC Spearman correlation", metric = "CN",  crispr = FALSE)
+gdsc_cn_ht <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.02, legend_title = "GDSC Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/gdsc_cn_heatmap.png", width = 5, height = 3, units = "in", res = 500)
 draw(gdsc_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
-crispr_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_amp$Gene)))
-crispr_cn_ht <- MakeCorrHeatmap(cor_res = crispr_cn_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.3, 0, 0.1), radius = 0.1, legend_title = "CRISPR Spearman correlation", metric = "CN")
-png(filename = "./plots/manuscript/gdsc_cn_heatmap.png", width = 5, height = 3, units = "in", res = 500)
-draw(gdsc_cn_ht, heatmap_legend_side = "top")
-dev.off()
-
-ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN", crispr =  FALSE)
-ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN", crispr =  FALSE)
-gdsc_cn_ht2 <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN", crispr =  FALSE)
-png(filename = "./plots/manuscript/drug_cn_heatmap.png", width = 13, height = 3.5, units = "in", res = 500)
-draw(ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+crispr_cn_ht2 <- MakeCorrHeatmap(cor_res = crispr_cn_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.25, 0, 0.25), radius = 0.15, legend_title = "Copy num. Spearman correlation", metric = "CN")
+ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.0215, legend_title = "Copy num. Spearman correlation", metric = "CN")
+ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.0215, legend_title = "Copy num. Spearman correlation", metric = "CN")
+gdsc_cn_ht2 <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.0215, legend_title = "Copy num. Spearman correlation", metric = "CN")
+png(filename = "./plots/manuscript/all_cn_heatmap.png", width = 13, height = 3.5, units = "in", res = 500)
+draw(crispr_cn_ht2 +ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 
 # Gene expression
+
+crispr_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_expr$Gene)))
+crispr_ge_ht <- MakeCorrHeatmap(cor_res = crispr_ge_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.5, 0, 0.5), radius = 0.1, legend_title = "CRISPR Spearman correlation", metric = "GE")
+png(filename = "./plots/manuscript/crispr_ge_heatmap.png", width = 3, height = 3, units = "in", res = 500)
+draw(crispr_ge_ht, heatmap_legend_side = "top")
+dev.off()
+
 ccle_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "CCLE" & Gene %in% unique(g2p_expr$Gene)))
-ccle_ge_ht <- MakeCorrHeatmap(cor_res = ccle_ge_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "CCLE Spearman correlation", metric = "GE", crispr =  FALSE)
+ccle_ge_ht <- MakeCorrHeatmap(cor_res = ccle_ge_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "CCLE Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/ccle_ge_heatmap.png", width = 3, height = 2.5, units = "in", res = 500)
 draw(ccle_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
 ctrp_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "CTRP" & Gene %in% unique(g2p_expr$Gene)))
-ctrp_ge_ht <- MakeCorrHeatmap(cor_res = ctrp_ge_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "CTRP Spearman correlation", metric = "GE", crispr =  FALSE)
+ctrp_ge_ht <- MakeCorrHeatmap(cor_res = ctrp_ge_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "CTRP Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/ctrp_ge_heatmap.png", width = 8, height = 2.5, units = "in", res = 500)
 draw(ctrp_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
 gdsc_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "GDSC" & Gene %in% unique(g2p_expr$Gene)))
-gdsc_ge_ht <- MakeCorrHeatmap(cor_res = gdsc_ge_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "GDSC Spearman correlation", metric = "GE", crispr =  FALSE)
+gdsc_ge_ht <- MakeCorrHeatmap(cor_res = gdsc_ge_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "GDSC Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/gdsc_ge_heatmap.png", width = 5, height = 2.5, units = "in", res = 500)
 draw(gdsc_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
-ccle_ge_ht2 <- MakeCorrHeatmap(cor_res = ccle_ge_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "Gene expr. Spearman correlation", metric = "GE", crispr =  FALSE)
-ctrp_ge_ht2 <- MakeCorrHeatmap(cor_res = ctrp_ge_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "Gene expr. Spearman correlation", metric = "GE", crispr =  FALSE)
-gdsc_ge_ht2 <- MakeCorrHeatmap(cor_res = gdsc_ge_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "Gene expr. Spearman correlation", metric = "GE", crispr =  FALSE)
-png(filename = "./plots/manuscript/drug_ge_heatmap.png", width = 13, height = 3, units = "in", res = 500)
-draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+crispr_ge_ht2 <- MakeCorrHeatmap(cor_res = crispr_ge_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.5, 0, 0.5), radius = 0.155, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ccle_ge_ht2 <- MakeCorrHeatmap(cor_res = ccle_ge_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.035, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ctrp_ge_ht2 <- MakeCorrHeatmap(cor_res = ctrp_ge_cor, row_names = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.035, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+gdsc_ge_ht2 <- MakeCorrHeatmap(cor_res = gdsc_ge_cor, row_names = FALSE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.035, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+png(filename = "./plots/manuscript/all_ge_heatmap.png", width = 13, height = 2.9, units = "in", res = 500)
+draw(crispr_ge_ht2 + ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
-
-**10/28 NEED TO MAKE SPEAR CORR PLOTS WITH CRISPR PANEL**
 
 # SPEARMAN: Lineages
 
