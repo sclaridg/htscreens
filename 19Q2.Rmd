@@ -969,7 +969,7 @@ dev.off()
 ```
 
 
-# WILCOXON
+# WILCOXON: Mutations
 
 --------------------------------------------------------------------------------
 
@@ -1453,8 +1453,6 @@ ggsave("./plots/manuscript/gdsc_fus_boxplots.png", gdsc_fus_boxplot, width = 12,
 
 ## Heatmaps
 
-**10/29 NEED TO FIX CIRCLE ANNOTS ON FUSION/STEELBLUE4 HEATMAP**
-
 ```{r wilcoxon_heatmap_function}
 MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color, legend_title, legend_breaks, row_title_txt, na_color, radius) {
   if(missing(na_color)) {
@@ -1585,25 +1583,6 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                 column_title_gp = gpar(fontface = "bold", fontsize = 14),
                 column_title_side = "bottom",
                 cell_fun = function(j, i, x, y, width, height, fill) {
-                  # if(color == "darkgreen") {
-                  #   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.16 }
-                  #   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.3 }
-                  #   else { radius <- width*0.17 }
-                  # }
-                  # if(color == "steelblue4") {
-                  #   if(!is.na(str_match(string = tolower(feature), pattern = "fus"))) { radius <- height*0.5 }
-                  #   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*0.16 }
-                  #   else { radius <- width*0.18 }
-                  # }
-                  # if(color == "turquoise4") {
-                  #   if(!is.na(str_match(string = tolower(feature), pattern = "fus|prot"))) { radius <- height*0.16 }
-                  #   else { radius <- width*0.18 }
-                  # }
-                  # if(color == "darkorchid4") {
-                  #   if(is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*3.3 }
-                  #   if(!is.na(str_match(string = tolower(feature), pattern = "prot"))) { radius <- height*2 }
-                  # }
-                  # 
                   grid.text(signif_grid_annot1[i, j], x = x + width*0.25, y = y + height*0.065, gp = gpar(fontsize = 17))
                   
                   if(signif_grid_annot[i, j] == "O") {
@@ -1767,16 +1746,58 @@ names(gdsc_hts) <- unique(gdsc_signif_dgl$disease)
 lapply(unique(gdsc_signif_dgl$disease), SaveWilcoxonLineageHeatmap, ht_list = gdsc_hts, database = "GDSC")
 ```
 
-# SPEARMAN: PanCan
+# SPEARMAN: GE and CN
 
 --------------------------------------------------------------------------------
 
-## GE/CN
+```{r}
+MakeDrugscreenSpearmanCorrDF <- function(dataset, df, metric, lineage) {
+  df_filt <- filter(df, Drug %in% g2p_drugs & Gene %in% g2p_genes)
+  df_filt$Gene <- factor(df_filt$Gene, ordered = FALSE)
+  df_filt <- unfactorize(df_filt)
 
-Spearman correlations for gene expression and copy number:
+  if(metric == "GE") {
+    if(lineage) {
+      res <- df_filt %>% group_by(Drug, Gene, disease, Drug_Gene_Lin) %>% drop_na(TPM) %>%
+        summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
+                  GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value, 
+                  GE_p_log10 = -log10(GE_p))
+      res$InG2P <- ifelse(res$Drug_Gene_Lin %in% unique(as.character(g2p_expr$Drug_Gene_Lin[!is.na(g2p_expr$Drug_Gene_Lin)])),   "Yes", "No")
+    }
+    if(!lineage) {
+      res <- df_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>%
+        summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
+                  GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value, 
+                  GE_p_log10 = -log10(GE_p))
+      res$InG2P <- ifelse(res$Drug_Gene %in% unique(as.character(g2p_expr$Drug_Gene[!is.na(g2p_expr$Drug_Gene)])),   "Yes", "No")
+    }
+  }
+  if(metric == "CN") {
+    if(lineage) {
+      res <- df_filt %>% group_by(Drug, Gene, disease, Drug_Gene_Lin) %>% drop_na(CN) %>%
+        summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
+                  CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value,
+                  CN_p_log10 = -log10(CN_p))
+      res$InG2P <- ifelse(res$Drug_Gene_Lin %in% unique(as.character(g2p_amp$Drug_Gene_Lin[!is.na(g2p_amp$Drug_Gene_Lin)])), "Yes", "No")
+    }
+    if(!lineage) {
+      res <- df_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>%
+        summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
+                  CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value, 
+                  CN_p_log10 = -log10(GE_p))
+      res$InG2P <- ifelse(res$Drug_Gene %in% unique(as.character(g2p_expr$Drug_Gene[!is.na(g2p_expr$Drug_Gene)])),   "Yes", "No")
+    }
+  }
+  res$Dataset <- dataset
+  return(res)
+}
+```
+
+## Lineage-agnostic
+
 ```{r spear_calc, warning=FALSE, eval=FALSE}
 # CRISPR
-crispr_spear_cn <- crispr %>% group_by(Gene) %>% drop_na(CN) %>%
+crispr_spear_cn <- crispr %>% group_by(Gene, disease) %>% drop_na(CN) %>%
   summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
             CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value,
             CN_p_log10 = -log10(CN_p),
@@ -1787,9 +1808,10 @@ crispr_spear_cn <- transform(crispr_spear_cn, Gene = reorder(Gene, CN_r))
 crispr_spear_cn <- add_column(crispr_spear_cn, Drug = "CRISPR", .before = "Gene")
 Drug_Gene <- with(crispr_spear_cn, paste0(Drug, "_", Gene))
 crispr_spear_cn <- add_column(crispr_spear_cn, Drug_Gene = Drug_Gene, .before = "Drug")
-saveRDS(crispr_spear_cn, "./data_munging/rds/crispr_cn_cor.rds")
+crispr_spear_cn <- add_column(crispr_spear_cn, Drug_Gene_Lin = paste0(Drug_Gene, "_", disease), .before = "Drug")
+saveRDS(crispr_spear_cn, "./data_munging/rds/crispr_cn_cor_lineage.rds")
 
-crispr_spear_ge <- crispr %>% group_by(Gene) %>% drop_na(TPM) %>%
+crispr_spear_ge <- crispr %>% group_by(Gene, disease) %>% drop_na(TPM) %>%
   summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
             GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
             GE_p_log10 = -log10(GE_p),
@@ -1800,65 +1822,18 @@ crispr_spear_ge <- transform(crispr_spear_ge, Gene = reorder(Gene, GE_r))
 crispr_spear_ge <- add_column(crispr_spear_ge, Drug = "CRISPR", .before = "Gene")
 Drug_Gene <- with(crispr_spear_ge, paste0(Drug, "_", Gene))
 crispr_spear_ge <- add_column(crispr_spear_ge, Drug_Gene = Drug_Gene, .before = "Drug")
-saveRDS(crispr_spear_ge, "./data_munging/rds/crispr_ge_cor.rds")
+crispr_spear_ge <- add_column(crispr_spear_ge, Drug_Gene_Lin = paste0(Drug_Gene, "_", disease), .before = "Drug")
+saveRDS(crispr_spear_ge, "./data_munging/rds/crispr_ge_cor_lineage.rds")
 
-# CCLE
-ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
-ccle_filt <- unfactorize(ccle_filt)
-ccle_ge_res <- ccle_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>%
-  summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
-            GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value, 
-            GE_p_log10 = -log10(GE_p))
-ccle_ge_res$InG2P <- ifelse(ccle_ge_res$Drug_Gene %in% unique(as.character(g2p_expr$Drug_Gene[!is.na(g2p_expr$Drug_Gene)])), "Yes", "No")
-ccle_ge_res$Dataset <- "CCLE"
-
-ccle_cn_res <- ccle_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>%
-  summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
-            CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value,
-            CN_p_log10 = -log10(CN_p))
-ccle_cn_res$InG2P <- ifelse(ccle_cn_res$Drug_Gene %in% unique(as.character(g2p_amp$Drug_Gene[!is.na(g2p_amp$Drug_Gene)])), "Yes", "No")
-ccle_cn_res$Dataset <- "CCLE"
-
-# CTRP
-ctrp_filt <- filter(ctrp, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-ctrp_filt$Gene <- factor(ctrp_filt$Gene, ordered = FALSE)
-ctrp_filt <- unfactorize(ctrp_filt)
-ctrp_ge_res <- ctrp_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>%
-  summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
-            GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value,
-            GE_p_log10 = -log10(GE_p))
-ctrp_ge_res$InG2P <- ifelse(ctrp_ge_res$Drug_Gene %in% unique(as.character(g2p_expr$Drug_Gene[!is.na(g2p_expr$Drug_Gene)])), "Yes", "No")
-ctrp_ge_res$Dataset <- "CTRP"
-
-ctrp_cn_res <- ctrp_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>%
-  summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
-            CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value,
-            CN_p_log10 = -log10(CN_p))
-ctrp_cn_res$InG2P <- ifelse(ctrp_cn_res$Drug_Gene %in% unique(as.character(g2p_amp$Drug_Gene[!is.na(g2p_amp$Drug_Gene)])), "Yes", "No")
-ctrp_cn_res$Dataset <- "CTRP"
-
-# GDSC
-gdsc_filt <- filter(gdsc, Drug %in% g2p_drugs & Gene %in% g2p_genes)
-gdsc_filt$Gene <- factor(gdsc_filt$Gene, ordered = FALSE)
-gdsc_filt <- unfactorize(gdsc_filt)
-gdsc_ge_res <- gdsc_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>%
-  summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$estimate,
-            GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "na.or.complete")$p.value,
-            GE_p_log10 = -log10(GE_p))
-gdsc_ge_res$InG2P <- ifelse(gdsc_ge_res$Drug_Gene %in% unique(as.character(g2p_expr$Drug_Gene[!is.na(g2p_expr$Drug_Gene)])), "Yes", "No")
-gdsc_ge_res$Dataset <- "GDSC"
-
-gdsc_cn_res <- gdsc_filt %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>%
-  summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$estimate,
-            CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "na.or.complete")$p.value,
-            CN_p_log10 = -log10(CN_p))
-gdsc_cn_res$InG2P <- ifelse(gdsc_cn_res$Drug_Gene %in% unique(as.character(g2p_amp$Drug_Gene[!is.na(g2p_amp$Drug_Gene)])), "Yes", "No")
-gdsc_cn_res$Dataset <- "GDSC"
-
-# All
+ccle_cn_res <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "CN", lineage = FALSE)
+ctrp_cn_res <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "CN", lineage = FALSE)
+gdsc_cn_res <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "CN", lineage = FALSE)
 cn_cor <- rbind(ccle_cn_res, ctrp_cn_res, gdsc_cn_res)
 saveRDS(cn_cor, "./data_munging/rds/drug_cn_cor.rds")
+
+ccle_ge_res <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "GE", lineage = FALSE)
+ctrp_ge_res <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "GE", lineage = FALSE)
+gdsc_ge_res <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "GE", lineage = FALSE)
 ge_cor <- rbind(ccle_ge_res, ctrp_ge_res, gdsc_ge_res)
 saveRDS(ge_cor, "./data_munging/rds/drug_ge_cor.rds")
 ```
@@ -1905,6 +1880,51 @@ crispr_ge_cor$Metric <- NULL
 
 all_cn_cor <- rbind(cn_cor, crispr_cn_cor)
 all_ge_cor <- rbind(ge_cor, crispr_ge_cor)
+```
+
+## Lineage
+
+## Lineage
+
+```{r spear_calc_lin, eval=FALSE}
+# CRISPR
+# crispr_spear_cn <- crispr %>% group_by(Gene) %>% drop_na(CN) %>%
+#   summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$estimate,
+#             CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs")$p.value,
+#             CN_p_log10 = -log10(CN_p),
+#             InG2P = "No",
+#             Dataset = "CRISPR",
+#             Metric = "Copy Number")
+# crispr_spear_cn <- transform(crispr_spear_cn, Gene = reorder(Gene, CN_r))
+# crispr_spear_cn <- add_column(crispr_spear_cn, Drug = "CRISPR", .before = "Gene")
+# Drug_Gene <- with(crispr_spear_cn, paste0(Drug, "_", Gene))
+# crispr_spear_cn <- add_column(crispr_spear_cn, Drug_Gene = Drug_Gene, .before = "Drug")
+# saveRDS(crispr_spear_cn, "./data_munging/rds/crispr_cn_cor.rds")
+# 
+# crispr_spear_ge <- crispr %>% group_by(Gene) %>% drop_na(TPM) %>%
+#   summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$estimate,
+#             GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs")$p.value,
+#             GE_p_log10 = -log10(GE_p),
+#             InG2P = "No",
+#             Dataset = "CRISPR",
+#             Metric = "Gene Expression")
+# crispr_spear_ge <- transform(crispr_spear_ge, Gene = reorder(Gene, GE_r))
+# crispr_spear_ge <- add_column(crispr_spear_ge, Drug = "CRISPR", .before = "Gene")
+# Drug_Gene <- with(crispr_spear_ge, paste0(Drug, "_", Gene))
+# crispr_spear_ge <- add_column(crispr_spear_ge, Drug_Gene = Drug_Gene, .before = "Drug")
+# saveRDS(crispr_spear_ge, "./data_munging/rds/crispr_ge_cor.rds")
+
+ccle_cn_res_lin <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "CN", lineage = TRUE)
+ctrp_cn_res_lin <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "CN", lineage = TRUE)
+gdsc_cn_res_lin <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "CN", lineage = TRUE)
+cn_cor_lin <- rbind(ccle_cn_res_lin, ctrp_cn_res_lin, gdsc_cn_res_lin)
+saveRDS(cn_cor_lin, "./data_munging/rds/drug_cn_cor_lineage.rds")
+
+ccle_ge_res_lin <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "GE", lineage = TRUE)
+ctrp_ge_res_lin <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "GE", lineage = TRUE)
+gdsc_ge_res_lin <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "GE", lineage = TRUE)
+ge_cor_lin <- rbind(ccle_ge_res_lin, ctrp_ge_res_lin, gdsc_ge_res_lin)
+saveRDS(ge_cor_lin, "./data_munging/rds/drug_ge_cor_lineage.rds")
 ```
 
 ## Plots
@@ -2129,15 +2149,8 @@ draw(crispr_ge_ht2 + ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "
 dev.off()
 ```
 
-# SPEARMAN: Lineages
 
---------------------------------------------------------------------------------
-
-## GE/CN
-
-
-
-# OLD
+# OLD CODE
 
 --------------------------------------------------------------------------------
 
