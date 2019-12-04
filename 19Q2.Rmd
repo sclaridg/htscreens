@@ -1797,84 +1797,79 @@ MakeSpearmanCorrDF <- function(dataset, df, metric, lineage) {
 }
 ```
 
-## Lineage-agnostic
+## Lineage
 
 ```{r spear_calc, warning=FALSE, eval=FALSE}
-# Ran this chunk on 11/25
+# Ran this chunk on 12/3
 crispr_cn_res <- MakeSpearmanCorrDF(dataset = "CRISPR", df = crispr, metric = "CN", lineage = FALSE)
 ccle_cn_res <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "CN", lineage = FALSE)
 ctrp_cn_res <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "CN", lineage = FALSE)
 gdsc_cn_res <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "CN", lineage = FALSE)
-cn_cor <- rbind(crispr_spear_cn, ccle_cn_res, ctrp_cn_res, gdsc_cn_res)
-saveRDS(cn_cor, "./data_munging/rds/cn_cor.rds")
+cn_cor <- rbind(crispr_cn_res, ccle_cn_res, ctrp_cn_res, gdsc_cn_res)
+saveRDS(cn_cor, "./data_munging/rds/cn_cor.rds", compress = "xz")
 
 crispr_ge_res <- MakeSpearmanCorrDF(dataset = "CRISPR", df = crispr, metric = "GE", lineage = FALSE)
 ccle_ge_res <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "GE", lineage = FALSE)
 ctrp_ge_res <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "GE", lineage = FALSE)
 gdsc_ge_res <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "GE", lineage = FALSE)
 ge_cor <- rbind(crispr_ge_res, ccle_ge_res, ctrp_ge_res, gdsc_ge_res)
-saveRDS(ge_cor, "./data_munging/rds/ge_cor.rds")
+saveRDS(ge_cor, "./data_munging/rds/ge_cor.rds", compress = "xz")
 ```
 
 ```{r load_spear}
-# Drug screens
-## CN
+# CN
+g2p_amp_crispr_4merge <- unique(select(g2p_amp, Gene, Direction_Curated))
+crispr_amp_summ <- g2p_amp_crispr_4merge %>% count(Gene)
+crispr_amp_summ <- merge(crispr_amp_summ, g2p_amp_crispr_4merge, by = "Gene")
+crispr_amp_summ$Drug_Gene <- paste0("CRISPR_", crispr_amp_summ$Gene)
+crispr_amp_summ$Direction_Heatmap <- with(crispr_amp_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
+crispr_amp_summ <- unique(select(crispr_amp_summ, Drug_Gene, Direction_Heatmap))
+
 g2p_amp_4merge <- select(g2p_amp, Drug_Gene, Direction_Curated)
 amp_summ <- g2p_amp_4merge %>% count(Drug_Gene)
 amp_summ <- merge(amp_summ, g2p_amp_4merge, by = "Drug_Gene")
 amp_summ$Direction_Heatmap <- with(amp_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
 amp_summ <- unique(select(amp_summ, Drug_Gene, Direction_Heatmap))
-cn_cor <- readRDS("./data_munging/rds/drug_cn_cor.rds")
+
+amp_summ <- rbind(amp_summ, crispr_amp_summ)
+cn_cor <- readRDS("./data_munging/rds/cn_cor.rds")
 cn_cor <- merge(cn_cor, amp_summ, by = "Drug_Gene", all.x = TRUE)
-## GE
+
+# GE
+g2p_expr_crispr_4merge <- unique(select(g2p_expr, Gene, Direction_Curated))
+crispr_expr_summ <- g2p_expr_crispr_4merge %>% count(Gene)
+crispr_expr_summ <- merge(crispr_expr_summ, g2p_expr_crispr_4merge, by = "Gene")
+crispr_expr_summ$Drug_Gene <- paste0("CRISPR_", crispr_expr_summ$Gene)
+crispr_expr_summ$Direction_Heatmap <- with(crispr_expr_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
+crispr_expr_summ <- unique(select(crispr_expr_summ, Drug_Gene, Direction_Heatmap))
+
 g2p_expr_4merge <- select(g2p_expr, Drug_Gene, Direction_Curated)
 expr_summ <- g2p_expr_4merge %>% count(Drug_Gene)
 expr_summ <- merge(expr_summ, g2p_expr_4merge, by = "Drug_Gene")
 expr_summ$Direction_Heatmap <- with(expr_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
 expr_summ <- unique(select(expr_summ, Drug_Gene, Direction_Heatmap))
-ge_cor <- readRDS("./data_munging/rds/drug_ge_cor.rds")
+
+expr_summ <- rbind(expr_summ, crispr_expr_summ)
+ge_cor <- readRDS("./data_munging/rds/ge_cor.rds")
 ge_cor <- merge(ge_cor, expr_summ, by = "Drug_Gene", all.x = TRUE)
-
-# CRISPR
-## CN
-g2p_cn_crispr_4merge <- unique(select(g2p_amp, Gene, Direction_Curated))
-crispr_cn_summ <- g2p_cn_crispr_4merge %>% count(Gene)
-crispr_cn_summ <- merge(crispr_cn_summ, g2p_cn_crispr_4merge, by = "Gene")
-crispr_cn_summ$Direction_Heatmap <- with(crispr_cn_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
-crispr_cn_summ <- unique(select(crispr_cn_summ, Gene, Direction_Heatmap))
-crispr_spear_cn <- readRDS("./data_munging/rds/crispr_cn_cor.rds")
-crispr_cn_cor <- merge(crispr_spear_cn, crispr_cn_summ, by = "Gene", all.x = TRUE)
-crispr_cn_cor$Metric <- NULL
-## GE
-g2p_ge_crispr_4merge <- unique(select(g2p_expr, Gene, Direction_Curated))
-crispr_ge_summ <- g2p_ge_crispr_4merge %>% count(Gene)
-crispr_ge_summ <- merge(crispr_ge_summ, g2p_ge_crispr_4merge, by = "Gene")
-crispr_ge_summ$Direction_Heatmap <- with(crispr_ge_summ, ifelse(n == 2, "both", ifelse(n == 1 & Direction_Curated == "resistance", "resistance", "sensitivity")))
-crispr_ge_summ <- unique(select(crispr_ge_summ, Gene, Direction_Heatmap))
-crispr_spear_ge <- readRDS("./data_munging/rds/crispr_ge_cor.rds")
-crispr_ge_cor <- merge(crispr_spear_ge, crispr_ge_summ, by = "Gene", all.x = TRUE)
-crispr_ge_cor$Drug_Gene <- paste0(crispr_ge_cor$Drug, "_", crispr_ge_cor$Gene)
-crispr_ge_cor$Metric <- NULL
-
-all_cn_cor <- rbind(cn_cor, crispr_cn_cor)
-all_ge_cor <- rbind(ge_cor, crispr_ge_cor)
 ```
 
 ## Lineage
 
 ```{r spear_calc_lin, eval=FALSE}
+# Ran on 12/3
 crispr_cn_res_lin <- MakeSpearmanCorrDF(dataset = "CRISPR", df = crispr, metric = "CN", lineage = TRUE)
 ccle_cn_res_lin <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "CN", lineage = TRUE)
 ctrp_cn_res_lin <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "CN", lineage = TRUE)
 gdsc_cn_res_lin <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "CN", lineage = TRUE)
-cn_cor_lin <- rbind(crispr_cn_res_lin, ccle_cn_res_lin, ctrp_cn_res_lin, gdsc_cn_res_lin) %>% filter(CN_p_log10 == Inf)
+cn_cor_lin <- rbind(crispr_cn_res_lin, ccle_cn_res_lin, ctrp_cn_res_lin, gdsc_cn_res_lin) %>% filter(CN_p_log10 != Inf)
 saveRDS(cn_cor_lin, "./data_munging/rds/cn_cor_lineage.rds")
 
 crispr_ge_res <- MakeSpearmanCorrDF(dataset = "CRISPR", df = crispr, metric = "GE", lineage = TRUE)
 ccle_ge_res_lin <- MakeSpearmanCorrDF(dataset = "CCLE", df = ccle, metric = "GE", lineage = TRUE)
 ctrp_ge_res_lin <- MakeSpearmanCorrDF(dataset = "CTRP", df = ctrp, metric = "GE", lineage = TRUE)
 gdsc_ge_res_lin <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "GE", lineage = TRUE)
-ge_cor_lin <- rbind(crispr_ge_res, ccle_ge_res_lin, ctrp_ge_res_lin, gdsc_ge_res_lin) %>% filter(GE_p_log10 == Inf)
+ge_cor_lin <- rbind(crispr_ge_res, ccle_ge_res_lin, ctrp_ge_res_lin, gdsc_ge_res_lin) %>% filter(GE_p_log10 != Inf)
 saveRDS(ge_cor_lin, "./data_munging/rds/ge_cor_lineage.rds")
 ```
 
@@ -1975,6 +1970,8 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
     }
   }
   
+  corr_grid <- as.matrix(corr_grid)
+  
   col_fun <- colorRamp2(color_range, c("forestgreen", "white", "blue3"))
   
   # Legend properties list
@@ -2005,7 +2002,7 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
                   text = anno_text(colnames(signif_grid),
                                    rot = 45,
                                    gp = gpar(fontsize = 11),
-                                   offset = unit(1, "npc"),
+                                   location = unit(1, "npc"),
                                    just = "right"),
                   annotation_height = unit(0.85, "in")),
                 row_title = "Genes",
@@ -2033,25 +2030,25 @@ MakeCorrHeatmap <- function(cor_res, row_names, col_title, color_range, legend_t
 
 ```{r spear_plots, eval=FALSE}
 # Copy number
-crispr_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_amp$Gene)))
+crispr_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_amp$Gene)))
 crispr_cn_ht <- MakeCorrHeatmap(cor_res = crispr_cn_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.25, 0, 0.25), radius = 0.03, legend_title = "CRISPR Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/crispr_cn_heatmap.png", width = 3, height = 3, units = "in", res = 500)
 draw(crispr_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
-ccle_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CCLE" & Gene %in% unique(g2p_amp$Gene)))
+ccle_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CCLE" & Gene %in% unique(g2p_amp$Gene)))
 ccle_cn_ht <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.02, legend_title = "CCLE Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/ccle_cn_heatmap.png", width = 3, height = 4, units = "in", res = 500)
 draw(ccle_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
-ctrp_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "CTRP" & Gene %in% unique(g2p_amp$Gene)))
+ctrp_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CTRP" & Gene %in% unique(g2p_amp$Gene)))
 ctrp_cn_ht <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.02, legend_title = "CTRP Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/ctrp_cn_heatmap.png", width = 8, height = 3, units = "in", res = 500)
 draw(ctrp_cn_ht, heatmap_legend_side = "top")
 dev.off()
 
-gdsc_cn_cor <- unfactorize(filter(all_cn_cor, Dataset == "GDSC" & Gene %in% unique(g2p_amp$Gene)))
+gdsc_cn_cor <- unfactorize(filter(cn_cor, Dataset == "GDSC" & Gene %in% unique(g2p_amp$Gene)))
 gdsc_cn_ht <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.02, legend_title = "GDSC Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/gdsc_cn_heatmap.png", width = 5, height = 3, units = "in", res = 500)
 draw(gdsc_cn_ht, heatmap_legend_side = "top")
@@ -2066,26 +2063,25 @@ draw(crispr_cn_ht2 +ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "i
 dev.off()
 
 # Gene expression
-
-crispr_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_expr$Gene)))
+crispr_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_expr$Gene)))
 crispr_ge_ht <- MakeCorrHeatmap(cor_res = crispr_ge_cor, row_names = TRUE, col_title = "CRISPR", color_range = c(-0.5, 0, 0.5), radius = 0.1, legend_title = "CRISPR Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/crispr_ge_heatmap.png", width = 3, height = 3, units = "in", res = 500)
 draw(crispr_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
-ccle_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "CCLE" & Gene %in% unique(g2p_expr$Gene)))
+ccle_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CCLE" & Gene %in% unique(g2p_expr$Gene)))
 ccle_ge_ht <- MakeCorrHeatmap(cor_res = ccle_ge_cor, row_names = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "CCLE Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/ccle_ge_heatmap.png", width = 3, height = 2.5, units = "in", res = 500)
 draw(ccle_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
-ctrp_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "CTRP" & Gene %in% unique(g2p_expr$Gene)))
+ctrp_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CTRP" & Gene %in% unique(g2p_expr$Gene)))
 ctrp_ge_ht <- MakeCorrHeatmap(cor_res = ctrp_ge_cor, row_names = TRUE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "CTRP Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/ctrp_ge_heatmap.png", width = 8, height = 2.5, units = "in", res = 500)
 draw(ctrp_ge_ht, heatmap_legend_side = "top")
 dev.off()
 
-gdsc_ge_cor <- unfactorize(filter(all_ge_cor, Dataset == "GDSC" & Gene %in% unique(g2p_expr$Gene)))
+gdsc_ge_cor <- unfactorize(filter(ge_cor, Dataset == "GDSC" & Gene %in% unique(g2p_expr$Gene)))
 gdsc_ge_ht <- MakeCorrHeatmap(cor_res = gdsc_ge_cor, row_names = TRUE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.2, legend_title = "GDSC Spearman correlation", metric = "GE")
 png(filename = "./plots/manuscript/gdsc_ge_heatmap.png", width = 5, height = 2.5, units = "in", res = 500)
 draw(gdsc_ge_ht, heatmap_legend_side = "top")
