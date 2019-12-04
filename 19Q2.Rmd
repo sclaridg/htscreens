@@ -61,7 +61,7 @@ theme_set(theme_light())
 ```{r general_functions}
 unfactorize <- function(df){
   for(i in which(sapply(df, class) == "factor")) {
-    df[[i]] = as.character(df[[i]])
+    df[[i]] <- as.character(df[[i]])
   }
   return(df)
 }
@@ -268,14 +268,11 @@ g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g
 g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(disease, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
 g2p_prot$Drug_Gene_Protein_Change <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
 g2p_prot$Drug_Gene_Protein_Change_Lineage <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
-```
 
-```{r g2p_count_summ}
+# Counts
 g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
 g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
 g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
-# g2p_dg_counts[g2p_dg_counts == 0] <- NA
-
 g2p_gene_order <- colnames(g2p_dg_counts)
 g2p_drug_order <- rownames(g2p_dg_counts)
 ```
@@ -284,7 +281,7 @@ g2p_drug_order <- rownames(g2p_dg_counts)
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
-Mutation calls (coding region, germline filtered):
+Mutation calls (coding region, germline filtered): **12/4 RUN THIS AND RE-MERGE ALL DATA AND RE-RUN TESTS**
 ```{r mutation_status, eval=FALSE}
 maf_raw <- read.delim("./data_munging/19Q2/CCLE_mutations_20190514.csv.gz", header = TRUE, sep = ",")
 maf_raw[, 1:2] <- NULL
@@ -299,7 +296,8 @@ maf_changes$Gene_Protein_Change <- with(maf_changes, paste0(Gene, ":", Protein_C
 saveRDS(maf_changes, "./data_munging/19Q2/maf_changes_df_19Q2.rds", compress = "xz")
 
 # Select columns for maf_df
-maf <- subset(maf_raw, select = c("Gene", "DepMap_ID"))
+maf_raw_edit <- filter(maf_raw, Variant_Classification != "Silent" & !is.na(Variant_Classification))
+maf <- subset(maf_raw_edit, select = c("Gene", "DepMap_ID"))
 maf$Mutation <- 1
 maf_grid <- expand.grid("Gene" = unique(maf$Gene), "DepMap_ID" = unique(maf$DepMap_ID))
 maf_df <- merge(maf, maf_grid, by = c("Gene", "DepMap_ID"), all = TRUE)
@@ -1552,6 +1550,8 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
       print("Done.")
     }
   }
+  
+  signif_grid <- as.matrix(signif_grid)
   col_fun <- colorRamp2(c(legend_breaks[1], legend_breaks[length(legend_breaks)]), c("gray97", color))
   # Legend properties list
   ht_legend_list <- list(title = legend_title, title_position = "topleft", legend_direction = "horizontal", legend_width = unit(1.5, "in"), border = "gray70", at = legend_breaks, labels = legend_breaks)
@@ -1574,7 +1574,7 @@ MakeWilcoxonHeatmap <- function(signif_df, feature, row_names, col_title, color,
                   text = anno_text(colnames(signif_grid),
                                    rot = 45,
                                    gp = gpar(fontsize = 11),
-                                   offset = unit(1, "npc"),
+                                   location = unit(1, "npc"),
                                    just = "right"),
                   annotation_height = unit(0.85, "in")),
                 row_title = row_title_txt,
@@ -1693,13 +1693,13 @@ png(filename = "./plots/manuscript/gdsc_fus_heatmap.png", width = 9, height = 3,
 draw(ht_gdsc, heatmap_legend_side = "top")
 dev.off()
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 4, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.01)
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 10, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.01)
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "GDSC -log10(p-value)          ", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.01)
-ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_fus, Drug_Gene == "CRISPR_ABL1" & FusionPair %in% c("BCR-ABL1", "ABL1-BCR")), feature = "fusion crispr", legend_title = "CRISPR -log10(p-value)",  legend_breaks = seq(0, 2, by = 0.5), row_names = FALSE, color = "darkorchid4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.01)
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_fus, Drug_Gene == "CRISPR_ABL1" & FusionPair %in% c("BCR-ABL1", "ABL1-BCR")), feature = "fusion crispr", legend_title = "CRISPR -log10(p-value)          ",  legend_breaks = seq(0, 2, by = 0.5), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.15)
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CCLE -log10(p-value)          ", legend_breaks = seq(0, 4, by = 1), row_names = FALSE, color = "darkgreen", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.15)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "CTRP -log10(p-value)          ", legend_breaks = seq(0, 10, by = 2), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Fusion Pairs", radius = 0.08)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_fus, Drug %in% g2p_drugs), feature = "fusion", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Fusion Pairs", radius = 0.08)
 
 png(filename = "./plots/manuscript/all_fus_heatmap.png", width = 15, height = 2.4, units = "in", res = 500)
-draw(ht_ccle2 + ht_ctrp2 + ht_gdsc2 + ht_crispr2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+draw(ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
 
@@ -1876,7 +1876,9 @@ saveRDS(ge_cor_lin, "./data_munging/rds/ge_cor_lineage.rds")
 ## Plots
 
 ```{r crispr_spear_eda, warning=FALSE}
-crispr_spear_cn_plot <- ggplot(data = filter(crispr_spear_cn, Gene %in% g2p_dg_genes)) +
+crispr_spear_cn <- filter(cn_cor, Dataset == "CRISPR" & Gene %in% g2p_dg_genes)
+crispr_spear_cn$Gene <- with(crispr_spear_cn, reorder(Gene, CN_r, function(x) x))
+crispr_spear_cn_plot <- ggplot(data = crispr_spear_cn) +
   geom_point(aes(x = Gene, y = CN_r, fill = CN_p_log10), pch = 21, size = 5) +
   theme(legend.position = "bottom") +
   scale_fill_gradientn(colours = c("white", "green4"),
@@ -1889,7 +1891,9 @@ crispr_spear_cn_plot <- ggplot(data = filter(crispr_spear_cn, Gene %in% g2p_dg_g
        x = "Gene",
        y = expression("Spearman Correlation Coefficient"~(r[s])))
 
-crispr_spear_ge_plot <- ggplot(data = filter(crispr_spear_ge, Gene %in% g2p_dg_genes)) +
+crispr_spear_ge <- filter(ge_cor, Dataset == "CRISPR" & Gene %in% g2p_dg_genes)
+crispr_spear_ge$Gene <- with(crispr_spear_ge, reorder(Gene, GE_r, function(x) x))
+crispr_spear_ge_plot <- ggplot(data = crispr_spear_ge) +
   geom_point(aes(x = Gene, y = GE_r, fill = GE_p_log10), pch = 21, size = 5) +
   theme(legend.position = "bottom") +
   scale_fill_gradientn(colours = c("white", "deepskyblue4"),

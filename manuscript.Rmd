@@ -35,7 +35,7 @@ abstract            : Multiple high-throughput functional screens in cancer cell
 library(ggpubr)
 library(tidyverse)
 library(kableExtra)
-
+library(reshape2)
 # install.packages("tinytex")
 # tinytex::install_tinytex()
 # install.packages("citr")
@@ -111,82 +111,46 @@ drugstring2intext_converter <- function(string, type) {
 ```
 
 ```{r g2p-data, echo=FALSE, include=FALSE}
-ccl_converter <- read.delim("./data_munging/cell_line_database_v1_20180911.tsv", row.names = 1, sep = "\t", header = TRUE)
-lineage_converter <- unique(ccl_converter[, c("grouped_general_doid", "group_general_lineage_name")])
-colnames(ccl_converter)[colnames(ccl_converter) == "Broad_ID"] <- "DepMap_ID"
+ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20191008.csv", sep = ",", header = TRUE, row.names = 1)
+ccl_meta <- ccl_meta %>% select(DepMap_ID, Cell_line, disease)
+ccl_unique <- data.frame(disease = unique(ccl_meta$disease))
 
-g2p <- read.delim("./data_munging/g2p_full_level_A_dataset_NEW_DEC_2_2018_withGroupedLineages.csv", sep = "\t", header = TRUE)
-g2p[, 1:2] <- NULL
-g2p <- merge(g2p, lineage_converter, by = "grouped_general_doid", all.x = TRUE)
+g2p <- read.delim("./data_munging/g2p_db_edited_20190718.csv", sep = ",", header = TRUE, row.names = 1)
 
-g2p$Drug <- tolower(g2p$Drug)
-g2p[g2p == -1] <- NA
-g2p$Ref[g2p$Ref == "None"] <- NA
-g2p$Alt[g2p$Alt == "None"] <- NA
-g2p$Drug_Gene <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene), NA, paste0(g2p$Drug, "_", g2p$Gene))
-g2p$Drug_Gene_Lin <- ifelse(is.na(g2p$Drug) | is.na(g2p$Gene) | is.na(g2p$group_general_lineage_name), NA, paste0(g2p$Drug, "_", g2p$Gene, "_", g2p$group_general_lineage_name))
-g2p$position <- paste0("g.chr", g2p$Chromosome, ":", g2p$End, g2p$Ref, ">", g2p$Alt)
-g2p$position <- ifelse(grepl("NA", g2p$position), NA, g2p$position)
-g2p_filt <- subset(g2p, grepl("^CID", g2p$DrugID))
-g2p_dgls <-  unique(g2p_filt$Drug_Gene_Lin[!is.na(g2p_filt$Drug_Gene_Lin)])
-g2p_druggenes <- unique(g2p_filt$Drug_Gene[!is.na(g2p_filt$Drug_Gene)])
-g2p_drugs <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[1]))
-g2p_genes <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[2]))
-g2p_lins <- unique(sapply(strsplit(g2p_dgls, "_", fixed = TRUE), function(x) x[3]))
+g2p_dgl <-  as.character(unique(g2p$Drug_Gene_Lin[!is.na(g2p$Drug_Gene_Lin)]))
+g2p_dg <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
+g2p_drugs <- as.character(unique(g2p$Drug[!is.na(g2p$Drug)]))
+g2p_genes <- as.character(unique(g2p$Gene[!is.na(g2p$Gene)]))
+g2p_dg_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[2]))
+g2p_lins <- as.character(unique(g2p$group_general_lineage_name[!is.na(g2p$group_general_lineage_name)]))
 
-# Order and genes taken from pink heatmapo from Daniel's analyses
-g2p_genes <- c("EGFR", "KRAS", "ERBB2", "ERBB3", "MET", "ALK", "ROS1", "PDGFRA", "ABL1", "KIT", "PDGFRB", "PDGFB", "BRAF", "G6PD", "RET", "BRCA1", "BRCA2", "UGT1A1", "TSC1", "TSC2", "AKT1", "IDH2", "DPYD", "ESR1", "CYP19A1", "TPMT", "FLT3", "NPM1", "DNMT3A", "PML", "PTCH1", "JAK2", "MYD88", "MGMT")
+g2p$biomarker_type_curated <- ifelse(is.na(g2p$biomarker_type_curated), "None", as.character(g2p$biomarker_type_curated))
+g2p_split <- filter(g2p, !is.na(Drug)) %>% split(g2p$biomarker_type_curated)
+g2p_amp <- g2p_split[[1]]
+g2p_expr <- g2p_split[[2]]
+g2p_fus <- g2p_split[[3]]
+g2p_fus$FusionPair <- sapply(X = g2p_fus$Feature.Names, function(x) strsplit(as.character(x)," ")[[1]][1])
+g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "Fusions", as.character(g2p_fus$Gene), as.character(g2p_fus$FusionPair))
+g2p_fus$FusionPair <- ifelse(g2p_fus$FusionPair == "BCR-ABL", "BCR-ABL1", as.character(g2p_fus$FusionPair))
+g2p_fus <- g2p_fus[grep("-", g2p_fus$FusionPair), ]
+g2p_fus$Drug_FusionPair <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair))
+g2p_fus$Drug_Fusion_Lineage <- ifelse(is.na(g2p_fus$Drug) | is.na(g2p_fus$FusionPair) | is.na(g2p_fus$disease), NA, paste0(g2p_fus$Drug, "_", g2p_fus$FusionPair, "_", g2p_fus$disease))
+g2p_mut <- g2p_split[[4]] %>% drop_na(Direction_Curated)
+g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g2p_mut$Drug_Gene)], "_", fixed = TRUE), function(x) x[2]))
 
-g2p_nonCID <- subset(g2p, !grepl("^CID", g2p$DrugID))
+g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(disease, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
+g2p_prot$Drug_Gene_Protein_Change <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
+g2p_prot$Drug_Gene_Protein_Change_Lineage <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 
-# print("Drug-Gene")
-g2p_druggene_tally <- g2p_filt %>% group_by(Drug_Gene) %>% tally() %>% drop_na()
-nrow(g2p_druggene_tally)
-range(g2p_druggene_tally$n)
-mean(g2p_druggene_tally$n)
-sd(g2p_druggene_tally$n)
-
-# print("Drug")
-g2p_drug_tally <- g2p_filt %>% group_by(Drug) %>% tally() %>% drop_na()
-range(g2p_drug_tally$n)
-mean(g2p_drug_tally$n)
-sd(g2p_drug_tally$n)
-
-# print("Gene")
-g2p_gene_tally <- g2p_filt %>% group_by(Gene) %>% tally() %>% drop_na()
-range(g2p_gene_tally$n)
-mean(g2p_gene_tally$n)
-sd(g2p_gene_tally$n)
-
-# print("Drug-Gene-Lineage")
-g2p_dgl_tally <- g2p_filt %>% group_by(Drug, Gene, Drug_Gene, group_general_lineage_name) %>% tally() %>% drop_na()
-nrow(g2p_dgl_tally)
-length(unique(g2p_dgl_tally$Drug))
-length(unique(g2p_dgl_tally$Gene))
-g2p_lins <- as.character(unique(g2p_dgl_tally$group_general_lineage_name))
+# Counts
+g2p_dg_counts <- g2p %>% count(Drug, Gene) %>% filter(!is.na(Drug), !is.na(Gene))
+g2p_dg_counts <- dcast(g2p_dg_counts, Drug ~ Gene, value.var = "n", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Drug)
+g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2p_dg_counts))]
+g2p_gene_order <- colnames(g2p_dg_counts)
+g2p_drug_order <- rownames(g2p_dg_counts)
 ```
 
-```{r load-processed-data, echo=FALSE, include=FALSE}
-# ccl_meta <- read.delim("./data_munging/19Q2/sample_info_edit_20190708.csv", sep = ",", header = TRUE, row.names = 1)
-# maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
-# maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
-# cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
-# ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
-# fusions <- read.delim("./data_munging/19Q2/CCLE_fusions_edit_20190708.csv.gz", header = TRUE, sep = ",")
-# 
-# ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2.rds") %>% drop_na(Drug)
-# ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2.rds") %>% drop_na(Drug)
-# gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2.rds") %>% drop_na(Drug)
-# fus <- readRDS("./data_munging/rds/fusions_merged.rds") %>% drop_na(Drug)
-# fus_summary <- fus %>% count(Database, Drug, FusionPair, Fusion_Status)
-# prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
-# 
-# crispr <- readRDS("./data_munging/19Q2/crispr_data_19Q2.rds")
-
-# crispr_prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
-```
-
-G2P designed a set of standards for stratifying their database’s cancer variant interpretations, ranging from preclinical data at the low-evidence end (level D) to clinically actionable interpretations at the high-evidence end (level A). To test only these clinically actionable associations, we filtered the G2P dataset for only level-A G2P interpretations, of which there were `r formatC(nrow(g2p), big.mark = ",", big.interval = 3L)` (see Methods). All compounds screened within the GDSC, CTRP, and CCLE datasets are considered "small molecules" and are respectively linked to Compound (CID) numbers used for indexing in the PubChem database (https://pubchem.ncbi.nlm.nih.gov/). As a result, non-small molecules, which include proteins and biologics (i.e. monoclonal antibodies), that had level-A G2P evidence could not be included in our comparisons. Thus, G2P interpretations for which the compound did not have a matching CID code were excluded from further analysis as were interpretations that did not have an associated compound, resulting in removal of `r nrow(g2p_nonCID)` interpretations (Table\ \@ref(tab:table-g2p-nonCID)). It should be noted that cisplatin, a small molecule, was excluded due to its being indexed with a ChEMBLdb identifier (https://www.ebi.ac.uk/chembl/), which we did not manually re-index to a CID to avoid accidental mischaracterization.
+G2P designed a set of standards for stratifying their database’s cancer variant interpretations, ranging from preclinical data at the low-evidence end (level D) to clinically actionable interpretations at the high-evidence end (level A). To test only these clinically actionable associations, we filtered the G2P dataset for only level-A G2P interpretations, of which there were `r formatC(nrow(g2p), big.mark = ",", big.interval = 3L)` (see Methods). 
 
 <!-- After filtering, `r nrow(g2p_filt)` level-A G2P interpretations were carried forward in subsequent analyses, constituting `r length(g2p_drugs)` unique drugs and `r length(g2p_genes)` unique genes in `r length(g2p_druggenes)` distinct level-A combinations (*Figure 1: Pink heatmap*). The number of level-A interpretations per drug ranged from `r range(g2p_drug_tally$n)[1]` to `r range(g2p_drug_tally$n)[2]` ($M =$ `r formatC(mean(g2p_drug_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_drug_tally$n), digits = 2)`), `r range(g2p_gene_tally$n)[1]` to `r range(g2p_gene_tally$n)[2]` ($M =$ `r formatC(mean(g2p_gene_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_gene_tally$n), digits = 2)`) per gene, and for each level-A drug-gene combination, the range was `r range(g2p_druggene_tally$n)[1]` to `r range(g2p_druggene_tally$n)[2]` ($M =$ `r formatC(mean(g2p_druggene_tally$n), digits = 2)`, $SD =$ `r formatC(sd(g2p_druggene_tally$n), digits = 2)`). These unique drugs, genes, and combinations are hereafter referred to as G2P drugs, G2P genes, and G2P associations. Filtering our screening datasets by these clinical criteria yields panels of potentially clinically relevant omic features. Of the `r length(g2p_drugs)` unique G2P drugs, N of them were screened in at least one of the drug screen datasets, N drugs were screened in at least two of the three datasets, and only N were screened in all three datasets. The remaining N un-screened G2P drugs suggests an incompleteness of these drug screens, though these projects frequently release new screening data that may include these drugs in future releases. -->
 
@@ -208,11 +172,11 @@ Taking these results as a whole, we observe little concordance between G2P assoc
 
 ### Copy number
 
-![Correlation between putative copy number and AUC.](./plots/manuscript/drug_cn_heatmap.png)
+![Correlation between putative copy number and AUC.](./plots/manuscript/all_cn_heatmap.png)
 
 ### Gene expression
 
-![Correlation between gene expression and AUC.](./plots/manuscript/drug_ge_heatmap.png)
+![Correlation between gene expression and AUC.](./plots/manuscript/all_ge_heatmap.png)
 
 
 
@@ -241,46 +205,46 @@ As a next step to improve the informational granularity of the analysis presente
 
 **Need to update all methods for data processing, these method are current up to ~May 2019**
 
-## G2P cancer variants
-
-Cancer variants with the highest level of evidence (i.e. level A) in the Genotype to Phenotype (G2P) database were retrieved from the Variant Interpretation for Cancer Consortium (VICC) portal (https://search.cancervariants.org/#*) [@wagner2018] using a customized JSON-query script. All JSON queries were passed to the available application program interface (API) where a request was made for all drug-gene associations with level-A evidence via the G2P evidence label, i.e. association.evidence_label. From manual inspection using G2P’s front-end Kibana interface, it was known that, at the time of the last query, 27 November 2018, there were 1,297 known level-A associations. Due to the limited request processing capabilities of the G2P JSON API, queries were batched into packets of 10 data points, for a total of 130 requests made in succession. Each returned request was processed as JSON object and searched to identify any existing key:value pairs for the following variables: evidence level, mutation, gene, chromosome, start, end, ref, alt, direction, phenotype description, phenotype family, phenotype ID, drug, drug ID, feature names, and sequence ID. For any evidence point where a given key:value pair was not found or unavailable, a value of -1 was assigned. One of the 1,297 level-A entries was irretrievable, yielding a final dataset of 1,296 level-A G2P interpretations, which were stored in a pandas data table and exported in CSV format. The VICC’s methods for the harvesting and harmonizing of cancer variants is available in a GitHub repository from Oregon Health & Science University (https://github.com/ohsu-comp-bio/g2p-aggregator).
+## Drug screen dataset retrieval
+**12/4 updated**
+We utilized small molecule screening data from the Cancer Therapeutics Response Portal (CTRP, Broad Institute) [@basu_interactive_2013; @rees_correlating_2016; @seashore-ludlow_harnessing_2015], the Genomics of Drug Sensitivity in Cancer (GDSC, Wellcome Sanger Institute and Massachusetts General Hospital Cancer Center), [@garnett_systematic_2012; @yang_genomics_2012], and the Cancer Cell Line Encyclopedia (CCLE, Broad Institute and Novartis Institutes for Biomedical Research) [@barretina_cancer_2012; @consortium_pharmacogenomic_2015]. To ensure metric consistency, normalized area under the IC50 curve (AUC) for all three datasets were taken from the Quantitative Analysis of Pharmacogenomics in Cancer (http://tanlab.ucdenver.edu/QAPC/) (QAPC) [@pozdeyev_integrating_2016].
 
 ## DepMap data retrieval and processing
-
-CRISPR/Cas9, CCLE mutation calls, and CCLE copy number data were all retrieved from the Broad Institute’s Cancer Dependency Map (DepMap) Public 18Q4 release via the DepMap data portal (https://depmap.org/portal/download/) [@broaddepmap2018a]. Gene expression data was retrieved from the DepMap Public 18Q3 release [@broaddepmap2018] from the same data portal. For cell lines with no CCLE annotation, the DepMap group drew raw copy number and mutation data from whole exome sequencing data produced by the Wellcome Trust Sanger Institute [Catalogue Of Somatic Mutations In Cancer (COSMIC, https://cancer.sanger.ac.uk/cell_lines) [@bamford2004; @forbes2017]; European Genome-phenome Archive [@lappalainen2015], accession number EGAD00001001039] and processed the data following the CCLE pipelines to ensure consistency.
+**12/4 updated**
+CRISPR/Cas9 and mutation calls, fusions, gene expression, and copy number data from the CCLE were all retrieved from the Broad Institute’s Cancer Dependency Map (DepMap) Public 19Q2 release via the DepMap data portal (https://depmap.org/portal/download/) [@broad_depmap_depmap_2019-1]. For cell lines with no CCLE annotation, the DepMap group drew raw copy number and mutation data from whole exome sequencing data produced by the Wellcome Trust Sanger Institute [Catalogue Of Somatic Mutations In Cancer (COSMIC, https://cancer.sanger.ac.uk/cell_lines) [@bamford_cosmic_2004; @forbes_cosmic:_2017]; European Genome-phenome Archive [@lappalainen_european_2015], accession number EGAD00001001039] and processed the data following the CCLE pipelines to ensure consistency.
 
 ### CRISPR/Cas9 screen
 
-Gene effect scores for 17,634 genes in 517 cell lines were inferred from a CRISPR/Cas9 (clustered regularly interspaced short palindromic repeats/CRISPR-associated 9) screen using the Broad Institute’s Avana knockout library [@doench2016a]. The Broad Institute’s data processing and screening methods are available from the figshare record [@broaddepmap2018a] and the original publication of CERES, the algorithm that computes inferred gene dependency scores [@meyers2017]. The DepMap releases new data quarterly, with the current data set being the 18Q4 release. This release has 175 more cell lines than the original data release that was published with CERES (dataset: gene_effect.csv, accessed 15 November 2018).
+Gene effect scores were inferred from a CRISPR/Cas9 (clustered regularly interspaced short palindromic repeats/CRISPR-associated 9) screen using the Broad Institute’s Avana knockout library [@doench_optimized_2016]. The Broad Institute’s data processing and screening methods are available from the figshare record [@broad_depmap_depmap_2019-1] and the original publication of CERES, the algorithm that computes inferred gene dependency scores [@meyers_computational_2017].
+
+### Cell line harmonization
+**12/4 updated**
+In an effort to compare CCLE, CTRP, GDSC and CRISPR results and include lineage specificity, it was necessary to consolidate cell lines screened in each dataset. Given that unique identifiers can be used between studies, it was necessary to standardize the identity of each cell line with a common source. To achieve this, a freely available cell line database called Cellosaurus (v26.0) [@bairoch_cellosaurus_2018] was downloaded and merged with the Broad Institute’s DepMap cell line data to create a harmonized cancer cell line database containing synonymous identifiers that enabled consolidation of all cell lines used in CCLE, CTRP, GDSC and CRISPR into a common framework. Subsequent modifications to this database included the merging of DepMap IDs used in the 19Q2 DepMap data release and harmonization with the consensus cell line names from @pozdeyev_integrating_2016. We curated missing synonyms and identifiers, and we manually annotated the granularity of lineage labeling for all cell lines analyzed in this study based on their Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml_human_2019], resulting in `r length(levels(g2p$disease))` unique lineages.
 
 ### Mutation calls
+**12/4 EDIT THIS**
+To preclude variation in genomic feature calls across the datasets, we used identical omics annotations from CCLE for all cell lines screened in the three datasets. The CCLE called substitutions using MuTect [@cibulskis_sensitive_2013] and annotated variants using Oncotator [@ramos_oncotator:_2015] and indels using Indelocator (https://software.broadinstitute.org/cancer/cga/indelocator).
 
-To preclude variation in genomic feature calls across the datasets, we used identical annotations from CCLE for all cell lines screened in the three datasets. The CCLE provided mutation annotations in 19,280 genes across 1,596 cell lines (dataset: depmap_18Q4_mutation_calls.csv, accessed 14 November 2018). CCLE called substitutions using MuTect [@cibulskis2013] and annotated variants using Oncotator [@ramos2015a] and indels using Indelocator (https://software.broadinstitute.org/cancer/cga/indelocator). We filtered mutation calls for point mutations, defined as single-nucleotide insertions, deletions, and substitutions, regardless of result, i.e. frameshift, missense, or nonsense mutation. For this analysis, cell lines harboring non-silent point mutations were considered “mutant” for the gene in question. All other mutations and genes without annotation in the Mutation Annotation Format (MAF) file were considered "wildtype." "Mutant" and "wildtype" calls were binarily encoded per-gene/per-cell line, regardless of quantity of harbored mutations per gene in a given cell line.
+We had three different mutation types: binarily encoded mutation status (regardless of quantity of harbored mutations per gene in a given cell line), specific protein changes, and fusion status.
 
-### Protein changes
-
-### Fusion status
+We filtered mutation calls for point mutations, defined as single-nucleotide insertions, deletions, and substitutions, regardless of result, i.e. frameshift, missense, or nonsense mutation. For this analysis, cell lines harboring non-silent point mutations were considered "mutant" for the gene in question. All other mutations and genes without annotation in the Mutation Annotation Format (MAF) file were considered "wildtype." "Mutant" and "wildtype" calls were binarily encoded per-gene/per-cell line, regardless of quantity of harbored mutations per gene in a given cell line.
 
 ### Copy number data
-
+**12/4 EDIT THIS**
 The CCLE generated genomic copy number (CN) data using the Affymetrix Genome-Wide Human SNP Array 6.0 and GenePattern pipeline [@thecancergenomeatlasresearchnetwork2008] and normalized segmented CN log2-ratios for 23,299 genes across 1,098 cell lines using circular binary segmentation [@olshen2004] (dataset: public_18Q4_gene_cn.csv, accessed 15 November 2018).
 
 ### Gene expression data
-
+**12/4 EDIT THIS**
 The CCLE reports gene expression in RPKM (reads per kilobase per million mapped reads) for 54,356 genes across 1,156 cell lines, generated on the GeneChip Human Genome U133 Plus 2.0 Array (dataset: CCLE_DepMap_18q3_RNAseq_RPKM_20180718.gct, accessed 18 July 2018).
 
-## Drug screen dataset retrieval
+## G2P cancer variants
+**12/4 updated**
+Cancer variants with the highest level of evidence (i.e. level A) in the Genotype to Phenotype (G2P) database were retrieved from the Variant Interpretation for Cancer Consortium (VICC) portal (https://search.cancervariants.org/#*) [@wagner_harmonized_2018] using a customized JSON-query script. All JSON queries were passed to the available application program interface (API) where a request was made for all drug-gene associations with level-A evidence via the G2P evidence label, i.e. `association.evidence_label`. From manual inspection using G2P’s front-end Kibana interface, it was known that, at the time of the last query, 27 November 2018, there were 1,297 known level-A associations. Due to the limited request processing capabilities of the G2P JSON API, queries were batched into packets of 10 data points, for a total of 130 requests made in succession. Each returned request was processed as JSON object and searched to identify any existing key:value pairs for the following variables: evidence level, mutation, gene, chromosome, start, end, ref, alt, direction, phenotype description, phenotype family, phenotype ID, drug, drug ID, feature names, and sequence ID. For any evidence point where a given key:value pair was not found or unavailable, a value of -1 was assigned. One of the 1,297 level-A entries was irretrievable, yielding a final dataset of 1,296 level-A G2P interpretations, which were stored in a pandas data table and exported in CSV format. We split each interpretation by row to isolate drug associations with singular lineages, protein changes, and/or mutation types. The VICC’s methods for the harvesting and harmonizing of cancer variants is available in a GitHub repository from Oregon Health & Science University (https://github.com/ohsu-comp-bio/g2p-aggregator).
 
-**Need to update with Poz info**
-
-The Cancer Therapeutics Response Portal (CTRP) drug screen dataset (v2) [@basu2013; @rees2016; @seashore-ludlow2015] was retrieved from the National Cancer Institute’s Cancer Target Discovery and Development (CTD2) Network’s data portal (https://ocg.cancer.gov/programs/ctd2/data-portal, accessed 6 June 2018). The Genomics of Drug Sensitivity in Cancer (GDSC) drug screen dataset [@garnett2012; @yang2012] was retrieved from the data portal at (https://www.cancerrxgene.org/downloads, accessed 19 June 2018). The Cancer Cell Line Encyclopedia (CCLE) drug screen dataset [@barretina2012; @consortium2015] was retrieved from the Broad Institute’s data portal (https://portals.broadinstitute.org/ccle, accessed 20 June 2018).
-
-### Cell line harmonization
-
-In an effort to compare CCLE, CTRP, GDSC and CRISPR results and include lineage specificity, it was necessary to consolidate cell lines screened in each dataset. Given that unique identifiers can be used between studies, it was necessary to standardize the identity of each cell line with a common source. To achieve this, a freely available cell line database called Cellosaurus (v26.0, 14 May 2018) [@bairoch2018] was downloaded and merged with the Broad Institute’s DepMap cell line data (accessed 8 June 2018) to create a harmonized cancer cell line database containing synonymous identifiers that enabled consolidation of all cell lines used in CCLE, CTRP, GDSC and CRISPR into a common framework. Subsequent additions to this database include the merging of DepMap IDs used in the 18Q3 and 18Q4 DepMap data releases. We curated missing synonyms and identifiers, and we manually annotated the granularity of lineage labeling for all cell lines analyzed in this study based on their Human Disease Ontology identity codes (DOIDs, http://disease-ontology.org/) [@schriml2019], resulting in 27 unique lineages. For ease of comparison between datasets, we labeled all cell lines with custom, randomized identifiers.
+All compounds screened within the GDSC, CTRP, and CCLE datasets are considered "small molecules" and are respectively linked to Compound (CID) numbers used for indexing in the PubChem database (https://pubchem.ncbi.nlm.nih.gov/). As a result, non-small molecules, which include proteins and biologics (i.e. monoclonal antibodies), that had level-A G2P evidence could not be included in our comparisons. Thus, G2P interpretations for which the compound did not have a matching CID code were excluded from further analysis as were interpretations that did not have an associated compound. It should be noted that cisplatin, a small molecule, was excluded due to its being indexed with a ChEMBLdb identifier (https://www.ebi.ac.uk/chembl/), which we did not manually re-index to a CID to avoid mischaracterization.
 
 ## Computational
-
+**12/4 EDIT THIS**
 ```{r, include=FALSE}
 r_v <- paste0("v", getRversion())
 # rstudio_v <- paste0("v", RStudio.Version()$version)
@@ -291,10 +255,14 @@ ggpubr_v <- paste0("v", packageVersion("ggpubr"))
 For *Figure 1*, all data were imported and manipulated using pandas (v0.23.0) [@mckinney2011] and plotted using seaborn (v0.90) [@waskom2012], which sat on top of matplotlib (v2.2.2) [@hunter2007] and was executed on Python (v2.7.15) (Python Software Foundation, https://www.python.org/) in an IPython (v5.5.0) [@perez2007] kernel within a localhost Jupyter (v5.2.2) notebook [@kluyver2016]. All other analyses were conducted in R (`r r_v`) [@rdevelopmentcoreteam2010, https://www.R-project.org/] in an RStudio environment (v1.1.447) [@rstudio2012]. All other plots were drawn using the ggplot2 (`r ggplot_v`) R package [@wickham2016].
 
 ### Statistics
-
+**12/4 EDIT THIS**
 Wilcoxon tests were conducted using the `compare_means` function in the ggpubr (`r ggpubr_v`) R package [@kassambara2018]. `compare_means` does Benjamini-Hochberg p-value adjustment using the `p.adjust` function from the `stats` base R package.
 
 For computing Spearman correlation coefficients, we used the `cor.test` function from the `stats` package. If there were 3 or fewer data points, then the correlation was not done and a value of `NA` was supplied. 
+
+# Conflicts of interest?
+
+# Grant support?
 
 # References
 
