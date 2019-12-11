@@ -281,7 +281,7 @@ g2p_drug_order <- rownames(g2p_dg_counts)
 
 For mutation calling, get paired gene name and cell line fields in a data frame. For this analysis, we don't care about how many mutations there are per gene or what type of mutations there are, so I didn't save more information. I took unique gene-cell line combinations since we only cared about mutation presence/absence. Add a `Mutation_Status` column denoting all entries in MAF files as mutations present in the associated cell lines.
 
-Mutation calls (coding region, germline filtered): **12/4 RUN THIS AND RE-MERGE ALL DATA AND RE-RUN TESTS**
+Mutation calls (coding region, germline filtered):
 ```{r mutation_status, eval=FALSE}
 maf_raw <- read.delim("./data_munging/19Q2/CCLE_mutations_20190514.csv.gz", header = TRUE, sep = ",")
 maf_raw[, 1:2] <- NULL
@@ -302,7 +302,8 @@ maf$Mutation <- 1
 maf_grid <- expand.grid("Gene" = unique(maf$Gene), "DepMap_ID" = unique(maf$DepMap_ID))
 maf_df <- merge(maf, maf_grid, by = c("Gene", "DepMap_ID"), all = TRUE)
 maf_df[is.na(maf_df)] <- 0
-saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2.rds", compress = "xz")
+saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2_nosilent.rds", compress = "xz")
+# saveRDS(maf_df, "./data_munging/19Q2/maf_df_19Q2.rds", compress = "xz")
 ```
 
 DepMap 19Q2 fusion calls derived using the [STAR-Fusion pipeline](https://github.com/STAR-Fusion/STAR-Fusion/wiki). Column descriptions:
@@ -377,7 +378,7 @@ saveRDS(ge_melt, "./data_munging/19Q2/ge_melt_19Q2.rds", compress = "xz")
 
 Load Rds:
 ```{r load_omics_rds}
-maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2.rds")
+maf_df <- readRDS("./data_munging/19Q2/maf_df_19Q2_nosilent.rds")
 maf_changes_df <- readRDS("./data_munging/19Q2/maf_changes_df_19Q2.rds")
 cn_melt <- readRDS("./data_munging/19Q2/cn_melt_19Q2.rds")
 ge_melt <- readRDS("./data_munging/19Q2/ge_melt_19Q2.rds")
@@ -490,7 +491,7 @@ gdsc <- MergeOmicsG2P(database = "GDSC", dataframe = gdsc_all, maf_df = maf_df, 
 # write.csv.gz(gdsc %>% drop_na(Score), "./../htscreens_giant_files/gdsc_data_19Q2.csv.gz")
 ```
 
-```{r load_drug_rds, eval=TRUE}
+```{r load_drug_rds}
 # ccle <- readRDS("./data_munging/19Q2/ccle_data_19Q2_all.rds") %>% drop_na(Drug)
 # ctrp <- readRDS("./../htscreens_giant_files/ctrp_data_19Q2_all.rds") %>% drop_na(Drug)
 # gdsc <- readRDS("./data_munging/19Q2/gdsc_data_19Q2_all.rds") %>% drop_na(Drug)
@@ -631,7 +632,6 @@ prot <- readRDS("./data_munging/rds/protein_changes_merged.rds")
 # prot_summary <- prot %>% count(Database, Drug, Gene_Protein_Change, Change_Status)
 ```
 
-
 ## CRISPR
 
 ```{r merge_crispr_data, eval=FALSE}
@@ -720,7 +720,7 @@ crispr_fus <- readRDS("./data_munging/19Q2/crispr_fusions.rds")
 crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
 ```
 
-```{r, eval = FALSE}
+```{r, eval = TRUE}
 crispr_allgenes <- readRDS("./../htscreens_giant_files/crispr_data_19Q2_allgenes.rds")
 crispr_fus_allgenes <- readRDS("./../htscreens_giant_files/crispr_fusions_allgenes.rds")
 crispr_prot_allgenes <- readRDS("./../htscreens_giant_files/crispr_protein_changes_allgenes.rds")
@@ -1103,7 +1103,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
 
 ## Mutation status
 
-```{r mut_wilcoxon_tests, eval=TRUE}
+```{r mut_wilcoxon_tests, eval=FALSE}
 # CCLE
 ccle_filt <- filter(ccle, Drug %in% g2p_drugs & Gene %in% g2p_dg_genes)
 ccle_filt$Gene <- factor(ccle_filt$Gene, ordered = FALSE)
@@ -1142,7 +1142,7 @@ gdsc_prot <- unfactorize(gdsc_prot)
 # gdsc_prot_count <- gdsc_prot %>% count(Gene_Protein_Change, Drug, Change_Status)
 ```
 
-```{r prot_wilcoxon_tests, eval=TRUE}
+```{r prot_wilcoxon_tests, eval=FALSE}
 # CCLE
 ccle_prot <- unfactorize(ccle_prot)
 ccle_signif_prot <- WilcoxonTestDF(dataframe = ccle_prot, grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change"), g2p_list = unique(as.character(g2p_prot$Drug_Gene_Protein_Change[!is.na(g2p_prot$Drug_Gene_Protein_Change)])), type = "protein_change", outfile = "./data_munging/rds/ccle_signif_protein_changes.rds")
@@ -1175,7 +1175,7 @@ gdsc_fus <- unfactorize(gdsc_fus)
 # gdsc_fus_summ <- unique(select(gdsc_fus, DepMap_ID, FusionPair, Fusion_Status)) %>% count(FusionPair, Fusion_Status)
 ```
 
-```{r fus_wilcoxon_tests, eval=TRUE}
+```{r fus_wilcoxon_tests, eval=FALSE}
 ccle_signif_fus <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair"), g2p_list = unique(as.character(g2p_fus$Drug_FusionPair[!is.na(g2p_fus$Drug_FusionPair)])), type = "fusion", outfile = "./data_munging/rds/ccle_signif_fusions.rds")
 ccle_signif_fus_lin <- WilcoxonTestDF(dataframe = ccle_fus, grouping = c("FusionPair", "Drug", "Drug_FusionPair", "Drug_Fusion_Lineage"), g2p_list = unique(as.character(g2p_fus$Drug_Fusion_Lineage[!is.na(g2p_fus$Drug_Fusion_Lineage)])), type = "fusion_lineage", outfile = "./data_munging/rds/ccle_signif_fusions_lineage.rds")
 
@@ -1188,7 +1188,7 @@ gdsc_signif_fus_lin <- WilcoxonTestDF(dataframe = gdsc_fus, grouping = c("Fusion
 
 ## CRISPR
 
-**11/19 RAN ALL OF THESE!**
+**12/5 RAN ALL OF THESE!**
 ```{r, eval = FALSE}
 # Mutation status
 ## All genes
@@ -1366,7 +1366,7 @@ crispr_gene_mut_plot <- ggplot(data = crispr_filt) +
   labs(y = "CERES Score")
 crispr_gene_mut_plot
 
-# ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
+ggsave("./plots/manuscript/crispr_gene_mut_plot.png", crispr_gene_mut_plot, width = 12, height = 6, units = "in")
 ```
 
 ```{r fusion_boxplots, fig.height=5, fig.width=12, eval=FALSE}
@@ -1703,11 +1703,7 @@ draw(ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2, gap = unit(0.25, "in"), heatma
 dev.off()
 ```
 
-**10/23 MADE PLOTS UP TO HERE**
-
 ### Lineage
-
-**10/23 NEED TO RUN LINEAGE PLOTS**
 
 ```{r lineage_mut_heatmap_functions}
 MakeWilcoxonLineageHeatmap <- function(df, database, lineage) {
