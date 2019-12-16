@@ -1101,6 +1101,7 @@ WilcoxonTestDF <- function(dataframe, grouping, g2p_list, type, outfile) {
 }
 ```
 
+
 ## Mutation status
 
 ```{r mut_wilcoxon_tests, eval=FALSE}
@@ -1345,6 +1346,13 @@ gdsc_signif_fus_lin <- readRDS("./data_munging/rds/gdsc_signif_fusions_lineage.r
 ```
 
 ## Boxplots
+
+```{r fig.width=10}
+ggplot(data = ccle_fus) + 
+  geom_boxplot(aes(x = disease, y = Score)) +
+  
+```
+
 
 ```{r crispr_mut_boxplots, fig.height=5, fig.width=10, eval=FALSE}
 crispr_filt <- filter(crispr, Gene %in% g2p_mut_genes)
@@ -1793,7 +1801,6 @@ MakeSpearmanCorrDF <- function(dataset, df, metric, lineage) {
 }
 ```
 
-## Lineage
 
 ```{r spear_calc, warning=FALSE, eval=FALSE}
 # Ran this chunk on 12/3
@@ -1852,6 +1859,7 @@ ge_cor <- merge(ge_cor, expr_summ, by = "Drug_Gene", all.x = TRUE)
 
 ## Lineage
 
+**12/16 FIX THIS **
 ```{r spear_calc_lin, eval=FALSE}
 # Ran on 12/3
 crispr_cn_res_lin <- MakeSpearmanCorrDF(dataset = "CRISPR", df = crispr, metric = "CN", lineage = TRUE)
@@ -1868,6 +1876,12 @@ gdsc_ge_res_lin <- MakeSpearmanCorrDF(dataset = "GDSC", df = gdsc, metric = "GE"
 ge_cor_lin <- rbind(crispr_ge_res, ccle_ge_res_lin, ctrp_ge_res_lin, gdsc_ge_res_lin) %>% filter(GE_p_log10 != Inf)
 saveRDS(ge_cor_lin, "./data_munging/rds/ge_cor_lineage.rds")
 ```
+
+```{r}
+cn_cor_lin <- readRDS("./data_munging/rds/cn_cor_lineage.rds")
+ge_cor_lin <- readRDS("./data_munging/rds/ge_cor_lineage.rds")
+```
+
 
 ## Plots
 

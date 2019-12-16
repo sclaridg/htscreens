@@ -51,6 +51,8 @@ knitr::opts_chunk$set(cache.extra = knitr::rand_seed)
 
 # Introduction
 
+
+
 Cancer cell lines are a long-standing model for systematic testing of candidate therapeutics, beginning with the National Cancer Institute 60 (NCI60) assay from the late 1980s [@alley_feasibility_1988; @shoemaker_nci60_2006; @stinson_morphological_1992], which has been used to screen over 100,000 compounds as of 2010 [@holbeck_analysis_2010]. Since then, numerous small-molecule and gene essentiality screens of various scales and study aims have been conducted in cell lines, from grouping drugs by therapeutic target similarity [@greshock_molecular_2010] to screening only near-haploid cell lines to generate genome-level insights into gene essentiality [@wang_identification_2015] to broadly identifying cancer dependencies with large-scale screens in multiple cancer types [@mcdonald_project_2017; @mcfarland_improved_2018; @meyers_computational_2017; @patel_identification_2017] or select lineages [@heiser_integrated_2009; @marcotte_essential_2012; @patel_identification_2017]. Despite their widespread use, cancer cell lines are known to have issues with inconsistent naming conventions and contamination [@yu_resource_2015], and some cell lines have been shown to vary widely at the genetic level and in response to drug treatment across strains [@ben-david_genetic_2018]. Additionally, comparisons between cancer cell lines and tumors indicate that cell lines have higher numbers of genomic aberrations [@domcke_evaluating_2013; @mouradov_colorectal_2014; @neve_collection_2006] and tend to be hypermethylated [@paz_systematic_2003; @varley_dynamic_2013], which could prove an impediment to translating cell line discoveries into the clinic.
 
 There have also been debates over consistency between drug screen datasets, namely the Broad Institute’s and Novartis Institutes for Biomedical Research’s Cancer Cell Line Encyclopedia (CCLE) [@barretina_cancer_2012; @consortium_pharmacogenomic_2015] and the Genomics of Drug Sensitivity in Cancer (GDSC) from the Cancer Genome Project at the Wellcome Sanger Institute and the Center for Molecular Therapeutics at Massachusetts General Hospital Cancer Center [@garnett_systematic_2012; @yang_genomics_2012]. The GDSC has also been referred to as the Cancer Genome Project (CGP) and the Sanger dataset. Studies have shown that drug-gene interactions matched between CCLE and GDSC exhibited poor correlation and inconsistencies [@haibe-kains_inconsistency_2013; @jang_systematic_2014], prompting other groups to join the debate on how best correct for experimental and methodological variation between the original drug screens and subsequent computational analysis [@consortium_pharmacogenomic_2015; @geeleher_cancer_2016; @geeleher_consistency_2016; @hatzis_enhancing_2014; @haverty_reproducible_2016; @safikhani_revisiting_2017; @safikhani_safikhani_2016]
@@ -191,6 +193,10 @@ In the `nrow(g2p_filt)` level-A G2P interpretations, there was a wide variation 
 
 # Discussion
 
+- summary paragraph
+- study limitations
+- future directions
+
 **NUMBERS WRONG HERE**
 
 Level-A G2P interpretations correspond to clinical evidence that suggests efficacy of gene targets and/or drugs, and this work questions whether these relationships manifest themselves in in vitro drug screens. We have demonstrated that on its own, mutation status is not a robust predictor of drug efficacy and that copy number and gene expression fare better as predictors. However, for these three genomic features in all three datasets, only 11.1% (mutation status, 1 of 9, CCLE) to 47.9% (gene expression, 23 of 48, CTRP) (Table 2), of the level-A G2P drug-gene associations in the respective dataset were significant at an uncorrected $\alpha = 0.05$. This suggests that while the drug screens successfully identify some clinically relevant drug-gene associations, many associations are also missed, which raises the question of the extent to which clinical researchers can rely on in vitro drug screens when attempting to develop and select therapeutics for cancer patients.
@@ -256,26 +262,6 @@ The CCLE reports gene expression in RPKM (reads per kilobase per million mapped 
 Cancer variants with the highest level of evidence (i.e. level A) in the Genotype to Phenotype (G2P) database were retrieved from the Variant Interpretation for Cancer Consortium (VICC) portal (https://search.cancervariants.org/#*) [@wagner_harmonized_2018] using a customized JSON-query script. All JSON queries were passed to the available application program interface (API) where a request was made for all drug-gene associations with level-A evidence via the G2P evidence label, i.e. `association.evidence_label`. From manual inspection using G2P’s front-end Kibana interface, it was known that, at the time of the last query, 27 November 2018, there were 1,297 known level-A associations. Due to the limited request processing capabilities of the G2P JSON API, queries were batched into packets of 10 data points, for a total of 130 requests made in succession. Each returned request was processed as JSON object and searched to identify any existing key:value pairs for the following variables: evidence level, mutation, gene, chromosome, start, end, ref, alt, direction, phenotype description, phenotype family, phenotype ID, drug, drug ID, feature names, and sequence ID. For any evidence point where a given key:value pair was not found or unavailable, a value of -1 was assigned. One of the 1,297 level-A entries was irretrievable, yielding a final dataset of 1,296 level-A G2P interpretations, which were stored in a pandas data table and exported in CSV format. We split each interpretation by row to isolate drug associations with singular lineages, protein changes, and/or mutation types. The VICC’s methods for the harvesting and harmonizing of cancer variants is available in a GitHub repository from Oregon Health & Science University (https://github.com/ohsu-comp-bio/g2p-aggregator).
 
 All compounds screened within the GDSC, CTRP, and CCLE datasets are considered "small molecules" and are respectively linked to Compound (CID) numbers used for indexing in the PubChem database (https://pubchem.ncbi.nlm.nih.gov/). As a result, non-small molecules, which include proteins and biologics (i.e. monoclonal antibodies), that had level-A G2P evidence could not be included in our comparisons. Thus, G2P interpretations for which the compound did not have a matching CID code were excluded from further analysis as were interpretations that did not have an associated compound. It should be noted that cisplatin, a small molecule, was excluded due to its being indexed with a ChEMBLdb identifier (https://www.ebi.ac.uk/chembl/), which we did not manually re-index to a CID to avoid mischaracterization.
-
-## Computational
-
-**12/4 EDIT THIS**
-```{r, include=FALSE}
-r_v <- paste0("v", getRversion())
-# rstudio_v <- paste0("v", RStudio.Version()$version)
-ggplot_v <- paste0("v", packageVersion("ggplot2"))
-ggpubr_v <- paste0("v", packageVersion("ggpubr"))
-```
-
-For *Figure 1*, all data were imported and manipulated using pandas (v0.23.0) [@mckinney2011] and plotted using seaborn (v0.90) [@waskom2012], which sat on top of matplotlib (v2.2.2) [@hunter2007] and was executed on Python (v2.7.15) (Python Software Foundation, https://www.python.org/) in an IPython (v5.5.0) [@perez2007] kernel within a localhost Jupyter (v5.2.2) notebook [@kluyver2016]. All other analyses were conducted in R (`r r_v`) [@rdevelopmentcoreteam2010, https://www.R-project.org/] in an RStudio environment (v1.1.447) [@rstudio2012]. All other plots were drawn using the ggplot2 (`r ggplot_v`) R package [@wickham2016].
-
-### Statistics
-
-**12/4 EDIT THIS**
-
-Wilcoxon tests were conducted using the `compare_means` function in the ggpubr (`r ggpubr_v`) R package [@kassambara2018]. `compare_means` does Benjamini-Hochberg p-value adjustment using the `p.adjust` function from the `stats` base R package.
-
-For computing Spearman correlation coefficients, we used the `cor.test` function from the `stats` package. If there were 3 or fewer data points, then the correlation was not done and a value of `NA` was supplied. 
 
 # Conflicts of interest?
 
