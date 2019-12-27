@@ -1654,57 +1654,17 @@
 "1653","ACH-002338","M980513","skin","M980513_SKIN","skin","SKCM","DOID:4159","skin cancer"
 "1654","ACH-002339","MOT","haematopoietic_and_lymphoid_tissue","MOT_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid",NA,"DOID:1240","leukemia"
 "1655","ACH-002340","NBSUSSR","autonomic_ganglia","NBSUSSR_AUTONOMIC_GANGLIA","autonomic_ganglia","NB","DOID:1192","peripheral nervous system neoplasm"
-"1656","ACH-002342","BB30PBL","matched_normal_tissue","BB30PBL_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1657","ACH-002343","BB49EBV","matched_normal_tissue","BB49EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1658","ACH-002344","BB65EBV","matched_normal_tissue","BB65EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1659","ACH-002345","CAR1","large_intestine","CAR1_LARGE_INTESTINE","colorectal","COADREAD","DOID:9256","colorectal cancer"
-"1660","ACH-002346","CP50EBV","matched_normal_tissue","CP50EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1661","ACH-002347","CP66EBV","matched_normal_tissue","CP66EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1662","ACH-002348","DIPG007","central_nervous_system","DIPG007_CENTRAL_NERVOUS_SYSTEM","central_nervous_system",NA,"DOID:3620","central nervous system cancer"
-"1663","ACH-002349","GBM001","central_nervous_system","GBM001_CENTRAL_NERVOUS_SYSTEM","central_nervous_system",NA,"DOID:3620","central nervous system cancer"
-"1664","ACH-002350","HA7EBV","matched_normal_tissue","HA7EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1665","ACH-002351","L542","matched_normal_tissue","L542_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1666","ACH-002352","LB1047EBV","matched_normal_tissue","LB1047EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1667","ACH-002353","LB2241EBV","matched_normal_tissue","LB2241EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1668","ACH-002354","LB2518EBV","matched_normal_tissue","LB2518EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1669","ACH-002355","LB373EBV","matched_normal_tissue","LB373EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1670","ACH-002356","LB647PBL","matched_normal_tissue","LB647PBL_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1671","ACH-002357","LB771PBL","matched_normal_tissue","LB771PBL_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1672","ACH-002358","LB831EBV","matched_normal_tissue","LB831EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1673","ACH-002359","LB996EBV","matched_normal_tissue","LB996EBV_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1674","ACH-002360","MZ1B","matched_normal_tissue","MZ1B_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1675","ACH-002361","MZ7B","matched_normal_tissue","MZ7B_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1676","ACH-002362","NCIBL128","matched_normal_tissue","NCIBL128_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1677","ACH-002363","NCIBL1395","matched_normal_tissue","NCIBL1395_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1678","ACH-002364","NCIBL1437","matched_normal_tissue","NCIBL1437_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1679","ACH-002365","NCIBL1770","matched_normal_tissue","NCIBL1770_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1680","ACH-002366","NCIBL2009","matched_normal_tissue","NCIBL2009_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1681","ACH-002367","NCIBL2052","matched_normal_tissue","NCIBL2052_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1682","ACH-002368","NCIBL2087","matched_normal_tissue","NCIBL2087_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1683","ACH-002369","NCIBL209","matched_normal_tissue","NCIBL209_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1684","ACH-002370","NCIBL2122","matched_normal_tissue","NCIBL2122_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1685","ACH-002371","NCIBL2126","matched_normal_tissue","NCIBL2126_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1686","ACH-002372","NCIBL2171","matched_normal_tissue","NCIBL2171_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1687","ACH-002373","HCC1187","matched_normal_tissue","HCC1187_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1688","ACH-002374","HCC1599","matched_normal_tissue","HCC1599_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1689","ACH-002375","HCC1937","matched_normal_tissue","HCC1937_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1690","ACH-002376","LS1034","matched_normal_tissue","LS1034_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1691","ACH-002377","HCC38","matched_normal_tissue","HCC38_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1692","ACH-002378","HCC1143","matched_normal_tissue","HCC1143_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1693","ACH-002379","J82","matched_normal_tissue","J82_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1694","ACH-002380","COLO829","matched_normal_tissue","COLO829_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1695","ACH-002381","HCC2157","matched_normal_tissue","HCC2157_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1696","ACH-002382","HCC1395","matched_normal_tissue","HCC1395_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1697","ACH-002383","HCC2218","matched_normal_tissue","HCC2218_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1698","ACH-002384","HCC1954","matched_normal_tissue","HCC1954_MATCHED_NORMAL_TISSUE","matched_normal_tissue",NA,NA,NA
-"1699","ACH-002386","M00921","skin","M00921_SKIN","skin","SKCM","DOID:4159","skin cancer"
-"1700","ACH-002387","M1203273","skin","M1203273_SKIN","skin","SKCM","DOID:4159","skin cancer"
-"1701","ACH-002388","MET2B","skin","MET2B_SKIN","skin","SKCM","DOID:4159","skin cancer"
-"1702","ACH-002389","ACN","autonomic_ganglia","ACN_AUTONOMIC_GANGLIA","autonomic_ganglia","NB","DOID:1192","peripheral nervous system neoplasm"
-"1703","ACH-002390","MC1010","haematopoietic_and_lymphoid_tissue","MC1010_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid","LAML","DOID:1240","leukemia"
-"1704","ACH-002391","UDSCC2","upper_aerodigestive_tract","UDSCC2_UPPER_AERODIGESTIVE_TRACT","upper_aerodigestive","HNSC","DOID:162","cancer"
-"1705","ACH-002392","SC1","haematopoietic_and_lymphoid_tissue","SC1_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid","DLBC","DOID:0060058","lymphoma"
-"1706","ACH-002393","CROAP3","haematopoietic_and_lymphoid_tissue","CROAP3_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid","DLBC","DOID:0060058","lymphoma"
-"1707","ACH-002394","GEO","large_intestine","GEO_LARGE_INTESTINE","colorectal","COADREAD","DOID:9256","colorectal cancer"
-"1708","ACH-002395","HUH6CLONE5","liver","HUH6CLONE5_LIVER","liver","LIHC","DOID:3571","liver cancer"
-"1709","ACH-002396","SARC9371","bone","SARC9371_BONE","bone","SARC","DOID:184","bone cancer"
+"1656","ACH-002345","CAR1","large_intestine","CAR1_LARGE_INTESTINE","colorectal","COADREAD","DOID:9256","colorectal cancer"
+"1657","ACH-002348","DIPG007","central_nervous_system","DIPG007_CENTRAL_NERVOUS_SYSTEM","central_nervous_system",NA,"DOID:3620","central nervous system cancer"
+"1658","ACH-002349","GBM001","central_nervous_system","GBM001_CENTRAL_NERVOUS_SYSTEM","central_nervous_system",NA,"DOID:3620","central nervous system cancer"
+"1659","ACH-002386","M00921","skin","M00921_SKIN","skin","SKCM","DOID:4159","skin cancer"
+"1660","ACH-002387","M1203273","skin","M1203273_SKIN","skin","SKCM","DOID:4159","skin cancer"
+"1661","ACH-002388","MET2B","skin","MET2B_SKIN","skin","SKCM","DOID:4159","skin cancer"
+"1662","ACH-002389","ACN","autonomic_ganglia","ACN_AUTONOMIC_GANGLIA","autonomic_ganglia","NB","DOID:1192","peripheral nervous system neoplasm"
+"1663","ACH-002390","MC1010","haematopoietic_and_lymphoid_tissue","MC1010_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid","LAML","DOID:1240","leukemia"
+"1664","ACH-002391","UDSCC2","upper_aerodigestive_tract","UDSCC2_UPPER_AERODIGESTIVE_TRACT","upper_aerodigestive","HNSC","DOID:162","cancer"
+"1665","ACH-002392","SC1","haematopoietic_and_lymphoid_tissue","SC1_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid","DLBC","DOID:0060058","lymphoma"
+"1666","ACH-002393","CROAP3","haematopoietic_and_lymphoid_tissue","CROAP3_HAEMATOPOIETIC_AND_LYMPHOID_TISSUE","haematopoietic_and_lymphoid","DLBC","DOID:0060058","lymphoma"
+"1667","ACH-002394","GEO","large_intestine","GEO_LARGE_INTESTINE","colorectal","COADREAD","DOID:9256","colorectal cancer"
+"1668","ACH-002395","HUH6CLONE5","liver","HUH6CLONE5_LIVER","liver","LIHC","DOID:3571","liver cancer"
+"1669","ACH-002396","SARC9371","bone","SARC9371_BONE","bone","SARC","DOID:184","bone cancer"
