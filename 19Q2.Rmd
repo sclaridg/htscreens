@@ -283,7 +283,7 @@ g2p_mut <- g2p_split[[4]] %>% drop_na(Direction_Curated)
 g2p_mut$Gene_Lin <- paste0(g2p_mut$Gene, "_", g2p_mut$disease)
 g2p_mut_genes <- unique(sapply(strsplit(as.character(g2p_mut$Drug_Gene)[!is.na(g2p_mut$Drug_Gene)], "_", fixed = TRUE), function(x) x[2]))
 
-g2p_prot <- unique(filter(g2p_mut, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(disease, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
+g2p_prot <- unique(filter(g2p, !is.na(Gene_Protein_Change) & !is.na(Drug)) %>% select(disease, Drug, Direction_Curated, Gene, Protein_Change, Gene_Protein_Change))
 g2p_prot$Drug_Gene_Protein_Change <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
 g2p_prot$Drug_Gene_Protein_Change_Lineage <- with(g2p_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
 g2p_prot$Gene_Protein_Change_Lineage <- with(g2p_prot, ifelse(is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Gene_Protein_Change, "_", disease)))
@@ -295,6 +295,8 @@ g2p_dg_counts <- g2p_dg_counts[order(rowSums(-g2p_dg_counts)), order(colSums(-g2
 g2p_gene_order <- colnames(g2p_dg_counts)
 g2p_drug_order <- rownames(g2p_dg_counts)
 ```
+
+
 
 ## Omics
 
@@ -712,19 +714,16 @@ crispr_prot$Drug <- "CRISPR"
 crispr_prot$Gene_Protein_Change_Lineage <- with(crispr_prot, ifelse(is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Gene_Protein_Change, "_", disease)))
 crispr_prot$Drug_Gene_Protein_Change <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change), NA, paste0(Drug, "_", Gene_Protein_Change)))
 crispr_prot$Drug_Gene_Protein_Change_Lineage <- with(crispr_prot, ifelse(is.na(Drug) | is.na(Gene_Protein_Change) | is.na(disease), NA, paste0(Drug, "_", Gene_Protein_Change, "_", disease)))
-crispr_prot$G2P_Drug_Gene_Protein_Change <- "No"
-crispr_prot$G2P_Protein_Change <- ifelse(crispr_prot$Gene_Protein_Change %in% unique(as.character(g2p_prot$Gene_Protein_Change)), "Yes", "No")
-crispr_prot$G2P_Drug_Gene_Protein_Change_Lineage <- "No"
-crispr_prot <- merge(crispr_prot, unique(select(g2p_prot, Gene_Protein_Change, Direction_Curated)), by = "Gene_Protein_Change", all.x = TRUE)
+
 crispr_prot$Database <- "CRISPR"
 
-saveRDS(crispr_prot, "./../htscreens_giant_files/crispr_protein_changes_20191223.rds", compress = "xz")
+saveRDS(crispr_prot, "./../htscreens_giant_files/crispr_protein_changes_20200103.rds", compress = "xz")
 ```
 
 ```{r, eval = TRUE}
 crispr_fus <- readRDS("./data_munging/19Q2/crispr_fusions.rds")
 # crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes.rds")
-crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes_20191223.rds")
+crispr_prot <- readRDS("./../htscreens_giant_files/crispr_protein_changes_20200103.rds")
 ```
 
 ```{r, eval = FALSE}
@@ -1291,6 +1290,29 @@ ccle_fus_means <- merge(ccle_fus_means_df, ccle_fus_means_lin_df, by = c("Fusion
 
 ## CRISPR
 
+```{r}
+dataframe = crispr_prot
+grouping = c("Gene_Protein_Change", "Drug", "Drug_Gene_Protein_Change")
+g2p_list = unique(as.character(g2p_prot$Gene_Protein_Change[!is.na(g2p_prot$Gene_Protein_Change)]))
+outfile = "./data_munging/rds/crispr_signif_protein_changes.rds"
+
+    count_n <- dataframe %>% count(Drug_Gene_Protein_Change, Change_Status)
+    count_n_wide <- dcast(count_n, Drug_Gene_Protein_Change ~ Change_Status, value.var = "n", fill = 0) %>% separate(Drug_Gene_Protein_Change, sep = "_", c("Drug", "Gene_Protein_Change"), extra = "merge", remove = FALSE)
+    colnames(count_n_wide) <- c("Drug_Gene_Protein_Change", "Drug", "Gene_Protein_Change", "Change_Status_0_count", "Change_Status_1_count")
+    count_n_filt <- filter(count_n, n >= 3)
+    count_category <- count_n_filt %>% count(Drug_Gene_Protein_Change) %>% filter(n == 2)
+    dg_keep <- intersect(count_n_filt$Drug_Gene_Protein_Change, count_category$Drug_Gene_Protein_Change)
+    dataframe <- filter(dataframe, Drug_Gene_Protein_Change %in% dg_keep)
+    dataframe$Drug_Gene_Protein_Change <- as.character(dataframe$Drug_Gene_Protein_Change)
+    signif <- compare_means(Score ~ Change_Status, group.by = grouping, data = dataframe, paired = FALSE, method = "wilcox.test", p.adjust.method = "BH")
+    signif <- adj_signif(signif, alpha = 0.05)
+    signif <- signif[order(signif$p),]
+    signif <- merge(signif, count_n_wide, by = grouping, all = TRUE)
+    signif$`n WT/mut` <- with(signif, paste0(Change_Status_0_count, "/", Change_Status_1_count))
+    if(is.na(str_match(pattern = "crispr", string = outfile))) { signif$InG2P <- ifelse(signif$Drug_Gene_Protein_Change %in% g2p_list, "Yes", "No") }
+    if(!is.na(str_match(pattern = "crispr", string = outfile))) { signif$InG2P <- ifelse(signif$Gene_Protein_Change %in% g2p_list, "Yes", "No")  }
+```
+
 ```{r, eval=FALSE}
 # Mutation status
 ## All genes
@@ -1389,23 +1411,25 @@ ccle_signif_prot <- readRDS("./data_munging/rds/ccle_signif_protein_changes.rds"
 ctrp_signif_prot <- readRDS("./data_munging/rds/ctrp_signif_protein_changes.rds") %>% filter(Change_Status_1_count >= 3)
 gdsc_signif_prot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes.rds") %>% filter(Change_Status_1_count >= 3)
 
-gene_prots <- union(union(unique(ccle_signif_prot$Gene_Protein_Change), union(unique(ctrp_signif_prot$Gene_Protein_Change), unique(gdsc_signif_prot$Gene_Protein_Change))), unique(crispr_signif_prot$Gene_Protein_Change))
+gene_prots <- union(union(union(unique(ccle_signif_prot$Gene_Protein_Change), unique(ctrp_signif_prot$Gene_Protein_Change)), unique(gdsc_signif_prot$Gene_Protein_Change)), unique(crispr_signif_prot$Gene_Protein_Change))
 
-# all_directions <- unique(rbind(select(crispr_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ccle_prot, Gene_Protein_Change, Drug, Direction_Curated), select(ctrp_prot, Gene_Protein_Change, Drug, Direction_Curated), select(gdsc_prot, Gene_Protein_Change, Drug, Direction_Curated)))
-# all_directions <- filter(all_directions, !is.na(Direction_Curated))
-# saveRDS(all_directions, "./data_munging/rds/protein_changes_directions.rds")
-all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
+crispr_directions <- unique(select(g2p_prot, Gene_Protein_Change, Direction_Curated) %>% drop_na(Direction_Curated))
+crispr_directions_n <- crispr_directions %>% count(Gene_Protein_Change)
+crispr_directions <- merge(crispr_directions, crispr_directions_n, by = "Gene_Protein_Change", all = TRUE)
+crispr_directions$Direction_Curated <- with(crispr_directions, ifelse(n == 2, "both", Direction_Curated))
+crispr_directions <- unique(crispr_directions %>% select(-n))
 
-crispr_signif_prot_4plot <- merge(merge(merge(crispr_signif_prot, unique(select(crispr_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(crispr_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
-ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
-ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
-gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), all_directions,  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+crispr_signif_prot_4plot <- merge(merge(merge(crispr_signif_prot, unique(select(crispr_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(crispr_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), crispr_directions, by = "Gene_Protein_Change", all.x = TRUE)
+ccle_signif_prot_4plot <- merge(merge(merge(ccle_signif_prot, unique(select(ccle_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ccle_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), unique(select(g2p_prot, Drug, Gene_Protein_Change, Direction_Curated)),  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+ctrp_signif_prot_4plot <- merge(merge(merge(ctrp_signif_prot, unique(select(ctrp_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(ctrp_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), unique(select(g2p_prot, Drug, Gene_Protein_Change, Direction_Curated)),  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
+gdsc_signif_prot_4plot <- merge(merge(merge(gdsc_signif_prot, unique(select(gdsc_prot, Drug, Gene_Protein_Change)), by = c("Drug", "Gene_Protein_Change"), all.x = TRUE), expand.grid("Drug" = unique(gdsc_signif_prot$Drug), "Gene_Protein_Change" = gene_prots), by = c("Drug", "Gene_Protein_Change"), all = TRUE), unique(select(g2p_prot, Drug, Gene_Protein_Change, Direction_Curated)),  by = c("Drug", "Gene_Protein_Change"), all.x = TRUE)
 
 saveRDS(crispr_signif_prot_4plot, "./data_munging/rds/crispr_signif_protein_changes_4plot.rds")
 saveRDS(ccle_signif_prot_4plot, "./data_munging/rds/ccle_signif_protein_changes_4plot.rds")
 saveRDS(ctrp_signif_prot_4plot, "./data_munging/rds/ctrp_signif_protein_changes_4plot.rds")
 saveRDS(gdsc_signif_prot_4plot, "./data_munging/rds/gdsc_signif_protein_changes_4plot.rds")
 ```
+
 
 ```{r prot_munging}
 crispr_signif_prot <- readRDS("./data_munging/rds/crispr_signif_protein_changes.rds")
@@ -1418,15 +1442,22 @@ ccle_signif_prot_4plot <- readRDS("./data_munging/rds/ccle_signif_protein_change
 ctrp_signif_prot_4plot <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_4plot.rds")
 gdsc_signif_prot_4plot <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_4plot.rds")
 
-all_directions <- readRDS("./data_munging/rds/protein_changes_directions.rds")
+crispr_directions <- unique(select(g2p_prot, Gene_Protein_Change_Lineage, Direction_Curated) %>% drop_na(Direction_Curated))
+crispr_directions_n <- crispr_directions %>% count(Gene_Protein_Change_Lineage)
+crispr_directions <- merge(crispr_directions, crispr_directions_n, by = "Gene_Protein_Change_Lineage", all = TRUE)
+crispr_directions$Direction_Curated <- with(crispr_directions, ifelse(n == 2, "both", Direction_Curated))
+crispr_directions <- unique(crispr_directions %>% select(-n))
 crispr_signif_prot_lin <- readRDS("./data_munging/rds/crispr_signif_protein_changes_lineage.rds")
-crispr_signif_prot_lin <- merge(crispr_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+crispr_signif_prot_lin <- merge(crispr_signif_prot_lin, crispr_directions, by = "Gene_Protein_Change_Lineage", all.x = TRUE)
+
 ccle_signif_prot_lin <- readRDS("./data_munging/rds/ccle_signif_protein_changes_lineage.rds")
-ccle_signif_prot_lin <- merge(ccle_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+ccle_signif_prot_lin <- merge(ccle_signif_prot_lin, unique(select(g2p_prot, Drug, Gene_Protein_Change, Drug_Gene_Protein_Change_Lineage, Direction_Curated)), by = c("Drug_Gene_Protein_Change_Lineage", "Gene_Protein_Change", "Drug"), all.x = TRUE)
+
 ctrp_signif_prot_lin <- readRDS("./data_munging/rds/ctrp_signif_protein_changes_lineage.rds")
-ctrp_signif_prot_lin <- merge(ctrp_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+ctrp_signif_prot_lin <- merge(ctrp_signif_prot_lin, unique(select(g2p_prot, Drug, Gene_Protein_Change, Drug_Gene_Protein_Change_Lineage, Direction_Curated)), by = c("Drug_Gene_Protein_Change_Lineage", "Gene_Protein_Change", "Drug"), all.x = TRUE)
+
 gdsc_signif_prot_lin <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_lineage.rds")
-gdsc_signif_prot_lin <- merge(gdsc_signif_prot_lin, all_directions, by = c("Gene_Protein_Change", "Drug"), all.x = TRUE)
+gdsc_signif_prot_lin <- merge(gdsc_signif_prot_lin, unique(select(g2p_prot, Drug, Gene_Protein_Change, Drug_Gene_Protein_Change_Lineage, Direction_Curated)), by = c("Drug_Gene_Protein_Change_Lineage", "Gene_Protein_Change", "Drug"), all.x = TRUE)
 
 # ccle_signif_prot_lin %>% count(InG2P)
 # filter(ccle_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
@@ -2224,7 +2255,115 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-## Figure 2: G2P summary heatmap
+## Data summaries
+
+```{r Supp2}
+# How many datasets each drug was screened in
+hta_data <- data.frame(Drug = rownames(g2p_dg_counts), CCLE = NA, CTRP = NA, GDSC = NA)
+hta_data$CCLE <- ifelse(hta_data$Drug %in% unique(ccle$Drug), 1, 0)
+hta_data$CTRP <- ifelse(hta_data$Drug %in% unique(ctrp$Drug), 1, 0)
+hta_data$GDSC <- ifelse(hta_data$Drug %in% unique(gdsc$Drug), 1, 0)
+rownames(hta_data) <- hta_data$Drug
+hta_data$Drug <- NULL
+hta_data$NumDatasetsScreened <- rowSums(hta_data)
+
+
+ggplot(data = g2p) +
+  geom_bar(mapping = aes(x = disease))
+
+# How many G2P indications are for each disease
+g2p_munge <- select(g2p, disease)
+g2p_munge <- g2p_munge %>% count(disease)
+g2p_munge$Perc <- g2p_munge$n / sum(g2p_munge$n) * 100
+g2p_munge <- g2p_munge[order(g2p_munge$Perc),]
+g2p_munge$disease <- factor(g2p_munge$disease, levels = g2p_munge$disease)
+ggplot(data = g2p_munge) +
+  geom_bar(mapping = aes(x = disease, y = Perc), stat = "identity") +
+  geom_text(aes(x = disease, y = Perc + 3, label = round(Perc, 1))) +
+  scale_y_continuous(breaks = seq(0, 100, by = 10), labels = seq(0, 100, by = 10)) +
+  coord_flip()
+```
+
+```{r eval=FALSE}
+ccle_ccls <- unique(ccle$DepMap_ID)
+ctrp_ccls <- unique(ctrp$DepMap_ID)
+gdsc_ccls <- unique(gdsc$DepMap_ID)
+crispr_ccls <- unique(crispr$DepMap_ID)
+# overlap <- calculate.overlap(x = list("CCLE" = ccle_ccls, "CTRP" = ctrp_ccls, "GDSC" = gdsc_ccls, "CRISPR" = crispr_ccls))
+
+ccl_filter <- filter(ccl_meta, DepMap_ID %in% Reduce(intersect, list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls)))
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+ccl_venn <- venn.diagram(x = list(ccle_ccls, ctrp_ccls, gdsc_ccls, crispr_ccls),
+             filename = NULL,
+             height = 2000, width = 2000, resolution = 500,
+             lwd = 1, cex = 1,
+             category.names = c("CCLE", "CTRP", "GDSC", "CRISPR"),
+             cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
+             # cat.dist = c(0.06, 0.06, 0.035),
+             fill = c("springgreen4", "steelblue4", "turquoise4", "darkorchid"))
+
+ccle_drugs <- unique(ccle$Drug)
+ctrp_drugs <- unique(ctrp$Drug)
+gdsc_drugs <- unique(gdsc$Drug)
+
+futile.logger::flog.threshold(futile.logger::ERROR, name = "VennDiagramLogger")
+drug_venn <- venn.diagram(x = list(ccle_drugs, ctrp_drugs, gdsc_drugs),
+             filename = NULL,
+             height = 2000, width = 2000, resolution = 500,
+             lwd = 1, cex = 1.4,
+             category.names = c("CCLE", "CTRP", "GDSC"),
+             cat.cex = 1.4, cat.fontface = "bold", cat.default.pos = "outer",
+             cat.dist = c(0.06, 0.06, 0.035),
+             fill = c("palegreen3", "slategray3", "paleturquoise3"))
+```
+
+```{r Supp1_summary, fig.height=7, fig.width=20, warning=FALSE, eval=FALSE}
+maf_g2p <- filter(maf_df, Gene %in% g2p_gene_order) %>% merge(ccl_meta, by = "DepMap_ID")
+maf_g2p <- with(maf_g2p, maf_g2p[order(disease),])
+maf_g2p_wide <- dcast(data = maf_g2p, formula = Gene ~ DepMap_ID, value.var = "Mutation", fun.aggregate = mean, fill = 0) %>% `rownames<-`(.[,1]) %>% select(-Gene)
+maf_g2p_wide <- ifelse(maf_g2p_wide == 1, "Mutant", "Wildtype")
+maf_g2p_annot_df <- unique(select(maf_g2p, DepMap_ID, disease)) %>% `rownames<-`(.[,1]) %>% select(-DepMap_ID) %>% `colnames<-`("Lineage")
+
+# Cell line/mutation heatmap
+maf_g2p_annot <- HeatmapAnnotation(df = maf_g2p_annot_df, annotation_name_side = "left", annotation_legend_param = list(Lineage = list(title_gp = gpar(fontsize = 20), labels_gp = gpar(fontsize = 12), title_position = "topleft", nrow = 5)))
+
+maf_g2p_legend_list <- list(title = "Mutation status", legend_direction = "horizontal", border = "gray70", nrow = 1, title_gp = gpar(fontsize = 20), labels_gp = gpar(fontsize = 12))
+
+maf_g2p_ht <- Heatmap(maf_g2p_wide,
+                      col = c("Mutant" = "black", "Wildtype" = "white"),
+                      rect_gp = gpar(col = "white"),
+                      heatmap_legend_param = maf_g2p_legend_list,
+                      cluster_rows = FALSE, 
+                      cluster_columns = TRUE, 
+                      row_names_side = "left",
+                      row_names_gp = gpar(fontsize = 10),
+                      show_column_names = FALSE,
+                      row_title = "Genes",
+                      row_title_gp = gpar(fontface = "bold", fontsize = 20),
+                      column_title = "Cell lines", 
+                      column_title_gp = gpar(fontface = "bold", fontsize = 20),
+                      column_title_side = "top",
+                      top_annotation = maf_g2p_annot)
+
+draw(maf_g2p_ht, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_side = "top")
+```
+
+
+```{r supp_stats, eval=FALSE}
+maf_g2p_summ_gene <- maf_g2p %>% group_by(Gene) %>% count(Mutation) %>% filter (Mutation == 1) %>% merge(unique(select(maf_g2p, DepMap_ID, Gene)) %>% count(Gene), by = "Gene", suffixes = c("_mut", "_cell_lines"), all = TRUE)
+maf_g2p_summ_gene$PercCellLinesMutated <- maf_g2p_summ_gene$n_mut/maf_g2p_summ_gene$n_cell_lines * 100
+
+maf_g2p_summ <- maf_g2p %>% group_by(disease) %>% count(Mutation) %>% filter (Mutation == 1) %>% merge(unique(select(maf_g2p, DepMap_ID, disease)) %>% count(disease), by = "disease", suffixes = c("_mut", "_cell_lines"), all = TRUE)
+maf_g2p_summ$MutPerCCL <- maf_g2p_summ$n_mut/maf_g2p_summ$n_cell_lines
+
+sum(maf_g2p_summ$n_cell_lines)
+777/1588
+sum(maf_g2p_summ$n_mut[!is.na(maf_g2p_summ$n_mut)])
+2067/3151
+```
+
+## G2P summary heatmap
 
 ```{r Figure2_g2p_summary_heatmap, fig.height=6, fig.width=8, warning=FALSE, eval=FALSE}
 # Create annotation layer
@@ -2286,12 +2425,174 @@ ht <- Heatmap(g2p_dg_counts,
               column_title_gp = gpar(fontface = "bold", fontsize = 14),
               column_title_side = "bottom")
 
-png(filename = "./plots/manuscript/figure2_g2p_summary_heatmap.png", width = 10, height = 9, units = "in", res = 500)
+png(filename = "./plots/manuscript_final/g2p_summary_heatmap.png", width = 10, height = 9, units = "in", res = 500)
 draw(hta + ht, gap = unit(5, "mm"), heatmap_legend_side = "top")
 dev.off()
 ```
 
-## Figure 3: Mutation status
+## Mutation status
+
+```{r fig.height=8, fig.width=15, eval=FALSE}
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3), feature = "mutation", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = FALSE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.023)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3), feature = "mutation", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3), feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.011)
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3), feature = "crispr", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Genes", radius = 0.15)
+ht_mut_list <- ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2
+ht_mut_grob <- grid.grabExpr(draw(ht_mut_list, gap = unit(0.25, "in"), heatmap_legend_side = "top"))
+
+crispr_signif_g2p_dg_summ <- filter(crispr_signif_g2p_g, InG2P == "Yes") 
+ccle_signif_g2p_dg_summ <- filter(ccle_signif_g2p_dg, InG2P == "Yes") 
+ctrp_signif_g2p_dg_summ <- filter(ctrp_signif_g2p_dg, InG2P == "Yes") 
+gdsc_signif_g2p_dg_summ <- filter(gdsc_signif_g2p_dg, InG2P == "Yes") 
+
+crispr_mut_filt <- filter(crispr, Gene %in% filter(crispr_signif_g2p_dg_summ, p < 0.05)$Gene)
+crispr_mut_filt_plot <- ggplot(data = crispr_mut_filt, aes(x = as.character(Mutation), y = Score) )+
+  facet_wrap(~ Gene, ncol = 5) +
+  geom_violin(aes(fill = as.character(Mutation))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "CRISPR", x = "Mutation Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "snow1", colour = "snow1", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ccle_mut_filt <- filter(ccle, Drug_Gene %in% filter(ccle_signif_g2p_dg_summ, p < 0.05)$Drug_Gene)
+ccle_mut_filt_plot <- ggplot(data = ccle_mut_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  facet_wrap(~ Drug_Gene, ncol = 5) +
+  geom_violin(aes(fill = as.character(Mutation))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "CCLE", x = "Mutation Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ctrp_mut_filt <- filter(ctrp, Drug_Gene %in% filter(ctrp_signif_g2p_dg_summ, p < 0.05)$Drug_Gene)
+ctrp_mut_filt_plot <- ggplot(data = ctrp_mut_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  facet_wrap(~ Drug_Gene, ncol = 7) +
+  geom_violin(aes(fill = as.character(Mutation))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07,) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "steelblue4", "0" = "slategray3")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "CTRP", x = "Mutation Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+gdsc_mut_filt <- filter(gdsc, Drug_Gene %in% filter(gdsc_signif_g2p_dg_summ, p < 0.05)$Drug_Gene)
+gdsc_mut_filt_plot <- ggplot(data = gdsc_mut_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  facet_wrap(~ Drug_Gene, ncol = 5) +
+  geom_violin(aes(fill = as.character(Mutation))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07, ) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "turquoise4", "0" = "paleturquoise3")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "GDSC", x = "Mutation Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "lightcyan", colour = "lightcyan", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+lay <- rbind(c(1, 1, 1, 1, 1),
+             c(1, 1, 1, 1, 1),
+             c(1, 1, 1, 1, 1),
+             c(2, 2, 2, 2, 2),
+             c(3, 3, 5, 5, 5),
+             c(4, 4, 4, 4, 4))
+
+png(filename = "./plots/manuscript_final/all_mutation_agnostic_boxplots.png", width = 15, height = 15, units = "in", res = 500)
+grid.arrange(layout_matrix = lay,
+             arrangeGrob(ht_mut_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(crispr_mut_filt_plot), left = textGrob("B", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ccle_mut_filt_plot), left = textGrob("C", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ctrp_mut_filt_plot), left = textGrob("D", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(gdsc_mut_filt_plot), left = textGrob("E", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))))
+dev.off()
+```
+
+## Protein changes
+
+```{r prot_changes, eval = FALSE, fig.height=15, fig.width=15}
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.021)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.009)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.0125)
+ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.135)
+ht_prot_list <- ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2
+ht_prot_grob <- grid.grabExpr(draw(ht_prot_list, gap = unit(0.25, "in"), heatmap_legend_side = "top"))
+
+crispr_signif_prot_summ <- filter(crispr_signif_prot, InG2P == "Yes") 
+ccle_signif_prot_summ <- filter(ccle_signif_prot, InG2P == "Yes") 
+ctrp_signif_prot_summ <- filter(ctrp_signif_prot, InG2P == "Yes") 
+gdsc_signif_prot_summ <- filter(gdsc_signif_prot, InG2P == "Yes") 
+
+crispr_prot_filt <- filter(crispr_prot, Gene_Protein_Change %in% filter(crispr_signif_prot_summ, p < 0.05)$Gene_Protein_Change)
+crispr_prot_filt_plot <- ggplot(data = crispr_prot_filt, aes(x = as.character(Change_Status), y = Score) )+
+  facet_wrap(~ Gene_Protein_Change, nrow = 2) +
+  geom_violin(aes(fill = as.character(Change_Status))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(name = "Protein Change Status", labels = c("Wildtype", "Mutant"), values = c("Yes" = "darkorchid", "No" = "thistle")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "CRISPR", x = "Protein Change Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "snow1", colour = "snow1", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ccle_prot_filt <- filter(ccle_prot, Drug_Gene_Protein_Change %in% filter(ccle_signif_prot_summ, p < 0.05)$Drug_Gene_Protein_Change)
+
+ctrp_prot_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change %in% filter(ctrp_signif_prot_summ, p < 0.05)$Drug_Gene_Protein_Change)
+ctrp_prot_filt_plot <- ggplot(data = ctrp_prot_filt, mapping = aes(x = as.character(Change_Status), y = Score)) +
+  facet_wrap(~ Drug_Gene_Protein_Change, nrow = 2) +
+  geom_violin(aes(fill = as.character(Change_Status))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07,) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(name = "Protein Change Status", labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "CTRP", x = "Protein Change Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+gdsc_prot_filt <- filter(gdsc_prot, Drug_Gene_Protein_Change %in% filter(gdsc_signif_prot_summ, p < 0.05)$Drug_Gene_Protein_Change)
+gdsc_prot_filt_plot <- ggplot(data = gdsc_prot_filt, mapping = aes(x = as.character(Change_Status), y = Score)) +
+  facet_wrap(~ Drug_Gene_Protein_Change, nrow = 2) +
+  geom_violin(aes(fill = as.character(Change_Status))) +
+  geom_boxplot(outlier.shape = NA, width = 0.07, ) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(name = "Protein Change Status", labels = c("Wildtype", "Mutant"), values = c("Yes" = "turquoise4", "No" = "paleturquoise3")) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
+  labs(title = "GDSC", x = "Protein Change Status") +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "lightcyan", colour = "lightcyan", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+lay <- rbind(c(1, 1, 1, 1, 1),
+             c(2, 2, 2, 2, 4),
+             c(3, 3, 3, 3, 3))
+
+png(filename = "./plots/manuscript_final/all_protein_change_agnostic_boxplots.png", width = 15, height = 15, units = "in", res = 500)
+grid.arrange(layout_matrix = lay,
+             arrangeGrob(ht_prot_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(crispr_prot_filt_plot), left = textGrob("B", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ctrp_prot_filt_plot), left = textGrob("C", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(gdsc_prot_filt_plot), left = textGrob("D", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))))
+dev.off()
+```
+
+**1/3: Need to do CN and GE and lineage specific analyses**
+
+## First draft figures
 
 ```{r Figure3_mutation, fig.height=12, fig.width=12, eval=FALSE}
 # A: Heatmap
@@ -2382,7 +2683,6 @@ dev.off()
 ```
 
 
-## Figure 4: Protein changes
 
 ```{r Figure4_protein_change, fig.height=12, fig.width=12, eval=FALSE}
 # A: Heatmap
@@ -2467,7 +2767,6 @@ grid.arrange(layout_matrix = lay,
 dev.off()
 ```
 
-## Figure 5: Copy number
 
 ```{r Figure5_cn, fig.height=8, fig.width=12, eval=FALSE}
 # A: Heatmap
@@ -2558,7 +2857,6 @@ grid.arrange(layout_matrix = lay,
 dev.off()
 ```
 
-## Figure 6: Gene expression
 
 ```{r Figure6_ge, fig.height=8, fig.width=12, eval=FALSE}
 # A: Heatmap
