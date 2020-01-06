@@ -2214,7 +2214,7 @@ ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = FALSE, heatmap
 ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = FALSE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.0215, legend_title = "Copy num. Spearman correlation", metric = "CN")
 gdsc_cn_ht2 <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = FALSE, heatmap_legend = FALSE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.0215, legend_title = "Copy num. Spearman correlation", metric = "CN")
 png(filename = "./plots/manuscript/all_cn_heatmap.png", width = 13, height = 3.5, units = "in", res = 500)
-draw(crispr_cn_ht2 +ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+draw(crispr_cn_ht2 + ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 
 # Gene expression
@@ -2438,7 +2438,8 @@ ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Gene %in%
 ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3), feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.011)
 ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3), feature = "crispr", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 45, by = 9), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Genes", radius = 0.15)
 ht_mut_list <- ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2
-ht_mut_grob <- grid.grabExpr(draw(ht_mut_list, gap = unit(0.25, "in"), heatmap_legend_side = "top"))
+lgd <- list(Legend(labels = c("Resistance", "Sensitivity", "p < 0.05"), type = "points", pch = c(21, 21, 8), nrow = 1, background = "white", legend_gp = gpar(col = "black", fill = c("red", "white"))))
+ht_mut_grob <- grid.grabExpr(draw(ht_mut_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE))
 
 crispr_signif_g2p_dg_summ <- filter(crispr_signif_g2p_g, InG2P == "Yes") 
 ccle_signif_g2p_dg_summ <- filter(ccle_signif_g2p_dg, InG2P == "Yes") 
@@ -2451,9 +2452,10 @@ crispr_mut_filt_plot <- ggplot(data = crispr_mut_filt, aes(x = as.character(Muta
   geom_violin(aes(fill = as.character(Mutation))) +
   geom_boxplot(outlier.shape = NA, width = 0.07) +
   scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_y_continuous(breaks = seq(-3, 1, by = 0.5), labels = c("-3.0", "-2.5", "-2.0", "-1.5", "-1.0", "-0.5", "0.0", "0.5", "1.0")) +
   scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "darkorchid", "0" = "thistle")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "CRISPR", x = "Mutation Status") +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CRISPR", x = "Mutation Status", y = "CERES Score") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "snow1", colour = "snow1", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2466,8 +2468,8 @@ ccle_mut_filt_plot <- ggplot(data = ccle_mut_filt, mapping = aes(x = as.characte
   geom_boxplot(outlier.shape = NA, width = 0.07) +
   scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
   scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "CCLE", x = "Mutation Status") +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CCLE", x = "Mutation Status", y = "AUC") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2480,8 +2482,8 @@ ctrp_mut_filt_plot <- ggplot(data = ctrp_mut_filt, mapping = aes(x = as.characte
   geom_boxplot(outlier.shape = NA, width = 0.07,) +
   scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
   scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "steelblue4", "0" = "slategray3")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "CTRP", x = "Mutation Status") +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP", x = "Mutation Status", y = "AUC") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2494,8 +2496,10 @@ gdsc_mut_filt_plot <- ggplot(data = gdsc_mut_filt, mapping = aes(x = as.characte
   geom_boxplot(outlier.shape = NA, width = 0.07, ) +
   scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
   scale_fill_manual(name = "Mutation Status", labels = c("Wildtype", "Mutant"), values = c("1" = "turquoise4", "0" = "paleturquoise3")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "GDSC", x = "Mutation Status") +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "GDSC", x = "Mutation Status", y = "AUC") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "lightcyan", colour = "lightcyan", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2508,13 +2512,18 @@ lay <- rbind(c(1, 1, 1, 1, 1),
              c(3, 3, 5, 5, 5),
              c(4, 4, 4, 4, 4))
 
-png(filename = "./plots/manuscript_final/all_mutation_agnostic_boxplots.png", width = 15, height = 15, units = "in", res = 500)
-grid.arrange(layout_matrix = lay,
-             arrangeGrob(ht_mut_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+gs_mut <- gList(arrangeGrob(ht_mut_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(crispr_mut_filt_plot), left = textGrob("B", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(ccle_mut_filt_plot), left = textGrob("C", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(ctrp_mut_filt_plot), left = textGrob("D", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(gdsc_mut_filt_plot), left = textGrob("E", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))))
+
+png(filename = "./plots/manuscript_final/mutation_pancancer_small.png", width = 15, height = 17, units = "in", res = 100)
+grid.arrange(layout_matrix = lay, grobs = gs_mut)
+dev.off()
+
+png(filename = "./plots/manuscript_final/mutation_pancancer.png", width = 15, height = 17, units = "in", res = 500)
+grid.arrange(layout_matrix = lay, grobs = gs_mut)
 dev.off()
 ```
 
@@ -2522,11 +2531,12 @@ dev.off()
 
 ```{r prot_changes, eval = FALSE, fig.height=15, fig.width=15}
 ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_signif_prot_4plot, feature = "protein changes", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.021)
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.009)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_signif_prot_4plot, feature = "protein changes", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.012)
 ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = gdsc_signif_prot_4plot, feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 8, by = 2), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.0125)
 ht_crispr2 <- MakeWilcoxonHeatmap(signif_df = crispr_signif_prot_4plot, feature = "protein changes CRISPR", legend_title = "CRISPR -log10(p-value)", legend_breaks = seq(0, 25, by = 5), row_names = TRUE, color = "darkorchid4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.135)
 ht_prot_list <- ht_crispr2 + ht_ccle2 + ht_ctrp2 + ht_gdsc2
-ht_prot_grob <- grid.grabExpr(draw(ht_prot_list, gap = unit(0.25, "in"), heatmap_legend_side = "top"))
+lgd <- list(Legend(labels = c("Resistance", "Sensitivity", "p < 0.05"), type = "points", pch = c(21, 21, 8), nrow = 1, background = "white", legend_gp = gpar(col = "black", fill = c("red", "white"))))
+ht_prot_grob <- grid.grabExpr(draw(ht_prot_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE))
 
 crispr_signif_prot_summ <- filter(crispr_signif_prot, InG2P == "Yes") 
 ccle_signif_prot_summ <- filter(ccle_signif_prot, InG2P == "Yes") 
@@ -2539,9 +2549,10 @@ crispr_prot_filt_plot <- ggplot(data = crispr_prot_filt, aes(x = as.character(Ch
   geom_violin(aes(fill = as.character(Change_Status))) +
   geom_boxplot(outlier.shape = NA, width = 0.07) +
   scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_y_continuous(breaks = seq(-3, 1, by = 0.5), labels = c("-3.0", "-2.5", "-2.0", "-1.5", "-1.0", "-0.5", "0.0", "0.5", "1.0")) +
   scale_fill_manual(name = "Protein Change Status", labels = c("Wildtype", "Mutant"), values = c("Yes" = "darkorchid", "No" = "thistle")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "CRISPR", x = "Protein Change Status") +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CRISPR", x = "Protein Change Status", y = "CERES Score") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "snow1", colour = "snow1", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2555,9 +2566,11 @@ ctrp_prot_filt_plot <- ggplot(data = ctrp_prot_filt, mapping = aes(x = as.charac
   geom_violin(aes(fill = as.character(Change_Status))) +
   geom_boxplot(outlier.shape = NA, width = 0.07,) +
   scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
   scale_fill_manual(name = "Protein Change Status", labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "CTRP", x = "Protein Change Status") +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP", x = "Protein Change Status", y = "AUC") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2569,9 +2582,11 @@ gdsc_prot_filt_plot <- ggplot(data = gdsc_prot_filt, mapping = aes(x = as.charac
   geom_violin(aes(fill = as.character(Change_Status))) +
   geom_boxplot(outlier.shape = NA, width = 0.07, ) +
   scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
   scale_fill_manual(name = "Protein Change Status", labels = c("Wildtype", "Mutant"), values = c("Yes" = "turquoise4", "No" = "paleturquoise3")) +
-  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.4) +
-  labs(title = "GDSC", x = "Protein Change Status") +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "GDSC", x = "Protein Change Status", y = "AUC") +
   theme(legend.position = "none", axis.title.x = element_blank(),
         panel.background = element_rect(fill = "lightcyan", colour = "lightcyan", size = 0.5, linetype = "solid"),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
@@ -2581,16 +2596,216 @@ lay <- rbind(c(1, 1, 1, 1, 1),
              c(2, 2, 2, 2, 4),
              c(3, 3, 3, 3, 3))
 
-png(filename = "./plots/manuscript_final/all_protein_change_agnostic_boxplots.png", width = 15, height = 15, units = "in", res = 500)
-grid.arrange(layout_matrix = lay,
-             arrangeGrob(ht_prot_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+gs_prot <- gList(arrangeGrob(ht_prot_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(crispr_prot_filt_plot), left = textGrob("B", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(ctrp_prot_filt_plot), left = textGrob("C", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
              arrangeGrob(ggplotGrob(gdsc_prot_filt_plot), left = textGrob("D", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))))
+
+png(filename = "./plots/manuscript_final/protein_change_pancancer_small.png", width = 15, height = 15, units = "in", res = 100)
+grid.arrange(layout_matrix = lay, grobs = gs_prot)
+dev.off()
+
+png(filename = "./plots/manuscript_final/protein_change_pancancer.png", width = 15, height = 15, units = "in", res = 500)
+grid.arrange(layout_matrix = lay, grobs = gs_prot)
 dev.off()
 ```
 
-**1/3: Need to do CN and GE and lineage specific analyses**
+## CN/GE
+
+```{r CN_GE, eval = FALSE, fig.height=10, fig.width=15}
+# Copy number
+
+crispr_cn_cor_4plot <- unfactorize(filter(cn_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_amp$Gene)))
+ccle_cn_cor_4plot <- unfactorize(filter(cn_cor, Dataset == "CCLE" & Gene %in% unique(g2p_amp$Gene)))
+ctrp_cn_cor_4plot <- unfactorize(filter(cn_cor, Dataset == "CTRP" & Gene %in% unique(g2p_amp$Gene)))
+gdsc_cn_cor_4plot <- unfactorize(filter(cn_cor, Dataset == "GDSC" & Gene %in% unique(g2p_amp$Gene)))
+crispr_cn_ht2 <- MakeCorrHeatmap(cor_res = crispr_cn_cor_4plot, row_names = TRUE, heatmap_legend = TRUE, col_title = "CRISPR", color_range = c(-0.25, 0, 0.25), radius = 0.15, legend_title = "Copy num. Spearman correlation", metric = "CN")
+ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = ccle_cn_cor_4plot, row_names = FALSE, heatmap_legend = FALSE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN")
+ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = ctrp_cn_cor_4plot, row_names = FALSE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN")
+gdsc_cn_ht2 <- MakeCorrHeatmap(cor_res = gdsc_cn_cor_4plot, row_names = FALSE, heatmap_legend = FALSE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN")
+ht_cn_list <- crispr_cn_ht2 + ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2
+lgd <- list(Legend(labels = c("Resistance", "Sensitivity", "p < 0.05"), type = "points", pch = c(21, 21, 8), nrow = 3, background = "white", legend_gp = gpar(col = "black", fill = c("red", "white"))))
+ht_cn_grob <- grid.grabExpr(draw(ht_cn_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE))
+
+cn_cor$p.format <- with(cn_cor, ifelse(CN_p < 0.001, "p < 0.001", paste0("p = ", round(CN_p, digits = 3))))
+crispr_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CRISPR" & InG2P == "Yes"))
+ccle_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CCLE" & InG2P == "Yes"))
+ctrp_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CTRP" & InG2P == "Yes"))
+gdsc_cn_cor <- unfactorize(filter(cn_cor, Dataset == "GDSC" & InG2P == "Yes"))
+
+crispr_cn_cor_filt <- filter(crispr_cn_cor, CN_p < 0.05)
+crispr_cn_filt <- filter(crispr, Gene %in% crispr_cn_cor_filt$Gene)
+crispr_text <- data.frame(label = paste0("r = ", round(crispr_cn_cor_filt$CN_r, digits = 3), ",\n", crispr_cn_cor_filt$p.format), Gene = crispr_cn_cor_filt$Gene)
+crispr_cn_filt_plot <- ggplot(data = crispr_cn_filt, aes(x = CN, y = Score) )+
+  facet_wrap(~ Gene) +
+  geom_point(fill = "darkorchid", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = crispr_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_y_continuous(breaks = seq(-3, 1, by = 0.5), labels = c("-3.0", "-2.5", "-2.0", "-1.5", "-1.0", "-0.5", "0.0", "0.5", "1.0")) +
+  labs(title = "CRISPR", x = "Copy number (log2)", y = "CERES Score") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "snow1", colour = "snow1", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ccle_cn_cor_filt <- filter(ccle_cn_cor, CN_p < 0.05)
+ccle_cn_filt <- filter(ccle, Drug_Gene %in% ccle_cn_cor_filt$Drug_Gene)
+ccle_text <- data.frame(label = paste0("r = ", round(ccle_cn_cor_filt$CN_r, digits = 3), ", ", ccle_cn_cor_filt$p.format), Drug_Gene = ccle_cn_cor_filt$Drug_Gene)
+ccle_cn_filt_plot <- ggplot(data = ccle_cn_filt, aes(x = CN, y = Score) )+
+  facet_wrap(~ Drug_Gene) +
+  geom_point(fill = "springgreen4", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = ccle_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.05, vjust = 1.2)) +
+  labs(title = "CCLE", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ctrp_cn_cor_filt <- filter(ctrp_cn_cor, CN_p < 0.05)
+ctrp_cn_filt <- filter(ctrp, Drug_Gene %in% ctrp_cn_cor_filt$Drug_Gene)
+ctrp_text <- data.frame(label = paste0("r = ", round(ctrp_cn_cor_filt$CN_r, digits = 3), ",\n", ctrp_cn_cor_filt$p.format), Drug_Gene = ctrp_cn_cor_filt$Drug_Gene)
+ctrp_cn_filt_plot <- ggplot(data = ctrp_cn_filt, aes(x = CN, y = Score) )+
+  facet_wrap(~ Drug_Gene) +
+  geom_point(fill = "steelblue4", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = ctrp_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  labs(title = "CTRP", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+gdsc_cn_cor_filt <- filter(gdsc_cn_cor, CN_p < 0.05)
+
+# Gene expression
+
+crispr_ge_cor_4plot <- unfactorize(filter(ge_cor, Dataset == "CRISPR" & Gene %in% unique(g2p_expr$Gene)))
+ccle_ge_cor_4plot <- unfactorize(filter(ge_cor, Dataset == "CCLE" & Gene %in% unique(g2p_expr$Gene)))
+ctrp_ge_cor_4plot <- unfactorize(filter(ge_cor, Dataset == "CTRP" & Gene %in% unique(g2p_expr$Gene)))
+gdsc_ge_cor_4plot <- unfactorize(filter(ge_cor, Dataset == "GDSC" & Gene %in% unique(g2p_expr$Gene)))
+crispr_ge_ht2 <- MakeCorrHeatmap(cor_res = crispr_ge_cor_4plot, row_names = TRUE, heatmap_legend = TRUE, col_title = "CRISPR", color_range = c(-0.5, 0, 0.5), radius = 0.155, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ccle_ge_ht2 <- MakeCorrHeatmap(cor_res = ccle_ge_cor_4plot, row_names = FALSE, heatmap_legend = FALSE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.07, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ctrp_ge_ht2 <- MakeCorrHeatmap(cor_res = ctrp_ge_cor_4plot, row_names = FALSE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.07, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+gdsc_ge_ht2 <- MakeCorrHeatmap(cor_res = gdsc_ge_cor_4plot, row_names = FALSE, heatmap_legend = FALSE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.07, legend_title = "Gene expr. Spearman correlation", metric = "GE")
+ht_ge_list <- crispr_ge_ht2 + ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2
+ht_ge_grob <- grid.grabExpr(draw(ht_ge_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE))
+
+ge_cor$p.format <- with(ge_cor, ifelse(GE_p < 0.001, "p < 0.001", paste0("p = ", round(GE_p, digits = 3))))
+crispr_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CRISPR" & InG2P == "Yes"))
+ccle_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CCLE" & InG2P == "Yes"))
+ctrp_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CTRP" & InG2P == "Yes"))
+gdsc_ge_cor <- unfactorize(filter(ge_cor, Dataset == "GDSC" & InG2P == "Yes"))
+
+crispr_ge_cor_filt <- filter(crispr_ge_cor, GE_p < 0.05)
+crispr_ge_filt <- filter(crispr, Gene %in% crispr_ge_cor_filt$Gene)
+crispr_text <- data.frame(label = paste0("r = ", round(crispr_ge_cor_filt$GE_r, digits = 3), ",\n", crispr_ge_cor_filt$p.format), Gene = crispr_ge_cor_filt$Gene)
+crispr_ge_filt_plot <- ggplot(data = crispr_ge_filt, aes(x = TPM, y = Score) )+
+  facet_wrap(~ Gene) +
+  geom_point(fill = "darkorchid", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = crispr_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_y_continuous(breaks = seq(-3, 1, by = 0.5), labels = c("-3.0", "-2.5", "-2.0", "-1.5", "-1.0", "-0.5", "0.0", "0.5", "1.0")) +
+  labs(title = "CRISPR", x = "Gene expression [log2(TPM)]", y = "CERES Score") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "snow1", colour = "snow1", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ccle_ge_cor_filt <- filter(ccle_ge_cor, GE_p < 0.05)
+ccle_ge_filt <- filter(ccle, Drug_Gene %in% ccle_ge_cor_filt$Drug_Gene)
+ccle_text <- data.frame(label = paste0("r = ", round(ccle_ge_cor_filt$GE_r, digits = 3), ", ", ccle_ge_cor_filt$p.format), Drug_Gene = ccle_ge_cor_filt$Drug_Gene)
+ccle_ge_filt_plot <- ggplot(data = ccle_ge_filt, aes(x = TPM, y = Score) )+
+  facet_wrap(~ Drug_Gene) +
+  geom_point(fill = "springgreen4", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = ccle_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.37, vjust = 1.2)) +
+  labs(title = "CCLE", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+ctrp_ge_cor_filt <- filter(ctrp_ge_cor, GE_p < 0.05)
+ctrp_ge_filt <- filter(ctrp, Drug_Gene %in% ctrp_ge_cor_filt$Drug_Gene)
+ctrp_text <- data.frame(label = paste0("r = ", round(ctrp_ge_cor_filt$GE_r, digits = 3), ",\n", ctrp_ge_cor_filt$p.format), Drug_Gene = ctrp_ge_cor_filt$Drug_Gene)
+ctrp_ge_filt_plot <- ggplot(data = ctrp_ge_filt, aes(x = TPM, y = Score) )+
+  facet_wrap(~ Drug_Gene) +
+  geom_point(fill = "steelblue4", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = ctrp_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 9.1)) +
+  labs(title = "CTRP", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+gdsc_ge_cor_filt <- filter(gdsc_ge_cor, GE_p < 0.05)
+gdsc_ge_filt <- filter(gdsc, Drug_Gene %in% gdsc_ge_cor_filt$Drug_Gene)
+gdsc_text <- data.frame(label = paste0("r = ", round(gdsc_ge_cor_filt$GE_r, digits = 3), ",\n", gdsc_ge_cor_filt$p.format), Drug_Gene = gdsc_ge_cor_filt$Drug_Gene)
+gdsc_ge_filt_plot <- ggplot(data = gdsc_ge_filt, aes(x = TPM, y = Score) )+
+  facet_wrap(~ Drug_Gene) +
+  geom_point(fill = "turquoise4", pch = 21, size = 1, alpha = 0.7) +
+  geom_text(data = gdsc_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.00)) +
+  labs(title = "GDSC", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "lightcyan", colour = "lightcyan", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+
+# Arrange figure
+
+hlay <- rbind(c(1, 1, 1, 1, 1, 1, 1),
+              c(1, 1, 1, 1, 1, 1, 1),
+              c(1, 1, 1, 1, 1, 1, 1),
+              c(2, 2, 3, 3, 4, NA, NA),
+              c(2, 2, 3, 3, 4, NA, NA),
+              c(2, 2, 3, 3, 4, NA, NA),
+              c(5, 5, 5, 5, 5, 5, 5),
+              c(5, 5, 5, 5, 5, 5, 5),
+              c(6, 7, 8, 8, 8, 9, 9),
+              c(6, 7, 8, 8, 8, 9, 9),
+              c(6, 7, 8, 8, 8, 9, 9))
+
+select_grobs <- function(lay) {
+  id <- unique(c(t(lay))) 
+  id[!is.na(id)]
+} 
+
+gs_cn_ge <- gList(arrangeGrob(ht_cn_grob, left = textGrob("A", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(crispr_cn_filt_plot), left = textGrob("B", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ccle_cn_filt_plot), left = textGrob("C", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ctrp_cn_filt_plot), left = textGrob("D", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ht_ge_grob, left = textGrob("E", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(crispr_ge_filt_plot), left = textGrob("F", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ccle_ge_filt_plot), left = textGrob("G", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(ctrp_ge_filt_plot), left = textGrob("H", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))),
+             arrangeGrob(ggplotGrob(gdsc_ge_filt_plot), left = textGrob("I", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))))
+
+png(filename = "./plots/manuscript_final/cn_ge_pancancer_small.png", width = 20, height = 15, units = "in", res = 100)
+grid.arrange(layout_matrix = hlay, grobs = gs_cn_ge[select_grobs(hlay)])
+dev.off()
+
+png(filename = "./plots/manuscript_final/cn_ge_pancancer.png", width = 20, height = 15, units = "in", res = 500)
+grid.arrange(layout_matrix = hlay, grobs = gs_cn_ge[select_grobs(hlay)])
+dev.off()
+```
+
+
+
+
+
 
 ## First draft figures
 
