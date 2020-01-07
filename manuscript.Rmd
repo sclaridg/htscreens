@@ -11,9 +11,12 @@ header-includes:
 - \usepackage{caption}
 title               : "Manuscript Draft"
 author              :
-- Sally E. Claridge
-- Daniel M. Charytonowicz
-- Adam A. Margolin
+- name: Sally E. Claridge
+  affiliation: Icahn School of Medicine at Mount Sinai
+- name: Daniel M. Charytonowicz
+  affiliation: Icahn School of Medicine at Mount Sinaiy
+- name: Adam A. Margolin
+  affiliation: Icahn School of Medicine at Mount Sinai
 date                : "`r format(Sys.time(), '%d %B %Y')`"
 bibliography        : manuscript.bib
 fontsize            : 12pt
