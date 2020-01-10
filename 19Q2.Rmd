@@ -1337,12 +1337,13 @@ gdsc_signif_g2p_dg <- merge(gdsc_signif_g2p_dg, g2p_mut_summ, by = c("Drug", "Ge
 gdsc_signif_dgl <- readRDS("./data_munging/rds/gdsc_signif_g2p_dgl.rds")
 gdsc_signif_dgl <- merge(gdsc_signif_dgl, g2p_mut_summ_lin, by = c("Drug", "Gene", "disease"), all.x = TRUE)
 
-ccle_signif_dgl %>% count(InG2P)
-filter(ccle_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
-ctrp_signif_dgl %>% count(InG2P)
-filter(ctrp_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
-gdsc_signif_dgl %>% count(InG2P)
-filter(gdsc_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+# ccle_signif_dgl %>% count(InG2P)
+# filter(ccle_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+# ctrp_signif_dgl %>% count(InG2P)
+# filter(ctrp_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+# gdsc_signif_dgl %>% count(InG2P)
+# filter(gdsc_signif_dgl, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene, disease, p.short, Direction_Heatmap)
+# library(spatstat)
 ```
 
 ```{r load_prot_wilcoxon_rds, eval=TRUE}
@@ -1398,13 +1399,6 @@ ctrp_signif_prot_lin <- merge(ctrp_signif_prot_lin, unique(select(g2p_prot, Drug
 
 gdsc_signif_prot_lin <- readRDS("./data_munging/rds/gdsc_signif_protein_changes_lineage.rds")
 gdsc_signif_prot_lin <- merge(gdsc_signif_prot_lin, unique(select(g2p_prot, Drug, Gene_Protein_Change, Drug_Gene_Protein_Change_Lineage, Direction_Curated)), by = c("Drug_Gene_Protein_Change_Lineage", "Gene_Protein_Change", "Drug"), all.x = TRUE)
-
-# ccle_signif_prot_lin %>% count(InG2P)
-# filter(ccle_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
-# ctrp_signif_prot_lin %>% count(InG2P)
-# filter(ctrp_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
-# gdsc_signif_prot_lin %>% count(InG2P)
-# filter(gdsc_signif_prot_lin, InG2P == "Yes" & p < 0.05) %>% select(Drug, Gene_Protein_Change, disease, p.short, Direction_Curated)
 ```
 
 ```{r load_fus_wilcoxon_rds}
@@ -2049,7 +2043,44 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-## Data summaries
+## KS tests
+
+**1/10/20: Restrict datasets to heatmap drug-genes and run KS tests.**
+```{r}
+ks.test(filter(ccle_signif_g2p_dg, InG2P == "Yes")$p, filter(ccle_signif_g2p_dg, InG2P == "No")$p)
+ks.test(filter(ctrp_signif_g2p_dg, InG2P == "Yes")$p, filter(ctrp_signif_g2p_dg, InG2P == "No")$p)
+ks.test(filter(gdsc_signif_g2p_dg, InG2P == "Yes")$p, filter(gdsc_signif_g2p_dg, InG2P == "No")$p)
+
+ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)
+ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)
+ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)
+
+ks.test(filter(ccle_signif_prot, InG2P == "Yes")$p, filter(ccle_signif_prot, InG2P == "No")$p)
+ks.test(filter(ctrp_signif_prot, InG2P == "Yes")$p, filter(ctrp_signif_prot, InG2P == "No")$p)
+ks.test(filter(gdsc_signif_prot, InG2P == "Yes")$p, filter(gdsc_signif_prot, InG2P == "No")$p)
+
+ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)
+ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)
+ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)
+
+ks.test(filter(cn_cor, Dataset == "CCLE" & InG2P == "Yes")$CN_r, filter(cn_cor, Dataset == "CCLE" & InG2P == "No")$CN_p)
+ks.test(filter(cn_cor, Dataset == "CTRP" & InG2P == "Yes")$CN_r, filter(cn_cor, Dataset == "CTRP" & InG2P == "No")$CN_p)
+ks.test(filter(cn_cor, Dataset == "GDSC" & InG2P == "Yes")$CN_r, filter(cn_cor, Dataset == "GDSC" & InG2P == "No")$CN_p)
+
+ks.test(filter(ge_cor, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor, Dataset == "CCLE" & InG2P == "No")$GE_p)
+ks.test(filter(ge_cor, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor, Dataset == "CTRP" & InG2P == "No")$GE_p)
+ks.test(filter(ge_cor, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor, Dataset == "GDSC" & InG2P == "No")$GE_p)
+
+ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_r, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)
+ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_r, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)
+ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_r, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)
+
+ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)
+ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)
+ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)
+```
+
+## Data summaries/Supp
 
 ```{r}
 g2p_diseases <- unique(g2p$disease[!is.na(g2p$disease)])
@@ -2139,7 +2170,7 @@ disease_n$Lineage <- factor(disease_n$Lineage)
 
 ```
 
-```{r fig.height=10, fig.width=10}
+```{r fig.height=3, fig.width=3}
 slices <- ccle_disease_n$n
 lbls <- paste0(ccle_disease_n$disease_g2p, " (", round(ccle_disease_n$percent, digits = 2), "%)")
 pie(slices,labels = lbls, col = ccle_disease_n$color, radius = 0.5)
@@ -2221,18 +2252,20 @@ maf_g2p_ht <- Heatmap(maf_g2p_wide,
 draw(maf_g2p_ht, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_side = "top")
 ```
 
-
+Of the top 10 most cited genes in G2P (Figure 1), 50% were also found in the top 10 most frequently mutated across all 1588 tested cell lines
 ```{r supp_stats, eval=FALSE}
-maf_g2p_summ_gene <- maf_g2p %>% group_by(Gene) %>% count(Mutation) %>% filter (Mutation == 1) %>% merge(unique(select(maf_g2p, DepMap_ID, Gene)) %>% count(Gene), by = "Gene", suffixes = c("_mut", "_cell_lines"), all = TRUE)
-maf_g2p_summ_gene$PercCellLinesMutated <- maf_g2p_summ_gene$n_mut/maf_g2p_summ_gene$n_cell_lines * 100
+ccls <- union(union(unique(ccle$DepMap_ID), unique(ctrp$DepMap_ID)), unique(gdsc$DepMap_ID))
 
-maf_g2p_summ <- maf_g2p %>% group_by(disease) %>% count(Mutation) %>% filter (Mutation == 1) %>% merge(unique(select(maf_g2p, DepMap_ID, disease)) %>% count(disease), by = "disease", suffixes = c("_mut", "_cell_lines"), all = TRUE)
-maf_g2p_summ$MutPerCCL <- maf_g2p_summ$n_mut/maf_g2p_summ$n_cell_lines
+maf_g2p_summ_gene <- filter(maf_df, DepMap_ID %in% ccls & Gene %in% unique(g2p_mut$Gene)) %>% group_by(Gene) %>% count(Mutation) %>% filter (Mutation == 1) %>% mutate(percent = n / length(ccls) * 100)
+g2p_summ_gene <- g2p_mut %>% count(Gene) %>% mutate(percent = n / nrow(g2p_mut) * 100)
 
-sum(maf_g2p_summ$n_cell_lines)
-777/1588
-sum(maf_g2p_summ$n_mut[!is.na(maf_g2p_summ$n_mut)])
-2067/3151
+maf_g2p_summ_lin <- merge(filter(maf_df, DepMap_ID %in% ccls & Gene %in% unique(g2p_mut$Gene)), ccl_meta, by = "DepMap_ID", all.x = TRUE) %>% group_by(disease) %>% count(Mutation) %>% filter (Mutation == 1)
+maf_g2p_summ_lin$percent <- with(maf_g2p_summ_lin, n / sum(n) * 100)
+
+g2p_summ_lin <- g2p %>% count(disease) %>% mutate(percent = n / nrow(g2p) * 100)
+
+ccl_summ_lin <- filter(ccl_meta, DepMap_ID %in% ccls) %>% count(disease)
+ccl_summ_lin$percent <- with(ccl_summ_lin, n / sum(n) * 100)
 ```
 
 
@@ -2408,7 +2441,7 @@ dev.off()
 ## Protein changes figure
 
 
-```{r}
+```{r, eval=FALSE}
 ccle_prot$disease_g2p <- ifelse(ccle_prot$disease %in% g2p_diseases, ccle_prot$disease, "other")
 ctrp_prot$disease_g2p <- ifelse(ctrp_prot$disease %in% g2p_diseases, ctrp_prot$disease, "other")
 gdsc_prot$disease_g2p <- ifelse(gdsc_prot$disease %in% g2p_diseases, gdsc_prot$disease, "other")
@@ -2789,7 +2822,7 @@ ctrp_prot_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change %in% filter(ctrp_si
 # test <- merge(ccle_mut_lin_filt, ccle_prot_annot, by = c("DepMap_ID", "Drug_Gene"), all.x = TRUE)
 ```
 
-```{r}
+```{r, eval=FALSE}
 ccle_mut_lin <- filter(ccle_signif_dgl, InG2P == "Yes")
 ctrp_mut_lin <- filter(ctrp_signif_dgl, InG2P == "Yes")
 gdsc_mut_lin <- filter(gdsc_signif_dgl, InG2P == "Yes")
