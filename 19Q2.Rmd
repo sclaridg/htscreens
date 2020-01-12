@@ -2043,43 +2043,6 @@ dev.off()
 
 --------------------------------------------------------------------------------
 
-## KS tests
-
-**1/10/20: Restrict datasets to heatmap drug-genes and run KS tests.**
-```{r}
-ks.test(filter(ccle_signif_g2p_dg, InG2P == "Yes")$p, filter(ccle_signif_g2p_dg, InG2P == "No")$p)
-ks.test(filter(ctrp_signif_g2p_dg, InG2P == "Yes")$p, filter(ctrp_signif_g2p_dg, InG2P == "No")$p)
-ks.test(filter(gdsc_signif_g2p_dg, InG2P == "Yes")$p, filter(gdsc_signif_g2p_dg, InG2P == "No")$p)
-
-ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)
-ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)
-ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)
-
-ks.test(filter(ccle_signif_prot, InG2P == "Yes")$p, filter(ccle_signif_prot, InG2P == "No")$p)
-ks.test(filter(ctrp_signif_prot, InG2P == "Yes")$p, filter(ctrp_signif_prot, InG2P == "No")$p)
-ks.test(filter(gdsc_signif_prot, InG2P == "Yes")$p, filter(gdsc_signif_prot, InG2P == "No")$p)
-
-ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)
-ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)
-ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)
-
-ks.test(filter(cn_cor, Dataset == "CCLE" & InG2P == "Yes")$CN_r, filter(cn_cor, Dataset == "CCLE" & InG2P == "No")$CN_p)
-ks.test(filter(cn_cor, Dataset == "CTRP" & InG2P == "Yes")$CN_r, filter(cn_cor, Dataset == "CTRP" & InG2P == "No")$CN_p)
-ks.test(filter(cn_cor, Dataset == "GDSC" & InG2P == "Yes")$CN_r, filter(cn_cor, Dataset == "GDSC" & InG2P == "No")$CN_p)
-
-ks.test(filter(ge_cor, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor, Dataset == "CCLE" & InG2P == "No")$GE_p)
-ks.test(filter(ge_cor, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor, Dataset == "CTRP" & InG2P == "No")$GE_p)
-ks.test(filter(ge_cor, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor, Dataset == "GDSC" & InG2P == "No")$GE_p)
-
-ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_r, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)
-ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_r, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)
-ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_r, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)
-
-ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)
-ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)
-ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)
-```
-
 ## Data summaries/Supp
 
 ```{r}
@@ -2338,20 +2301,24 @@ dev.off()
 
 ## Mutation status figure
 
-```{r}
-crispr_g2p_count <- filter(crispr_signif_g2p_g, Gene %in% unique(g2p_mut$Gene), InG2P == "Yes")
-ccle_g2p_count <- filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene), InG2P == "Yes")
-ctrp_g2p_count <- filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene), InG2P == "Yes")
-gdsc_g2p_count <- filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene), InG2P == "Yes")
-```
-
-```{r mutation_figure, eval=FALSE}
+```{r mut_ks_tests}
 mut_genes <- union(union(filter(ccle_signif_g2p_dg, InG2P == "Yes")$Gene, filter(ctrp_signif_g2p_dg, InG2P == "Yes")$Gene), filter(gdsc_signif_g2p_dg, InG2P == "Yes")$Gene)
 mut_drugs <- union(union(filter(ccle_signif_g2p_dg, InG2P == "Yes")$Drug, filter(ctrp_signif_g2p_dg, InG2P == "Yes")$Drug), filter(gdsc_signif_g2p_dg, InG2P == "Yes")$Drug)
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes), feature = "mutation", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.023)
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes), feature = "mutation", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes), feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.011)
+ccle_mut_ht_dat <- filter(ccle_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes)
+ks.test(filter(ccle_mut_ht_dat, InG2P == "Yes")$p, filter(ccle_mut_ht_dat, InG2P == "No")$p)
+
+ctrp_mut_ht_dat <- filter(ctrp_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes)
+ks.test(filter(ctrp_mut_ht_dat, InG2P == "Yes")$p, filter(ctrp_mut_ht_dat, InG2P == "No")$p)
+
+gdsc_mut_ht_dat <- filter(gdsc_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes)
+ks.test(filter(gdsc_mut_ht_dat, InG2P == "Yes")$p, filter(gdsc_mut_ht_dat, InG2P == "No")$p)
+```
+
+```{r mutation_figure, eval=FALSE}
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_mut_ht_dat, feature = "mutation", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.023)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_mut_ht_dat, feature = "mutation", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = , feature = "mutation", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Genes", radius = 0.011)
 ht_mut_list <- ht_ccle2 + ht_ctrp2 + ht_gdsc2
 lgd <- list(Legend(labels = c("Resistance", "Sensitivity", "p < 0.05"), type = "points", pch = c(21, 21, 8), nrow = 1, background = "white", legend_gp = gpar(col = "black", fill = c("red", "white"))))
 ht_mut_grob <- grid.grabExpr(draw(ht_mut_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE))
@@ -2440,8 +2407,7 @@ dev.off()
 
 ## Protein changes figure
 
-
-```{r, eval=FALSE}
+```{r prot_ks_tests}
 ccle_prot$disease_g2p <- ifelse(ccle_prot$disease %in% g2p_diseases, ccle_prot$disease, "other")
 ctrp_prot$disease_g2p <- ifelse(ctrp_prot$disease %in% g2p_diseases, ctrp_prot$disease, "other")
 gdsc_prot$disease_g2p <- ifelse(gdsc_prot$disease %in% g2p_diseases, gdsc_prot$disease, "other")
@@ -2453,9 +2419,21 @@ gdsc_signif_prot_summ <- filter(gdsc_signif_prot, InG2P == "Yes")
 prot_drugs <- union(union(ccle_signif_prot_summ$Drug, ctrp_signif_prot_summ$Drug), gdsc_signif_prot_summ$Drug)
 prot_drugs <- prot_drugs[!(prot_drugs %in% c("cabozantinib", "vandetinib"))]
 
-ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_prot_4plot, Drug %in% prot_drugs), feature = "protein changes", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.021)
-ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_prot_4plot, Drug %in% prot_drugs), feature = "protein changes", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.012)
-ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_prot_4plot, Drug %in% prot_drugs), feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 3, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.0125)
+ccle_prot_ht_data <- filter(ccle_signif_prot_4plot, Drug %in% prot_drugs)
+ks.test(filter(ccle_prot_ht_data, InG2P == "Yes")$p, filter(ccle_prot_ht_data, InG2P == "No")$p)
+
+ctrp_prot_ht_data <- filter(ctrp_signif_prot_4plot, Drug %in% prot_drugs)
+ks.test(filter(ctrp_prot_ht_data, InG2P == "Yes")$p, filter(ctrp_prot_ht_data, InG2P == "No")$p)
+
+gdsc_prot_ht_data <- filter(gdsc_signif_prot_4plot, Drug %in% prot_drugs)
+ks.test(filter(gdsc_prot_ht_data, InG2P == "Yes")$p, filter(gdsc_prot_ht_data, InG2P == "No")$p)
+```
+
+
+```{r, eval=FALSE}
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = , feature = "protein changes", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.021)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = , feature = "protein changes", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.012)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = , feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 3, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.0125)
 ht_prot_list <- ht_ccle2 + ht_ctrp2 + ht_gdsc2
 lgd <- list(Legend(labels = c("Resistance", "Sensitivity", "p < 0.05"), type = "points", pch = c(21, 21, 8), nrow = 1, background = "white", legend_gp = gpar(col = "black", fill = c("red", "white"))))
 ht_prot_grob <- grid.grabExpr(draw(ht_prot_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE))
@@ -2660,10 +2638,30 @@ dev.off()
 
 ## CN/GE figure
 
-```{r CN_GE_fig, eval=FALSE, fig.height=10, fig.width=15}
-# Copy number
+```{r cn_ge_ks_tests}
 cn_genes <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
 cn_drugs <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
+
+ccle_cn_ht_data <- filter(cn_cor, Dataset == "CCLE" & Drug %in% cn_drugs & Gene %in% cn_genes)
+ks.test(filter(ccle_cn_ht_data, InG2P == "Yes")$CN_p, filter(ccle_cn_ht_data, InG2P == "No")$CN_p)
+ctrp_cn_ht_data <- filter(cn_cor, Dataset == "CTRP" & Drug %in% cn_drugs & Gene %in% cn_genes)
+ks.test(filter(ctrp_cn_ht_data, InG2P == "Yes")$CN_p, filter(ctrp_cn_ht_data, InG2P == "No")$CN_p)
+gdsc_cn_ht_data <- filter(cn_cor, Dataset == "GDSC" & Drug %in% cn_drugs & Gene %in% cn_genes)
+ks.test(filter(gdsc_cn_ht_data, InG2P == "Yes")$CN_p, filter(gdsc_cn_ht_data, InG2P == "No")$CN_p)
+
+ge_genes <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
+ge_drugs <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
+
+ccle_ge_ht_data <- filter(ge_cor, Dataset == "CCLE" & Drug %in% ge_drugs & Gene %in% ge_genes)
+ks.test(filter(ccle_ge_ht_data, InG2P == "Yes")$GE_p, filter(ccle_ge_ht_data, InG2P == "No")$GE_p)
+ctrp_ge_ht_data <- filter(ge_cor, Dataset == "CTRP" & Drug %in% ge_drugs & Gene %in% ge_genes)
+ks.test(filter(ctrp_ge_ht_data, InG2P == "Yes")$GE_p, filter(ctrp_ge_ht_data, InG2P == "No")$GE_p)
+gdsc_ge_ht_data <- filter(ge_cor, Dataset == "GDSC" & Drug %in% ge_drugs & Gene %in% ge_genes)
+ks.test(filter(gdsc_ge_ht_data, InG2P == "Yes")$GE_p, filter(gdsc_ge_ht_data, InG2P == "No")$GE_p)
+```
+
+```{r CN_GE_fig, eval=FALSE, fig.height=10, fig.width=15}
+# Copy number
 
 ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = filter(cn_cor, Dataset == "CCLE" & Drug %in% cn_drugs & Gene %in% cn_genes), row_names = TRUE, heatmap_legend = TRUE, col_title = "CCLE", color_range = c(-0.2, 0, 0.2), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN")
 ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = filter(cn_cor, Dataset == "CTRP" & Drug %in% cn_drugs & Gene %in% cn_genes), row_names = TRUE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.2, 0, 0.2), radius = 0.025, legend_title = "Copy num. Spearman correlation", metric = "CN")
@@ -2712,9 +2710,6 @@ ctrp_cn_filt_plot <- ggplot(data = ctrp_cn_filt, aes(x = CN, y = Score)) +
 gdsc_cn_cor_filt <- filter(gdsc_cn_cor, CN_p < 0.05)
 
 # Gene expression
-
-ge_genes <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
-ge_drugs <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
 
 # ccle_ge_ht2 <- MakeCorrHeatmap(cor_res = filter(ge_cor, Dataset == "CCLE" & Drug %in% ge_drugs & Gene %in% ge_genes), row_names = FALSE, heatmap_legend = FALSE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.07, legend_title = "Gene expr. Spearman correlation", metric = "GE")
 # ctrp_ge_ht2 <- MakeCorrHeatmap(cor_res = filter(ge_cor, Dataset == "CTRP" & Drug %in% ge_drugs & Gene %in% ge_genes), row_names = FALSE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.07, legend_title = "Gene expr. Spearman correlation", metric = "GE")
@@ -2809,17 +2804,56 @@ test <- unique(select(fus, disease, FusionPair, Fusion_Status)) %>% filter(Fusio
 test
 ```
 
+```{r pancan_ks_res}
+pancan_ks_results <- data.frame("Dataset" = c(rep(c("CCLE", "CTRP", "GDSC"), 4)),
+           "Data type" = c(rep("Mutation", 3), rep("Protein change", 3), rep("Copy number", 3), rep("Gene expression", 3)),
+  "p.value" = c(ks.test(filter(ccle_mut_ht_dat, InG2P == "Yes")$p, filter(ccle_mut_ht_dat, InG2P == "No")$p)$p.value,
+  ks.test(filter(ctrp_mut_ht_dat, InG2P == "Yes")$p, filter(ctrp_mut_ht_dat, InG2P == "No")$p)$p.value,
+  ks.test(filter(gdsc_mut_ht_dat, InG2P == "Yes")$p, filter(gdsc_mut_ht_dat, InG2P == "No")$p)$p.value,
+  ks.test(filter(ccle_prot_ht_data, InG2P == "Yes")$p, filter(ccle_prot_ht_data, InG2P == "No")$p)$p.value,
+  ks.test(filter(ctrp_prot_ht_data, InG2P == "Yes")$p, filter(ctrp_prot_ht_data, InG2P == "No")$p)$p.value,
+  ks.test(filter(gdsc_prot_ht_data, InG2P == "Yes")$p, filter(gdsc_prot_ht_data, InG2P == "No")$p)$p.value,
+  ks.test(filter(ccle_cn_ht_data, InG2P == "Yes")$CN_p, filter(ccle_cn_ht_data, InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(ctrp_cn_ht_data, InG2P == "Yes")$CN_p, filter(ctrp_cn_ht_data, InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(gdsc_cn_ht_data, InG2P == "Yes")$CN_p, filter(gdsc_cn_ht_data, InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(ccle_ge_ht_data, InG2P == "Yes")$GE_p, filter(ccle_ge_ht_data, InG2P == "No")$GE_p)$p.value,
+  ks.test(filter(ctrp_ge_ht_data, InG2P == "Yes")$GE_p, filter(ctrp_ge_ht_data, InG2P == "No")$GE_p)$p.value,
+  ks.test(filter(gdsc_ge_ht_data, InG2P == "Yes")$GE_p, filter(gdsc_ge_ht_data, InG2P == "No")$GE_p)$p.value))
+```
 
 ## Lineages
 
-```{r}
-g2p_disease_colors
+```{r lineages_ks_tests, warning=FALSE}
+ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)$p.value
+ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)$p.value
+ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)$p.value
 
-gdsc_signif_prot_summ <- filter(gdsc_signif_prot, InG2P == "Yes") 
-ctrp_prot_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change %in% filter(ctrp_signif_prot_summ, p < 0.05)$Drug_Gene_Protein_Change)
+ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)$p.value
+ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)$p.value
+ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)$p.value
 
-# ccle_prot_annot <- select(filter(ccle_prot, Drug_Gene %in% ccle_mut_lin_filt$Drug_Gene & Change_Status == "Yes"), Drug_Gene, Protein_Change, DepMap_ID) 
-# test <- merge(ccle_mut_lin_filt, ccle_prot_annot, by = c("DepMap_ID", "Drug_Gene"), all.x = TRUE)
+ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)$p.value
+ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)$p.value
+ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)$p.value
+
+ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)$p.value
+ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)$p.value
+ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)$p.value
+
+lineage_ks_results <- data.frame("Dataset" = c(rep(c("CCLE", "CTRP", "GDSC"), 4)),
+           "Data type" = c(rep("Mutation", 3), rep("Protein change", 3), rep("Copy number", 3), rep("Gene expression", 3)),
+  "p.value" = c(ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)$p.value,
+  ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)$p.value,
+  ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)$p.value,
+  ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)$p.value,
+  ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)$p.value,
+  ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)$p.value,
+  ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)$p.value,
+  ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)$p.value,
+  ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)$p.value))
 ```
 
 ```{r, eval=FALSE}
