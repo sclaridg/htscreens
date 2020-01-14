@@ -2749,7 +2749,7 @@ test <- unique(select(fus, disease, FusionPair, Fusion_Status)) %>% filter(Fusio
 test
 ```
 
-```{r pancan_ks_res}
+```{r pancan_ks_res, eval=FALSE}
 pancan_ks_results <- data.frame("Dataset" = c(rep(c("CCLE", "CTRP", "GDSC"), 4)),
            "Data type" = c(rep("Mutation", 3), rep("Protein change", 3), rep("Copy number", 3), rep("Gene expression", 3)),
   "p.value" = c(ks.test(filter(ccle_mut_ht_dat, InG2P == "Yes")$p, filter(ccle_mut_ht_dat, InG2P == "No")$p)$p.value,
@@ -3027,6 +3027,9 @@ g2p_mut_egfr <- filter(g2p_mut, Gene == "EGFR") %>% select(Drug_Gene_Lin, Protei
 test2 <- filter(cn_cor_lin, Drug != "CRISPR" & InG2P == "Yes")
 test <- filter(ge_cor_lin, Drug != "CRISPR" & InG2P == "Yes")
 test3 <- filter(cn_cor, Gene == "MET" & InG2P == "Yes")
+
+test <- filter(ge_cor_lin, Drug != "CRISPR" & InG2P == "Yes")
+test2 <- filter(cn_cor_lin, Drug != "CRISPR" & InG2P == "Yes")
 ```
 
 ## Specific plots
