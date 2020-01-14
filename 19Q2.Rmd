@@ -258,7 +258,7 @@ g2p_dg <- as.character(unique(g2p$Drug_Gene[!is.na(g2p$Drug_Gene)]))
 g2p_drugs <- as.character(unique(g2p$Drug[!is.na(g2p$Drug)]))
 g2p_genes <- as.character(unique(g2p$Gene[!is.na(g2p$Gene)]))
 g2p_dg_genes <- unique(sapply(strsplit(g2p_dgl, "_", fixed = TRUE), function(x) x[2]))
-g2p_lins <- as.character(unique(g2p$group_general_lineage_name[!is.na(g2p$group_general_lineage_name)]))
+g2p_lins <- as.character(unique(g2p$disease[!is.na(g2p$disease)]))
 
 g2p$biomarker_type_curated <- ifelse(is.na(g2p$biomarker_type_curated), "None", as.character(g2p$biomarker_type_curated))
 g2p <- unfactorize(g2p) %>% drop_na(Drug)
@@ -1682,8 +1682,8 @@ MakeSpearmanCorrDF <- function(dataset, df, metric, lineage, g2p_list) {
       df_count_filt <- filter(df_count, n >= 3)
       df_filt <- filter(df, Drug_Gene_Lin %in% df_count_filt$Drug_Gene_Lin)
       res <- df_filt %>% group_by(Drug, Gene, disease, Drug_Gene_Lin) %>%
-        summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs", exact = FALSE)$estimate,
-                  GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs", exact = FALSE)$p.value, 
+        summarize(GE_r = cor.test(y = Score, x = TPM, method = "pearson", use = "complete.obs", exact = FALSE)$estimate,
+                  GE_p = cor.test(y = Score, x = TPM, method = "pearson", use = "complete.obs", exact = FALSE)$p.value, 
                   GE_p_log10 = -log10(GE_p))
       res$Gene_Lin <- with(res, paste0(Gene, "_", disease))
       if(dataset != "CRISPR") { res$InG2P <- ifelse(res$Drug_Gene_Lin %in% g2p_list, "Yes", "No") }
@@ -1693,8 +1693,8 @@ MakeSpearmanCorrDF <- function(dataset, df, metric, lineage, g2p_list) {
     if(!lineage) {
       df_count <- df %>% drop_na(TPM) %>% count(Drug, Gene, Drug_Gene)
       res <- df %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(TPM) %>%
-        summarize(GE_r = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs", exact = FALSE)$estimate,
-                  GE_p = cor.test(y = Score, x = TPM, method = "spearman", use = "complete.obs", exact = FALSE)$p.value, 
+        summarize(GE_r = cor.test(y = Score, x = TPM, method = "pearson", use = "complete.obs", exact = FALSE)$estimate,
+                  GE_p = cor.test(y = Score, x = TPM, method = "pearson", use = "complete.obs", exact = FALSE)$p.value, 
                   GE_p_log10 = -log10(GE_p))
       if(dataset != "CRISPR") { res$InG2P <- ifelse(res$Drug_Gene %in% g2p_list, "Yes", "No") }
       if(dataset == "CRISPR") { res$InG2P <- ifelse(res$Gene %in% g2p_list, "Yes", "No") }
@@ -1707,8 +1707,8 @@ MakeSpearmanCorrDF <- function(dataset, df, metric, lineage, g2p_list) {
       df_count_filt <- filter(df_count, n >= 3)
       df_filt <- filter(df, Drug_Gene_Lin %in% df_count_filt$Drug_Gene_Lin)
       res <- df_filt %>% group_by(Drug, Gene, disease, Drug_Gene_Lin) %>%
-        summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$estimate,
-                  CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$p.value,
+        summarize(CN_r = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$estimate,
+                  CN_p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$p.value,
                   CN_p_log10 = -log10(CN_p))
       res$Gene_Lin <- with(res, paste0(Gene, "_", disease))
       if(dataset != "CRISPR") { res$InG2P <- ifelse(res$Drug_Gene_Lin %in% g2p_list, "Yes", "No") }
@@ -1718,8 +1718,8 @@ MakeSpearmanCorrDF <- function(dataset, df, metric, lineage, g2p_list) {
     if(!lineage) {
       df_count <- df %>% drop_na(CN) %>% count(Drug, Gene, Drug_Gene)
       res <- df %>% group_by(Drug, Gene, Drug_Gene) %>% drop_na(CN) %>%
-        summarize(CN_r = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$estimate,
-                  CN_p = cor.test(y = Score, x = CN, method = "spearman", use = "complete.obs", exact = FALSE)$p.value, 
+        summarize(CN_r = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$estimate,
+                  CN_p = cor.test(y = Score, x = CN, method = "pearson", use = "complete.obs", exact = FALSE)$p.value, 
                   CN_p_log10 = -log10(CN_p))
       if(dataset != "CRISPR") { res$InG2P <- ifelse(res$Drug_Gene %in% g2p_list, "Yes", "No") }
       if(dataset == "CRISPR") { res$InG2P <- ifelse(res$Gene %in% g2p_list, "Yes", "No") }
@@ -1940,6 +1940,7 @@ MakeCorrHeatmap <- function(cor_res, row_names, heatmap_legend, col_title, color
                 row_names_gp = gpar(fontsize = 10),
                 column_names_side = "bottom",
                 column_names_gp = gpar(fontsize = 10),
+                column_names_max_height = unit(2, "in"),
                 show_column_names = FALSE,
                 bottom_annotation = HeatmapAnnotation(
                   text = anno_text(colnames(signif_grid),
@@ -2038,6 +2039,7 @@ png(filename = "./plots/manuscript/all_ge_heatmap.png", width = 13, height = 2.9
 draw(crispr_ge_ht2 + ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
 dev.off()
 ```
+
 
 # MANUSCRIPT
 
@@ -2301,20 +2303,6 @@ dev.off()
 
 ## Mutation status figure
 
-```{r mut_ks_tests}
-mut_genes <- union(union(filter(ccle_signif_g2p_dg, InG2P == "Yes")$Gene, filter(ctrp_signif_g2p_dg, InG2P == "Yes")$Gene), filter(gdsc_signif_g2p_dg, InG2P == "Yes")$Gene)
-mut_drugs <- union(union(filter(ccle_signif_g2p_dg, InG2P == "Yes")$Drug, filter(ctrp_signif_g2p_dg, InG2P == "Yes")$Drug), filter(gdsc_signif_g2p_dg, InG2P == "Yes")$Drug)
-
-ccle_mut_ht_dat <- filter(ccle_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes)
-ks.test(filter(ccle_mut_ht_dat, InG2P == "Yes")$p, filter(ccle_mut_ht_dat, InG2P == "No")$p)
-
-ctrp_mut_ht_dat <- filter(ctrp_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes)
-ks.test(filter(ctrp_mut_ht_dat, InG2P == "Yes")$p, filter(ctrp_mut_ht_dat, InG2P == "No")$p)
-
-gdsc_mut_ht_dat <- filter(gdsc_signif_g2p_dg, Drug %in% mut_drugs & Gene %in% mut_genes)
-ks.test(filter(gdsc_mut_ht_dat, InG2P == "Yes")$p, filter(gdsc_mut_ht_dat, InG2P == "No")$p)
-```
-
 ```{r mutation_figure, eval=FALSE}
 ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = ccle_mut_ht_dat, feature = "mutation", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 12, by = 3), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Genes", radius = 0.023)
 ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = ctrp_mut_ht_dat, feature = "mutation", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 18, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Genes", radius = 0.008)
@@ -2406,28 +2394,6 @@ dev.off()
 ```
 
 ## Protein changes figure
-
-```{r prot_ks_tests}
-ccle_prot$disease_g2p <- ifelse(ccle_prot$disease %in% g2p_diseases, ccle_prot$disease, "other")
-ctrp_prot$disease_g2p <- ifelse(ctrp_prot$disease %in% g2p_diseases, ctrp_prot$disease, "other")
-gdsc_prot$disease_g2p <- ifelse(gdsc_prot$disease %in% g2p_diseases, gdsc_prot$disease, "other")
-
-ccle_signif_prot_summ <- filter(ccle_signif_prot, InG2P == "Yes") 
-ctrp_signif_prot_summ <- filter(ctrp_signif_prot, InG2P == "Yes") 
-gdsc_signif_prot_summ <- filter(gdsc_signif_prot, InG2P == "Yes") 
-
-prot_drugs <- union(union(ccle_signif_prot_summ$Drug, ctrp_signif_prot_summ$Drug), gdsc_signif_prot_summ$Drug)
-prot_drugs <- prot_drugs[!(prot_drugs %in% c("cabozantinib", "vandetinib"))]
-
-ccle_prot_ht_data <- filter(ccle_signif_prot_4plot, Drug %in% prot_drugs)
-ks.test(filter(ccle_prot_ht_data, InG2P == "Yes")$p, filter(ccle_prot_ht_data, InG2P == "No")$p)
-
-ctrp_prot_ht_data <- filter(ctrp_signif_prot_4plot, Drug %in% prot_drugs)
-ks.test(filter(ctrp_prot_ht_data, InG2P == "Yes")$p, filter(ctrp_prot_ht_data, InG2P == "No")$p)
-
-gdsc_prot_ht_data <- filter(gdsc_signif_prot_4plot, Drug %in% prot_drugs)
-ks.test(filter(gdsc_prot_ht_data, InG2P == "Yes")$p, filter(gdsc_prot_ht_data, InG2P == "No")$p)
-```
 
 
 ```{r, eval=FALSE}
@@ -2638,27 +2604,6 @@ dev.off()
 
 ## CN/GE figure
 
-```{r cn_ge_ks_tests}
-cn_genes <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
-cn_drugs <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
-
-ccle_cn_ht_data <- filter(cn_cor, Dataset == "CCLE" & Drug %in% cn_drugs & Gene %in% cn_genes)
-ks.test(filter(ccle_cn_ht_data, InG2P == "Yes")$CN_p, filter(ccle_cn_ht_data, InG2P == "No")$CN_p)
-ctrp_cn_ht_data <- filter(cn_cor, Dataset == "CTRP" & Drug %in% cn_drugs & Gene %in% cn_genes)
-ks.test(filter(ctrp_cn_ht_data, InG2P == "Yes")$CN_p, filter(ctrp_cn_ht_data, InG2P == "No")$CN_p)
-gdsc_cn_ht_data <- filter(cn_cor, Dataset == "GDSC" & Drug %in% cn_drugs & Gene %in% cn_genes)
-ks.test(filter(gdsc_cn_ht_data, InG2P == "Yes")$CN_p, filter(gdsc_cn_ht_data, InG2P == "No")$CN_p)
-
-ge_genes <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
-ge_drugs <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
-
-ccle_ge_ht_data <- filter(ge_cor, Dataset == "CCLE" & Drug %in% ge_drugs & Gene %in% ge_genes)
-ks.test(filter(ccle_ge_ht_data, InG2P == "Yes")$GE_p, filter(ccle_ge_ht_data, InG2P == "No")$GE_p)
-ctrp_ge_ht_data <- filter(ge_cor, Dataset == "CTRP" & Drug %in% ge_drugs & Gene %in% ge_genes)
-ks.test(filter(ctrp_ge_ht_data, InG2P == "Yes")$GE_p, filter(ctrp_ge_ht_data, InG2P == "No")$GE_p)
-gdsc_ge_ht_data <- filter(ge_cor, Dataset == "GDSC" & Drug %in% ge_drugs & Gene %in% ge_genes)
-ks.test(filter(gdsc_ge_ht_data, InG2P == "Yes")$GE_p, filter(gdsc_ge_ht_data, InG2P == "No")$GE_p)
-```
 
 ```{r CN_GE_fig, eval=FALSE, fig.height=10, fig.width=15}
 # Copy number
@@ -2822,39 +2767,6 @@ pancan_ks_results <- data.frame("Dataset" = c(rep(c("CCLE", "CTRP", "GDSC"), 4))
 ```
 
 ## Lineages
-
-```{r lineages_ks_tests, warning=FALSE}
-ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)$p.value
-ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)$p.value
-ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)$p.value
-
-ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)$p.value
-ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)$p.value
-ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)$p.value
-
-ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)$p.value
-ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)$p.value
-ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)$p.value
-
-ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)$p.value
-ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)$p.value
-ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)$p.value
-
-lineage_ks_results <- data.frame("Dataset" = c(rep(c("CCLE", "CTRP", "GDSC"), 4)),
-           "Data type" = c(rep("Mutation", 3), rep("Protein change", 3), rep("Copy number", 3), rep("Gene expression", 3)),
-  "p.value" = c(ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)$p.value,
-  ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)$p.value,
-  ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)$p.value,
-  ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)$p.value,
-  ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)$p.value,
-  ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)$p.value,
-  ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)$p.value,
-  ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)$p.value,
-  ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)$p.value,
-  ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)$p.value,
-  ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)$p.value,
-  ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)$p.value))
-```
 
 ```{r, eval=FALSE}
 ccle_mut_lin <- filter(ccle_signif_dgl, InG2P == "Yes")
@@ -3062,12 +2974,763 @@ png(filename = "./plots/manuscript_final/drug_lin_pancancer_small.png", width = 
 grid.arrange(layout_matrix = lay, grobs = gs_cn_ge)
 dev.off()
 
-png(filename = "./plots/manuscript_final/drug_lin__pancancer.png", width = 18, height = 8, units = "in", res = 500)
+png(filename = "./plots/manuscript_final/drug_lin_pancancer.png", width = 18, height = 8, units = "in", res = 500)
 grid.arrange(layout_matrix = lay, grobs = gs_cn_ge)
 dev.off()
 ```
 
 
+# SCCB
+
+--------------------------------------------------------------------------------
+
+```{r}
+ccle_prot_lin <- filter(ccle_signif_prot_lin, InG2P == "Yes")
+ctrp_prot_lin <- filter(ctrp_signif_prot_lin, InG2P == "Yes")
+gdsc_prot_lin <- filter(gdsc_signif_prot_lin, InG2P == "Yes")
+```
+
+```{r histology_dists_data, eval=FALSE}
+hist_count <- function(df, dataset) {
+  hists <- unique(select(df, DepMap_ID, disease_g2p)) %>% count(disease_g2p)
+  hists$Percent <- hists$n / sum(hists$n) * 100
+  hists$Dataset <- dataset
+  hists <- hists[order(hists$n, decreasing = T),]
+  return(hists)
+}
+
+ccle_hists <- hist_count(ccle, "CCLE")
+ctrp_hists <- hist_count(ctrp, "CTRP")
+gdsc_hists <- hist_count(gdsc, "GDSC")
+
+drug_hists <- rbind(ccle_hists, ctrp_hists, gdsc_hists) %>% drop_na(disease_g2p)
+drug_hists$Dataset <- factor(drug_hists$Dataset, levels = c("CCLE", "CTRP", "GDSC"))
+
+png(filename = "./plots/manuscript/all_histology_distributions.png", width = 6, height = 4.5, units = "in", res = 500)
+ggplot(drug_hists, aes(x = Dataset, y = n, fill = disease_g2p)) +
+  geom_bar(stat = "identity", color = "black") +
+  scale_fill_manual(values = g2p_disease_colors) +
+  scale_y_continuous(breaks = seq(0, 900, by = 100), labels = seq(0, 900, by = 100)) +
+  guides(fill = guide_legend(title = "Lineage", ncol = 1)) +
+  labs(y = "Count") +
+  theme(axis.title.x = element_blank())
+dev.off()
+```
+
+```{r}
+length(unique(g2p_mut$Drug_Gene))
+length(unique(g2p_mut$Drug_Gene_Lin))
+length(unique(g2p_amp$Drug_Gene_Lin))
+
+g2p_mut_egfr <- filter(g2p_mut, Gene == "EGFR") %>% select(Drug_Gene_Lin, Protein_Change, Direction_Curated)
+
+test2 <- filter(cn_cor_lin, Drug != "CRISPR" & InG2P == "Yes")
+test <- filter(ge_cor_lin, Drug != "CRISPR" & InG2P == "Yes")
+test3 <- filter(cn_cor, Gene == "MET" & InG2P == "Yes")
+```
+
+## Specific plots
+
+
+```{r, eval=FALSE}
+ccle_prot$disease_g2p <- ifelse(ccle_prot$disease %in% g2p_diseases, ccle_prot$disease, "other")
+ctrp_prot$disease_g2p <- ifelse(ctrp_prot$disease %in% g2p_diseases, ctrp_prot$disease, "other")
+gdsc_prot$disease_g2p <- ifelse(gdsc_prot$disease %in% g2p_diseases, gdsc_prot$disease, "other")
+ccle_signif_prot_summ <- filter(ccle_signif_prot, InG2P == "Yes") 
+ctrp_signif_prot_summ <- filter(ctrp_signif_prot, InG2P == "Yes") 
+gdsc_signif_prot_summ <- filter(gdsc_signif_prot, InG2P == "Yes") 
+prot_drugs <- union(union(ccle_signif_prot_summ$Drug, ctrp_signif_prot_summ$Drug), gdsc_signif_prot_summ$Drug)
+prot_drugs <- prot_drugs[!(prot_drugs %in% c("cabozantinib", "vandetanib"))]
+                                
+ht_ccle2 <- MakeWilcoxonHeatmap(signif_df = filter(ccle_signif_prot_4plot, Drug %in% prot_drugs), feature = "protein changes", legend_title = "CCLE -log10(p-value)", legend_breaks = seq(0, 5, by = 1), row_names = TRUE, color = "darkgreen", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.04)
+ht_ctrp2 <- MakeWilcoxonHeatmap(signif_df = filter(ctrp_signif_prot_4plot, Drug %in% prot_drugs), feature = "protein changes", legend_title = "CTRP -log10(p-value)", legend_breaks = seq(0, 15, by = 3), row_names = FALSE, color = "steelblue4", col_title = "Drugs", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.012)
+ht_gdsc2 <- MakeWilcoxonHeatmap(signif_df = filter(gdsc_signif_prot_4plot, Drug %in% prot_drugs), feature = "protein changes", legend_title = "GDSC -log10(p-value)", legend_breaks = seq(0, 3, by = 1), row_names = FALSE, color = "turquoise4", col_title = "", row_title_txt = "Gene:Protein Change", na_color = "black", radius = 0.02)
+ht_prot_list <- ht_ccle2 + ht_ctrp2 + ht_gdsc2
+lgd <- list(Legend(labels = c("Resistance", "Sensitivity", "p < 0.05"), type = "points", pch = c(21, 21, 8), nrow = 1, background = "white", legend_gp = gpar(col = "black", fill = c("red", "white"))))
+
+png(filename = "./plots/prot_ht.png", width = 7, height = 6, units = "in", res = 500)
+draw(ht_prot_list, gap = unit(0.25, "in"), heatmap_legend_side = "top", annotation_legend_list = lgd, annotation_legend_side = "top", merge_legend = TRUE)
+dev.off()
+```
+
+```{r, eval=FALSE}
+ccle_signif_g2p_dg_summ <- filter(ccle_signif_g2p_dg, InG2P == "Yes") 
+ctrp_signif_g2p_dg_summ <- filter(ctrp_signif_g2p_dg, InG2P == "Yes") 
+gdsc_signif_g2p_dg_summ <- filter(gdsc_signif_g2p_dg, InG2P == "Yes") 
+
+ccle_signif_g2p_dgl <- filter(ccle_signif_dgl, InG2P == "Yes") 
+ctrp_signif_g2p_dgl <- filter(ctrp_signif_dgl, InG2P == "Yes") 
+gdsc_signif_g2p_dgl <- filter(gdsc_signif_dgl, InG2P == "Yes") 
+
+
+signif_g2p_dg_summ <- rbind(ccle_signif_g2p_dg_summ, ctrp_signif_g2p_dg_summ, gdsc_signif_g2p_dg_summ)
+signif_g2p_dg_summ <- unique(select(signif_g2p_dg_summ, Drug_Gene, p))
+test <- filter(signif_g2p_dg_summ, p < 0.05)
+length(unique(signif_g2p_dg_summ$Drug_Gene))
+
+ccle_mut_filt <- filter(ccle, Drug_Gene == "crizotinib_ROS1")
+ccle_mut_filt_plot <- ggplot(data = ccle_mut_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  # facet_wrap(~ Drug_Gene, nrow = 1) +
+  geom_violinhalf(aes(fill = as.character(Mutation)), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.8) +
+  geom_point(aes(color = as.character(Mutation)), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
+  scale_color_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
+  # scale_color_manual(values = g2p_disease_colors) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  # stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  annotate(geom = "text", label = "p = 0.0020", x = 1.5, y = 1.1) +
+  labs(title = "CCLE: Crizotinib, ROS1", x = "Mutation Status", y = "AUC") +
+  # guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ccle_mut_filt_plot, filename = "./plots/crizotinib_ROS1_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+
+ccle_mut_filt <- filter(ccle, Drug_Gene == "erlotinib_EGFR")
+ccle_mut_filt_plot <- ggplot(data = ccle_mut_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  # facet_wrap(~ Drug_Gene, nrow = 1) +
+  geom_violinhalf(aes(fill = as.character(Mutation)), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.8) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
+  scale_color_manual(values = g2p_disease_colors) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  # stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  annotate(geom = "text", label = "p = 0.0385", x = 1.5, y = 1.1) +
+  labs(title = "CCLE: Erlotinib, EGFR", x = "Mutation Status", y = "AUC") +
+  # guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ccle_mut_filt_plot, filename = "./plots/erlotinib_EGFR_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+ 
+ctrp_mut_filt <- filter(ctrp, Drug_Gene == "vemurafenib_BRAF")
+ctrp_mut_filt_plot <- ggplot(data = ctrp_mut_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  # facet_wrap(~ Drug_Gene, ncol = 4) +
+  geom_violinhalf(aes(fill = as.character(Mutation)), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.8) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "steelblue4", "0" = "slategray3")) +
+  scale_color_manual(name = "Lineage", values = g2p_disease_colors) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  # stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP: Vemurafenib, BRAF", x = "Mutation Status", y = "AUC") +
+  annotate(geom = "text", label = "p = 0.00045", x = 1.5, y = 1.1) +
+  # guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_mut_filt_plot, filename = "./plots/vemurafenib_BRAF_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+cn_cor$p.format <- with(cn_cor, ifelse(CN_p < 0.001, "p < 0.001", paste0("p = ", round(CN_p, digits = 3))))
+ccle_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CCLE" & InG2P == "Yes"))
+ccle_cn_cor_filt <- filter(ccle_cn_cor, Drug_Gene == "lapatinib_ERBB2")
+ccle_cn_filt <- filter(ccle, Drug_Gene == "lapatinib_ERBB2")
+ccle_text <- data.frame(label = paste0("r = ", round(ccle_cn_cor_filt$CN_r, digits = 3), ", ", ccle_cn_cor_filt$p.format), Drug_Gene = ccle_cn_cor_filt$Drug_Gene)
+ccle_cn_filt_plot <- ggplot(data = ccle_cn_filt, aes(x = CN, y = Score)) +
+  # facet_wrap(~ Drug_Gene) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_text(data = ccle_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  labs(title = "CCLE: Lapatinib, ERBB2", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ccle_cn_filt_plot, filename = "./plots/lapatinib_ERBB2_cn_ccle.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+ctrp_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CTRP" & InG2P == "Yes"))
+ctrp_cn_cor_filt <- filter(ctrp_cn_cor, Drug_Gene == "lapatinib_ERBB2")
+ctrp_cn_filt <- filter(ctrp, Drug_Gene == "lapatinib_ERBB2")
+ctrp_text <- data.frame(label = paste0("r = ", round(ctrp_cn_cor_filt$CN_r, digits = 3), ", ", ctrp_cn_cor_filt$p.format), Drug_Gene = ctrp_cn_cor_filt$Drug_Gene)
+ctrp_cn_filt_plot <- ggplot(data = ctrp_cn_filt, aes(x = CN, y = Score)) +
+  # facet_wrap(~ Drug_Gene) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_text(data = ctrp_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  labs(title = "CTRP: Lapatinib, ERBB2", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_cn_filt_plot, filename = "./plots/lapatinib_ERBB2_cn_ctrp.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+gdsc_cn_cor <- unfactorize(filter(cn_cor, Dataset == "GDSC" & InG2P == "Yes"))
+gdsc_cn_cor_filt <- filter(gdsc_cn_cor, Drug_Gene == "lapatinib_ERBB2")
+gdsc_cn_filt <- filter(gdsc, Drug_Gene == "lapatinib_ERBB2")
+gdsc_text <- data.frame(label = paste0("r = ", round(gdsc_cn_cor_filt$CN_r, digits = 3), ", ", gdsc_cn_cor_filt$p.format), Drug_Gene = gdsc_cn_cor_filt$Drug_Gene)
+gdsc_cn_filt_plot <- ggplot(data = gdsc_cn_filt, aes(x = CN, y = Score)) +
+  # facet_wrap(~ Drug_Gene) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_text(data = gdsc_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  labs(title = "GDSC: Lapatinib, ERBB2", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "azure", colour = "azure", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = gdsc_cn_filt_plot, filename = "./plots/lapatinib_ERBB2_cn_gdsc.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+
+
+
+
+
+
+
+
+
+
+
+
+ge_cor$p.format <- with(ge_cor, ifelse(GE_p < 0.001, "p < 0.001", paste0("p = ", round(GE_p, digits = 3))))
+gdsc_ge_cor <- unfactorize(filter(ge_cor, Dataset == "GDSC" & InG2P == "Yes"))
+gdsc_ge_cor_filt <- filter(gdsc_ge_cor, Drug_Gene  == "lapatinib_ERBB2")
+gdsc_ge_filt <- filter(gdsc, Drug_Gene  == "lapatinib_ERBB2")
+gdsc_text <- data.frame(label = paste0("r = ", round(gdsc_ge_cor_filt$GE_r, digits = 3), ", ", gdsc_ge_cor_filt$p.format), Drug_Gene = gdsc_ge_cor_filt$Drug_Gene)
+gdsc_ge_filt_plot <- ggplot(data = gdsc_ge_filt, aes(x = TPM, y = Score) )+
+  # facet_wrap(~ Drug_Gene) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_text(data = gdsc_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.00)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  labs(title = "GDSC: Lapatinib, ERBB2", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "azure", colour = "azure", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = gdsc_ge_filt_plot, filename = "./plots/lapatinib_ERBB2_ge.png", width = 5, height = 3, units = "in", dpi = "retina", device = "png")
+```
+
+## Lineage plots
+
+```{r}
+ccle_mut_lin_filt <- filter(ccle, Drug_Gene_Lin == "erlotinib_EGFR_lung")
+ccle_mut_lin_filt_plot <- ggplot(data = ccle_mut_lin_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  # facet_wrap(~ Drug_Gene_Lin, nrow = 1) +
+  geom_violinhalf(aes(fill = as.character(Mutation)), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.8) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
+  # scale_color_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "springgreen4", "0" = "palegreen3")) +
+  scale_color_manual(values = g2p_disease_colors) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CCLE: Erlotinib, EGFR, lung", x = "Mutation Status", y = "AUC") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none",axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ccle_mut_lin_filt_plot, filename = "./plots/erlotinib_EGFR_lung_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+ctrp_mut_lin_filt <- filter(ctrp, Drug_Gene_Lin == "vemurafenib_BRAF_skin")
+ctrp_mut_lin_filt_plot <- ggplot(data = ctrp_mut_lin_filt, mapping = aes(x = as.character(Mutation), y = Score)) +
+  # facet_wrap(~ Drug_Gene_Lin, ncol = 4) +
+  geom_violinhalf(aes(fill = as.character(Mutation)), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_point(aes(color =  disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.8) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "steelblue4", "0" = "slategray3")) +
+  # scale_color_manual(labels = c("Wildtype", "Mutant"), values = c("1" = "steelblue4", "0" = "slategray3")) +
+  scale_color_manual(values = g2p_disease_colors) +
+  scale_x_discrete(labels = c("0" = "Wildtype", "1" = "Mutant")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP: Vemurafenib, BRAF, skin", x = "Mutation Status", y = "AUC") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_mut_lin_filt_plot, filename = "./plots/vemurafenib_BRAF_skin_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+
+
+
+
+ctrp_prot_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change == "vemurafenib_BRAF:V600E")
+ctrp_prot_filt_plot <- ggplot(data = ctrp_prot_filt, mapping = aes(x = Change_Status, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Protein_Change, nrow = 2) +
+  geom_violinhalf(aes(fill = Change_Status), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.7) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  scale_color_manual(name = "Lineage", values = g2p_disease_colors) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP: Vemurafenib, BRAF:V600E", x = "Change Status", y = "AUC") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_prot_filt_plot, filename = "./plots/vemurafenib_BRAF_V600E_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+ctrp_prot_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change == "dabrafenib_BRAF:V600E")
+ctrp_prot_filt_plot <- ggplot(data = ctrp_prot_filt, mapping = aes(x = Change_Status, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Protein_Change, nrow = 2) +
+  geom_violinhalf(aes(fill = Change_Status), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.7) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  scale_color_manual(name = "Lineage", values = g2p_disease_colors) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP: Dabrafenib, BRAF:V600E", x = "Change Status", y = "AUC") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_prot_filt_plot, filename = "./plots/dabrafenib_BRAF_V600E_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+
+
+ctrp_signif_prot_lin$disease_g2p <- ifelse(ctrp_signif_prot_lin$disease %in% g2p_diseases, ctrp_signif_prot_lin$disease, "other")
+ctrp_signif_prot_lin_filt <- filter(ctrp_signif_prot_lin, InG2P == "Yes")
+ctrp_prot_lin_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change_Lineage == "vemurafenib_BRAF:V600E_skin")
+ctrp_prot_lin_filt_plot <- ggplot(data = ctrp_prot_lin_filt, mapping = aes(x = Change_Status, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Protein_Change_Lineage, nrow = 2) +
+  geom_violinhalf(aes(fill = Change_Status), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.4) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  scale_color_manual(values = g2p_disease_colors) +
+  # scale_color_manual(labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP: Vemurafenib, BRAF:V600E, skin", x = "Change Status", y = "AUC") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_prot_lin_filt_plot, filename = "./plots/vemuerafenib_BRAF_V600E_skin_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+ctrp_signif_prot_lin$disease_g2p <- ifelse(ctrp_signif_prot_lin$disease %in% g2p_diseases, ctrp_signif_prot_lin$disease, "other")
+ctrp_signif_prot_lin_filt <- filter(ctrp_signif_prot_lin, InG2P == "Yes")
+ctrp_prot_lin_filt <- filter(ctrp_prot, Drug_Gene_Protein_Change_Lineage == "dabrafenib_BRAF:V600E_skin")
+ctrp_prot_lin_filt_plot <- ggplot(data = ctrp_prot_lin_filt, mapping = aes(x = Change_Status, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Protein_Change_Lineage, nrow = 2) +
+  geom_violinhalf(aes(fill = Change_Status), position = position_nudge(x = 0.2, y = 0), alpha = 0.8, show.legend = FALSE) +
+  geom_boxplot(width = 0.1, guides = FALSE, outlier.shape = NA, alpha = 0.4) +
+  geom_point(aes(color = disease_g2p), position = position_jitter(width = 0.15), size = 0.5, alpha = 0.6) +
+  scale_x_discrete(labels = c("No" = "Wildtype", "Yes" = "Mutant")) +
+  scale_fill_manual(labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  scale_color_manual(values = g2p_disease_colors) +
+  # scale_color_manual(labels = c("Wildtype", "Mutant"), values = c("Yes" = "steelblue4", "No" = "slategray3")) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.10)) +
+  stat_compare_means(method = "wilcox", aes(label = paste0("p = ", ..p.format..)), label.x = 1.35, label.y = 1.1) +
+  labs(title = "CTRP: Dabrafenib, BRAF:V600E, skin", x = "Change Status", y = "AUC") +
+  guides(color = guide_legend(override.aes = list(size = 3))) +
+  theme(legend.position = "none", axis.title.x = element_blank(),
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_prot_lin_filt_plot, filename = "./plots/daberafenib_BRAF_V600E_skin_mut.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+
+
+
+
+cn_cor_lin$p.format <- with(cn_cor_lin, ifelse(CN_p < 0.001, "p < 0.001", paste0("p = ", round(CN_p, digits = 3))))
+ccle_cn_lin_cor <- unfactorize(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes"))
+ctrp_cn_lin_cor <- unfactorize(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes"))
+gdsc_cn_lin_cor <- unfactorize(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes"))
+
+ccle_cn_lin_cor_filt <- filter(ccle_cn_lin_cor, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ccle_cn_lin_filt <- filter(ccle, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ccle_lin_text <- data.frame(label = paste0("r = ", round(ccle_cn_lin_cor_filt$CN_r, digits = 3), ", ", ccle_cn_lin_cor_filt$p.format), Drug_Gene_Lin = ccle_cn_lin_cor_filt$Drug_Gene_Lin)
+ccle_cn_lin_filt_plot <- ggplot(data = ccle_cn_lin_filt, aes(x = CN, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Lin) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_smooth(stat = "smooth", method = "lm", color = "gray70", fill = "gray88", lwd = 1) +
+  geom_text(data = ccle_lin_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  coord_cartesian(ylim = c(0, 1)) +
+  labs(title = "CCLE: Lapatinib, ERBB2, breast", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ccle_cn_lin_filt_plot, filename = "./plots/lapatinib_ERBB2_breast_cn_ccle.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+ctrp_cn_lin_cor_filt <- filter(ctrp_cn_lin_cor, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ctrp_cn_lin_filt <- filter(ctrp, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ctrp_lin_text <- data.frame(label = paste0("r = ", round(ctrp_cn_lin_cor_filt$CN_r, digits = 3), ", ", ctrp_cn_lin_cor_filt$p.format), Drug_Gene_Lin = ctrp_cn_lin_cor_filt$Drug_Gene_Lin)
+ctrp_cn_lin_filt_plot <- ggplot(data = ctrp_cn_lin_filt, aes(x = CN, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Lin) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_smooth(stat = "smooth", method = "lm", color = "gray70", fill = "gray88", lwd = 1) +
+  geom_text(data = ctrp_lin_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  labs(title = "CTRP: Lapatinib, ERBB2, breast", x = "Copy number (log2)", y = "AUC") +
+  scale_color_manual(values = g2p_disease_colors) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_cn_lin_filt_plot, filename = "./plots/lapatinib_ERBB2_breast_cn_ctrp.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+gdsc_cn_lin_cor_filt <- filter(gdsc_cn_lin_cor, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+gdsc_cn_lin_filt <- filter(gdsc, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+gdsc_lin_text <- data.frame(label = paste0("r = ", round(gdsc_cn_lin_cor_filt$CN_r, digits = 3), ", ", gdsc_cn_lin_cor_filt$p.format), Drug_Gene_Lin = gdsc_cn_lin_cor_filt$Drug_Gene_Lin)
+gdsc_cn_lin_filt_plot <- ggplot(data = gdsc_cn_lin_filt, aes(x = CN, y = Score) )+
+  # facet_wrap(~ Drug_Gene_Lin) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_smooth(stat = "smooth", method = "lm", color = "gray70", fill = "gray88", lwd = 1) +
+  geom_text(data = gdsc_lin_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.00)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  labs(title = "GDSC: Lapatinib, ERBB2, breast", x = "Copy number (log2)", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "azure", colour = "azure", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = gdsc_cn_lin_filt_plot, filename = "./plots/lapatinib_ERBB2_breast_cn_gdsc.png", width = 4, height = 3, units = "in", dpi = "retina", device = "png")
+
+
+
+
+
+
+
+
+
+ge_cor_lin$p.format <- with(ge_cor_lin, ifelse(GE_p < 0.001, "p < 0.001", paste0("p = ", round(GE_p, digits = 3))))
+ccle_ge_lin_cor <- unfactorize(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes"))
+ctrp_ge_lin_cor <- unfactorize(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes"))
+gdsc_ge_lin_cor <- unfactorize(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes"))
+
+ccle_ge_lin_cor_filt <- filter(ccle_ge_lin_cor, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ccle_ge_lin_filt <- filter(ccle, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ccle_lin_text <- data.frame(label = paste0("r = ", round(ccle_ge_lin_cor_filt$GE_r, digits = 3), ", ", ccle_ge_lin_cor_filt$p.format), Drug_Gene_Lin = ccle_ge_lin_cor_filt$Drug_Gene_Lin)
+ccle_ge_lin_filt_plot <- ggplot(data = ccle_ge_lin_filt, aes(x = TPM, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Lin) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_smooth(stat = "smooth", method = "lm", color = "gray70", fill = "gray88", lwd = 1) +
+  geom_text(data = ccle_lin_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  coord_cartesian(ylim = c(0, 1)) +
+  labs(title = "CCLE: Lapatinib, ERBB2, breast", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "mintcream", colour = "mintcream", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ccle_ge_lin_filt_plot, filename = "./plots/lapatinib_ERBB2_breast_ge_ccle.png", width = 5, height = 3, units = "in", dpi = "retina", device = "png")
+
+ctrp_ge_lin_cor_filt <- filter(ctrp_ge_lin_cor, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ctrp_ge_lin_filt <- filter(ctrp, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+ctrp_lin_text <- data.frame(label = paste0("r = ", round(ctrp_ge_lin_cor_filt$GE_r, digits = 3), ", ", ctrp_ge_lin_cor_filt$p.format), Drug_Gene_Lin = ctrp_ge_lin_cor_filt$Drug_Gene_Lin)
+ctrp_ge_lin_filt_plot <- ggplot(data = ctrp_ge_lin_filt, aes(x = TPM, y = Score)) +
+  # facet_wrap(~ Drug_Gene_Lin) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_smooth(stat = "smooth", method = "lm", color = "gray70", fill = "gray88", lwd = 1) +
+  geom_text(data = ctrp_lin_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  labs(title = "CTRP: Lapatinib, ERBB2, breast", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  scale_color_manual(values = g2p_disease_colors) +
+  coord_cartesian(ylim = c(0, 1)) +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "whitesmoke", colour = "whitesmoke", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = ctrp_ge_lin_filt_plot, filename = "./plots/lapatinib_ERBB2_breast_ge_ctrp.png", width = 5, height = 3, units = "in", dpi = "retina", device = "png")
+
+gdsc_ge_lin_cor_filt <- filter(gdsc_ge_lin_cor, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+gdsc_ge_lin_filt <- filter(gdsc, Drug_Gene_Lin == "lapatinib_ERBB2_breast")
+gdsc_lin_text <- data.frame(label = paste0("r = ", round(gdsc_ge_lin_cor_filt$GE_r, digits = 3), ", ", gdsc_ge_lin_cor_filt$p.format), Drug_Gene_Lin = gdsc_ge_lin_cor_filt$Drug_Gene_Lin)
+gdsc_ge_lin_filt_plot <- ggplot(data = gdsc_ge_lin_filt, aes(x = TPM, y = Score) )+
+  # facet_wrap(~ Drug_Gene_Lin) +
+  geom_point(aes(color = disease_g2p), pch = 20, size = 1, alpha = 0.7) +
+  geom_smooth(stat = "smooth", method = "lm", color = "gray70", fill = "gray88", lwd = 1) +
+  geom_text(data = gdsc_lin_text,
+            mapping = aes(x = +Inf, y = +Inf, label = label,
+            hjust = 1.1, vjust = 1.2)) +
+  scale_y_continuous(breaks = seq(0, 1.00, by = 0.25), labels = c("0.00", "0.25", "0.50", "0.75", "1.00")) +
+  coord_cartesian(ylim = c(0, 1.00)) +
+  scale_color_manual(values = g2p_disease_colors) +
+  labs(title = "GDSC: Lapatinib, ERBB2, breast", x = "Gene expression [log2(TPM)]", y = "AUC") +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "azure", colour = "azure", size = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+        panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+ggsave(plot = gdsc_ge_lin_filt_plot, filename = "./plots/lapatinib_ERBB2_breast_ge_gdsc.png", width = 5, height = 3, units = "in", dpi = "retina", device = "png")
+```
+
+
+## CN/GE heatmaps
+
+```{r, eval=FALSE}
+ccle_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CCLE" & Gene %in% unique(g2p_amp$Gene)))
+ctrp_cn_cor <- unfactorize(filter(cn_cor, Dataset == "CTRP" & Gene %in% unique(g2p_amp$Gene)))
+gdsc_cn_cor <- unfactorize(filter(cn_cor, Dataset == "GDSC" & Gene %in% unique(g2p_amp$Gene)))
+
+ccle_cn_ht2 <- MakeCorrHeatmap(cor_res = ccle_cn_cor, row_names = TRUE, heatmap_legend = TRUE, col_title = "CCLE", color_range = c(-0.25, 0, 0.25), radius = 0.05, legend_title = "Copy num. Pearson correlation", metric = "CN")
+ctrp_cn_ht2 <- MakeCorrHeatmap(cor_res = ctrp_cn_cor, row_names = FALSE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.25, 0, 0.25), radius = 0.05, legend_title = "Copy num. Pearson correlation", metric = "CN")
+gdsc_cn_ht2 <- MakeCorrHeatmap(cor_res = gdsc_cn_cor, row_names = FALSE, heatmap_legend = FALSE, col_title = "GDSC", color_range = c(-0.25, 0, 0.25), radius = 0.05, legend_title = "Copy num. Pearson correlation", metric = "CN")
+png(filename = "./plots/sccb_cn_heatmap.png", width = 13, height = 2.7, units = "in", res = 500)
+draw(ccle_cn_ht2 + ctrp_cn_ht2 + gdsc_cn_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+dev.off()
+
+ccle_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CCLE" & Gene %in% unique(g2p_expr$Gene)))
+ctrp_ge_cor <- unfactorize(filter(ge_cor, Dataset == "CTRP" & Gene %in% unique(g2p_expr$Gene)))
+gdsc_ge_cor <- unfactorize(filter(ge_cor, Dataset == "GDSC" & Gene %in% unique(g2p_expr$Gene)))
+
+ccle_ge_ht2 <- MakeCorrHeatmap(cor_res = ccle_ge_cor, row_names = TRUE, heatmap_legend = TRUE, col_title = "CCLE", color_range = c(-0.5, 0, 0.5), radius = 0.08, legend_title = "Gene expr. Pearson correlation", metric = "GE")
+ctrp_ge_ht2 <- MakeCorrHeatmap(cor_res = ctrp_ge_cor, row_names = FALSE, heatmap_legend = FALSE, col_title = "CTRP", color_range = c(-0.5, 0, 0.5), radius = 0.08, legend_title = "Gene expr. Pearson correlation", metric = "GE")
+gdsc_ge_ht2 <- MakeCorrHeatmap(cor_res = gdsc_ge_cor, row_names = FALSE, heatmap_legend = FALSE, col_title = "GDSC", color_range = c(-0.5, 0, 0.5), radius = 0.08, legend_title = "Gene expr. Pearson correlation", metric = "GE")
+png(filename = "./plots/sccb_ge_heatmap.png", width = 13, height = 2.4, units = "in", res = 500)
+draw(ccle_ge_ht2 + ctrp_ge_ht2 + gdsc_ge_ht2, gap = unit(0.25, "in"), heatmap_legend_side = "top")
+dev.off()
+```
+
+## KS test results
+
+```{r fig.height=3, fig.width=4}
+KSResultPlot <- function(dataframe, color_values, title_text, outfile, p_value, show) {
+  if(p_value == "p") {
+    sample1 <- filter(dataframe, InG2P == "Yes")$p
+    sample2 <- filter(dataframe, InG2P == "No")$p
+  }
+  if(p_value == "CN_p") {
+    sample1 <- filter(dataframe, InG2P == "Yes")$CN_p
+    sample2 <- filter(dataframe, InG2P == "No")$CN_p
+  }
+  if(p_value == "GE_p") {
+    sample1 <- filter(dataframe, InG2P == "Yes")$GE_p
+    sample2 <- filter(dataframe, InG2P == "No")$GE_p
+  }
+  pval <- ks.test(sample1, sample2, alternative = "greater")$p.value
+  
+  cdf1 <- ecdf(sample1) 
+  cdf2 <- ecdf(sample2) 
+  
+  # find min and max statistics to draw line between points of greatest distance
+  minMax <- seq(min(sample1, sample2), max(sample1, sample2), length.out = length(sample1)) 
+  x0 <- minMax[which(abs(cdf1(minMax) - cdf2(minMax)) == max(abs(cdf1(minMax) - cdf2(minMax))))] 
+  y0 <- cdf1(x0) 
+  y1 <- cdf2(x0) 
+  
+  if(p_value == "p") {
+    ecdf_plot <- ggplot(dataframe, aes(x = p, group = InG2P, color = InG2P))+
+      scale_color_manual(values = color_values) +
+      stat_ecdf(size = 1) +
+      theme_bw(base_size = 18) +
+      theme(legend.position = "top",
+            plot.title = element_text(size = 40)) +
+      geom_vline(xintercept = 0.05, linetype = "dashed", color = "gray", lwd = 0.5) +
+      # annotate(geom = "text", label = paste0("KS test, p = ", round(p_value, digits = 3)), x = 0.18, y = 0.95) +
+      labs(y = "ECDF", x = "P-value", title = paste0(title_text, ", KS test (p = ", round(pval, digits = 3), ")"), color = "In VICC?") +
+      geom_segment(aes(x = x0[1], y = y0[1], xend = x0[1], yend = y1[1]), linetype = "dashed", color = "black") +
+      geom_point(aes(x = x0[1] , y = y0[1]), color = "black", size = 2) +
+      geom_point(aes(x = x0[1] , y = y1[1]), color = "black", size = 2) +
+      coord_cartesian(xlim = c(0, 1))) +
+      theme(legend.position = c(0.95, 0.30), legend.justification = c("right", "top"), legend.box.just = "right", legend.margin = margin(6, 6, 6, 6))
+  }
+  if(p_value == "CN_p") {
+    ecdf_plot <- ggplot(dataframe, aes(x = CN_p, group = InG2P, color = InG2P))+
+      scale_color_manual(values = color_values) +
+      stat_ecdf(size = 1) +
+      theme_bw(base_size = 18) +
+      theme(legend.position = "top",
+            plot.title = element_text(size = 40)) +
+      geom_vline(xintercept = 0.05, linetype = "dashed", color = "gray", lwd = 0.5) +
+      # annotate(geom = "text", label = paste0("KS test, p = ", round(p_value, digits = 3)), x = 0.18, y = 0.95) +
+      labs(y = "ECDF", x = "P-value", title = paste0(title_text, ", KS test (p = ", round(pval, digits = 3), ")"), color = "In VICC?") +
+      geom_segment(aes(x = x0[1], y = y0[1], xend = x0[1], yend = y1[1]), linetype = "dashed", color = "black") +
+      geom_point(aes(x = x0[1] , y = y0[1]), color = "black", size = 2) +
+      geom_point(aes(x = x0[1] , y = y1[1]), color = "black", size = 2) +
+      coord_cartesian(xlim = c(0, 1))) +
+      theme(legend.position = c(0.95, 0.30), legend.justification = c("right", "top"), legend.box.just = "right", legend.margin = margin(6, 6, 6, 6))
+  }
+  if(p_value == "GE_p") {
+    ecdf_plot <- ggplot(dataframe, aes(x = GE_p, group = InG2P, color = InG2P))+
+      scale_color_manual(values = color_values) +
+      stat_ecdf(size = 1) +
+      theme_bw(base_size = 18) +
+      theme(legend.position = "top",
+            plot.title = element_text(size = 40)) +
+      geom_vline(xintercept = 0.05, linetype = "dashed", color = "gray", lwd = 0.5) +
+      # annotate(geom = "text", label = paste0("KS test, p = ", round(p_value, digits = 3)), x = 0.18, y = 0.95) +
+      labs(y = "ECDF", x = "P-value", title = paste0(title_text, ", KS test (p = ", round(pval, digits = 3), ")"), color = "In VICC?") +
+      geom_segment(aes(x = x0[1], y = y0[1], xend = x0[1], yend = y1[1]), linetype = "dashed", color = "black") +
+      geom_point(aes(x = x0[1] , y = y0[1]), color = "black", size = 2) +
+      geom_point(aes(x = x0[1] , y = y1[1]), color = "black", size = 2) +
+      coord_cartesian(xlim = c(0, 1))) +
+      theme(legend.position = c(0.95, 0.30), legend.justification = c("right", "top"), legend.box.just = "right", legend.margin = margin(6, 6, 6, 6))
+  }
+  
+  if(!missing(outfile)) {
+    ggsave(plot = ecdf_plot, filename = outfile, width = 8, height = 5, units = "in", dpi = "retina", device = "png")
+  }
+  
+  if(show) {
+    return(ecdf_plot)
+  }
+}
+```
+
+Mutation:
+```{r, eval=FALSE}
+ccle_mut_ht_dat <- filter(ccle_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3)
+ctrp_mut_ht_dat <-filter(ctrp_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3)
+gdsc_mut_ht_dat <- filter(gdsc_signif_g2p_dg, Gene %in% unique(g2p_mut$Gene) & Mutation_1_count >= 3)
+
+# ks.test(filter(ccle_mut_ht_dat, InG2P == "Yes")$p, filter(ccle_mut_ht_dat, InG2P == "No")$p, alternative = "greater")
+# ks.test(filter(ctrp_mut_ht_dat, InG2P == "Yes")$p, filter(ctrp_mut_ht_dat, InG2P == "No")$p, alternative = "greater")
+# ks.test(filter(gdsc_mut_ht_dat, InG2P == "Yes")$p, filter(gdsc_mut_ht_dat, InG2P == "No")$p, alternative = "greater")
+
+KSResultPlot(dataframe = ccle_mut_ht_dat, color_values = c("Yes" = "springgreen4" , "No" = "palegreen3"), title_text = "CCLE", p_value = "p", outfile = "./plots/ks_test_results/ccle_mutation.png", show = TRUE)
+KSResultPlot(dataframe = ctrp_mut_ht_dat, color_values = c("Yes" = "steelblue4" , "No" = "slategray3"), title_text = "CTRP", p_value = "p", outfile = "./plots/ks_test_results/ctrp_mutation.png", show = TRUE)
+KSResultPlot(dataframe = gdsc_mut_ht_dat, color_values = c("Yes" = "turquoise4", "No" = "paleturquoise3"), title_text = "GDSC", p_value = "p", outfile = "./plots/ks_test_results/gdsc_mutation.png", show = TRUE)
+```
+
+Protein:
+```{r, eval=FALSE}
+# ks.test(filter(ccle_signif_prot_4plot, InG2P == "Yes")$p, filter(ccle_signif_prot_4plot, InG2P == "No")$p, alternative = "less")
+# ks.test(filter(ctrp_signif_prot_4plot, InG2P == "Yes")$p, filter(ctrp_signif_prot_4plot, InG2P == "No")$p, alternative = "less")
+# ks.test(filter(gdsc_signif_prot_4plot, InG2P == "Yes")$p, filter(gdsc_signif_prot_4plot, InG2P == "No")$p, alternative = "less")
+
+KSResultPlot(dataframe = ccle_mut_ht_dat, color_values = c("Yes" = "springgreen4" , "No" = "palegreen3"), title_text = "CCLE", p_value = "p", outfile = "./plots/ks_test_results/ccle_protein.png", show = TRUE)
+KSResultPlot(dataframe = ctrp_mut_ht_dat, color_values = c("Yes" = "steelblue4" , "No" = "slategray3"), title_text = "CTRP", p_value = "p", outfile = "./plots/ks_test_results/ctrp_protein.png", show = TRUE)
+KSResultPlot(dataframe = gdsc_mut_ht_dat, color_values = c("Yes" = "turquoise4", "No" = "paleturquoise3"), title_text = "GDSC", p_value = "p", outfile = "./plots/ks_test_results/gdsc_protein.png", show = TRUE)
+```
+
+CN/GE:
+```{r, eval=FALSE}
+# cn_genes <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
+ccle_cn_ht_data <- filter(cn_cor, Dataset == "CCLE" & Gene %in% g2p_amp$Gene)
+ctrp_cn_ht_data <- filter(cn_cor, Dataset == "CTRP" & Gene %in% g2p_amp$Gene)
+gdsc_cn_ht_data <- filter(cn_cor, Dataset == "GDSC" & Gene %in% g2p_amp$Gene)
+
+# ks.test(filter(ccle_cn_ht_data, InG2P == "Yes")$CN_p, filter(ccle_cn_ht_data, InG2P == "No")$CN_p, alternative = "greater")
+# ks.test(filter(ctrp_cn_ht_data, InG2P == "Yes")$CN_p, filter(ctrp_cn_ht_data, InG2P == "No")$CN_p, alternative = "greater")
+# ks.test(filter(gdsc_cn_ht_data, InG2P == "Yes")$CN_p, filter(gdsc_cn_ht_data, InG2P == "No")$CN_p, alternative = "greater")
+
+KSResultPlot(dataframe = ccle_cn_ht_data, color_values = c("Yes" = "springgreen4" , "No" = "palegreen3"), title_text = "CCLE", p_value = "CN_p", outfile = "./plots/ks_test_results/ccle_copynumber.png", show = TRUE)
+KSResultPlot(dataframe = ctrp_cn_ht_data, color_values = c("Yes" = "steelblue4" , "No" = "slategray3"), title_text = "CTRP", p_value = "CN_p", outfile = "./plots/ks_test_results/ctrp_copynumber.png", show = TRUE)
+KSResultPlot(dataframe = gdsc_cn_ht_data, color_values = c("Yes" = "turquoise4", "No" = "paleturquoise3"), title_text = "GDSC", p_value = "CN_p", outfile = "./plots/ks_test_results/gdsc_copynumber.png", show = TRUE)
+
+# ge_genes <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
+ccle_ge_ht_data <- filter(ge_cor, Dataset == "CCLE" & Gene %in% g2p_expr$Gene)
+ctrp_ge_ht_data <- filter(ge_cor, Dataset == "CTRP" & Gene %in% g2p_expr$Gene)
+gdsc_ge_ht_data <- filter(ge_cor, Dataset == "GDSC" & Gene %in% g2p_expr$Gene)
+
+# ks.test(filter(ccle_ge_ht_data, InG2P == "Yes")$GE_p, filter(ccle_ge_ht_data, InG2P == "No")$GE_p, alternative = "greater")
+# ks.test(filter(ctrp_ge_ht_data, InG2P == "Yes")$GE_p, filter(ctrp_ge_ht_data, InG2P == "No")$GE_p, alternative = "greater")
+# ks.test(filter(gdsc_ge_ht_data, InG2P == "Yes")$GE_p, filter(gdsc_ge_ht_data, InG2P == "No")$GE_p, alternative = "greater")
+
+KSResultPlot(dataframe = ccle_ge_ht_data, color_values = c("Yes" = "springgreen4" , "No" = "palegreen3"), title_text = "CCLE", p_value = "GE_p", outfile = "./plots/ks_test_results/ccle_geneexpression.png", show = TRUE)
+KSResultPlot(dataframe = ctrp_ge_ht_data, color_values = c("Yes" = "steelblue4" , "No" = "slategray3"), title_text = "CTRP", p_value = "GE_p", outfile = "./plots/ks_test_results/ctrp_geneexpression.png", show = TRUE)
+KSResultPlot(dataframe = gdsc_ge_ht_data, color_values = c("Yes" = "turquoise4", "No" = "paleturquoise3"), title_text = "GDSC", p_value = "GE_p", outfile = "./plots/ks_test_results/gdsc_geneexpression.png", show = TRUE)
+
+# cn_genes <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
+# cn_drugs <- unique(filter(cn_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
+# 
+# ccle_cn_ht_data <- filter(cn_cor, Dataset == "CCLE" & Drug %in% cn_drugs & Gene %in% cn_genes)
+# ks.test(filter(ccle_cn_ht_data, InG2P == "Yes")$CN_p, filter(ccle_cn_ht_data, InG2P == "No")$CN_p)
+# ctrp_cn_ht_data <- filter(cn_cor, Dataset == "CTRP" & Drug %in% cn_drugs & Gene %in% cn_genes)
+# ks.test(filter(ctrp_cn_ht_data, InG2P == "Yes")$CN_p, filter(ctrp_cn_ht_data, InG2P == "No")$CN_p)
+# gdsc_cn_ht_data <- filter(cn_cor, Dataset == "GDSC" & Drug %in% cn_drugs & Gene %in% cn_genes)
+# ks.test(filter(gdsc_cn_ht_data, InG2P == "Yes")$CN_p, filter(gdsc_cn_ht_data, InG2P == "No")$CN_p)
+# 
+# ge_genes <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Gene)
+# ge_drugs <- unique(filter(ge_cor, Dataset != "CRISPR" & InG2P == "Yes")$Drug)
+# 
+# ccle_ge_ht_data <- filter(ge_cor, Dataset == "CCLE" & Drug %in% ge_drugs & Gene %in% ge_genes)
+# ks.test(filter(ccle_ge_ht_data, InG2P == "Yes")$GE_p, filter(ccle_ge_ht_data, InG2P == "No")$GE_p)
+# ctrp_ge_ht_data <- filter(ge_cor, Dataset == "CTRP" & Drug %in% ge_drugs & Gene %in% ge_genes)
+# ks.test(filter(ctrp_ge_ht_data, InG2P == "Yes")$GE_p, filter(ctrp_ge_ht_data, InG2P == "No")$GE_p)
+# gdsc_ge_ht_data <- filter(ge_cor, Dataset == "GDSC" & Drug %in% ge_drugs & Gene %in% ge_genes)
+# ks.test(filter(gdsc_ge_ht_data, InG2P == "Yes")$GE_p, filter(gdsc_ge_ht_data, InG2P == "No")$GE_p)
+```
+
+Lineage:
+```{r lineages_ks_tests, warning=FALSE}
+ks.test(filter(ccle_signif_dgl, disease %in% g2p_diseases & InG2P == "Yes")$p, filter(ccle_signif_dgl, disease %in% g2p_diseases & InG2P == "No")$p, alternative = "greater")$p.value
+ks.test(filter(ctrp_signif_dgl, disease %in% g2p_diseases & InG2P == "Yes")$p, filter(ctrp_signif_dgl, disease %in% g2p_diseases & InG2P == "No")$p, alternative = "greater")$p.value
+ks.test(filter(gdsc_signif_dgl, disease %in% g2p_diseases & InG2P == "Yes")$p, filter(gdsc_signif_dgl, disease %in% g2p_diseases & InG2P == "No")$p, alternative = "greater")$p.value
+
+# ccle_signif_dgl_filt <- filter(ccle_signif_dgl, disease %in% g2p_diseases)
+# KSResultPlot(dataframe = ,ccle_signif_dgl_filt, color_values = c("Yes" = "springgreen4" , "No" = "palegreen3"), title_text = "CCLE", p_value = "p", outfile = "./plots/ks_test_results/ccle_mut_lin.png", show = TRUE)
+# KSResultPlot(dataframe = filter(ctrp_signif_dgl, disease %in% g2p_diseases), color_values = c("Yes" = "steelblue4" , "No" = "slategray3"), title_text = "CTRP", p_value = "p", outfile = "./plots/ks_test_results/ctrp_mut_lin.png", show = TRUE)
+# KSResultPlot(dataframe = filter(gdsc_signif_dgl, disease %in% g2p_diseases), color_values = c("Yes" = "turquoise4", "No" = "paleturquoise3"), title_text = "GDSC", p_value = "p", outfile = "./plots/ks_test_results/gdsc_mut_lin.png", show = TRUE)
+# 
+
+ks.test(filter(ccle_signif_prot_lin, disease %in% g2p_diseases & InG2P == "Yes")$p, filter(ccle_signif_prot_lin, disease %in% g2p_diseases & InG2P == "No")$p, alternative = "greater")$p.value
+ks.test(filter(ctrp_signif_prot_lin, disease %in% g2p_diseases & InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, disease %in% g2p_diseases & InG2P == "No")$p, alternative = "greater")$p.value
+ks.test(filter(gdsc_signif_prot_lin, disease %in% g2p_diseases & InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, disease %in% g2p_diseases & InG2P == "No")$p, alternative = "greater")$p.value
+
+ks.test(filter(cn_cor_lin, Dataset == "CCLE" & disease %in% g2p_diseases & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CCLE" & disease %in% g2p_diseases & InG2P == "No")$CN_p, alternative = "greater")$p.value
+ks.test(filter(cn_cor_lin, Dataset == "CTRP" & disease %in% g2p_diseases & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CTRP" & disease %in% g2p_diseases & InG2P == "No")$CN_p, alternative = "greater")$p.value
+ks.test(filter(cn_cor_lin, Dataset == "GDSC" & disease %in% g2p_diseases & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "GDSC" & disease %in% g2p_diseases & InG2P == "No")$CN_p, alternative = "greater")$p.value
+
+ks.test(filter(ge_cor_lin, Dataset == "CCLE" & disease %in% g2p_diseases & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & disease %in% g2p_diseases & InG2P == "No")$GE_p, alternative = "greater")$p.value
+ks.test(filter(ge_cor_lin, Dataset == "CTRP" & disease %in% g2p_diseases & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & disease %in% g2p_diseases & InG2P == "No")$GE_p, alternative = "greater")$p.value
+ks.test(filter(ge_cor_lin, Dataset == "GDSC" & disease %in% g2p_diseases & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & disease %in% g2p_diseases & InG2P == "No")$GE_p, alternative = "greater")$p.value
+
+
+lineage_ks_results <- data.frame("Dataset" = c(rep(c("CCLE", "CTRP", "GDSC"), 4)),
+           "Data type" = c(rep("Mutation", 3), rep("Protein change", 3), rep("Copy number", 3), rep("Gene expression", 3)),
+  "p.value" = c(ks.test(filter(ccle_signif_dgl, InG2P == "Yes")$p, filter(ccle_signif_dgl, InG2P == "No")$p)$p.value,
+  ks.test(filter(ctrp_signif_dgl, InG2P == "Yes")$p, filter(ctrp_signif_dgl, InG2P == "No")$p)$p.value,
+  ks.test(filter(gdsc_signif_dgl, InG2P == "Yes")$p, filter(gdsc_signif_dgl, InG2P == "No")$p)$p.value,
+  ks.test(filter(ccle_signif_prot_lin, InG2P == "Yes")$p, filter(ccle_signif_prot_lin, InG2P == "No")$p)$p.value,
+  ks.test(filter(ctrp_signif_prot_lin, InG2P == "Yes")$p, filter(ctrp_signif_prot_lin, InG2P == "No")$p)$p.value,
+  ks.test(filter(gdsc_signif_prot_lin, InG2P == "Yes")$p, filter(gdsc_signif_prot_lin, InG2P == "No")$p)$p.value,
+  ks.test(filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CCLE" & InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "CTRP" & InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$CN_p, filter(cn_cor_lin, Dataset == "GDSC" & InG2P == "No")$CN_p)$p.value,
+  ks.test(filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CCLE" & InG2P == "No")$GE_p)$p.value,
+  ks.test(filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "CTRP" & InG2P == "No")$GE_p)$p.value,
+  ks.test(filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "Yes")$GE_p, filter(ge_cor_lin, Dataset == "GDSC" & InG2P == "No")$GE_p)$p.value))
+```
+
+
+# OLD CODE
+
+--------------------------------------------------------------------------------
 
 ## OLD: First draft figures
 
@@ -3418,10 +4081,6 @@ grid.arrange(layout_matrix = lay,
              arrangeGrob(ggplotGrob(crispr_ge_filt_plot), ggplotGrob(ccle_ge_filt_plot), ggplotGrob(ctrp_ge_filt_plot), ggplotGrob(gdsc_ge_filt_plot1), ggplotGrob(gdsc_ge_filt_plot2), nrow = 1, left = textGrob("F", x = unit(1, "npc"), y = unit(.97, "npc"), gp = gpar(fontsize = 20, fontface = "bold"))))
 dev.off()
 ```
-
-# OLD CODE
-
---------------------------------------------------------------------------------
 
 ## Clustered AUC heatmap
 
